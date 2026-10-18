@@ -2,8 +2,10 @@
 
 ThreadingHTTPServer, stdlib only. This process serves /api/session.
 A cookie names the device. The row holds that device's chat, turn, pane,
-surface and draft. The in-flight turn is the chat lock, and it belongs to
-the session: another device never receives a 409 because this one is mid-turn.
+surface and draft. A live turn locks its chat: another device that starts
+a turn on that same chat gets 409. A different chat is never blocked.
+The lock lets go when the turn is cleared, or when it has not been
+updated for TURN_TTL.
 
 Version 3 of the schema is reserved for settings. This module does not take it.
 """
@@ -14,7 +16,7 @@ import argparse
 import json
 import secrets
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
@@ -23,6 +25,9 @@ from festin.schema import apply, connect
 COOKIE = "festin_session"
 SURFACES = frozenset({"tucked", "peek", "full"})
 FIELDS = ("chat_id", "turn", "pane", "surface", "draft")
+# A holder that stops updating its turn must not keep the chat.
+TURN_TTL = timedelta(minutes=10)
+CHAT_HELD = "Babette is answering this chat on another device."
 _GUARDS: dict[str, threading.Lock] = {}
 _GUARDS_LOCK = threading.Lock()
 
@@ -31,9 +36,14 @@ class MidTurn(Exception):
     """This session already holds a different turn."""
 
 
+class ChatHeld(Exception):
+    """Another session's live turn already holds this chat."""
+
+
 class KitchenServer(ThreadingHTTPServer):
     def __init__(self, server_address, db_path):
         self.db_path = db_path
+        self.now = lambda: datetime.now(timezone.utc)
         conn = connect(db_path)
         try:
             apply(conn)
@@ -67,20 +77,34 @@ class Handler(BaseHTTPRequestHandler):
         conn = connect(self.server.db_path)
         try:
             conn.execute("PRAGMA busy_timeout = 5000")
-            row = _row_for_cookie(conn, token)
+            row = _row_for_cookie(conn, token, self.server.now())
+            now = self.server.now()
             if changes is None:
-                body = _public(row)
-                self._send(200, body, row["id"])
+                conn.execute("BEGIN IMMEDIATE")
+                _expire_stale(conn, now)
+                conn.commit()
+                row = conn.execute("SELECT * FROM sessions WHERE id = ?", (row["id"],)).fetchone()
+                self._send(200, _public(row), row["id"])
                 return
             guard = _guard(row["id"])
             with guard:
-                row = conn.execute("SELECT * FROM sessions WHERE id = ?", (row["id"],)).fetchone()
+                conn.execute("BEGIN IMMEDIATE")
                 try:
-                    values = _apply_changes(row, changes)
+                    _expire_stale(conn, now)
+                    row = conn.execute("SELECT * FROM sessions WHERE id = ?", (row["id"],)).fetchone()
+                    values = _apply_changes(conn, row, changes, now)
                 except MidTurn:
+                    conn.rollback()
                     self._send(409, {"error": "This session is mid-turn."}, row["id"])
                     return
-                now = _now()
+                except ChatHeld:
+                    conn.rollback()
+                    self._send(409, {"error": CHAT_HELD}, row["id"])
+                    return
+                except ValueError as exc:
+                    conn.rollback()
+                    self._send(400, {"error": str(exc)}, row["id"])
+                    return
                 conn.execute(
                     """
                     UPDATE sessions
@@ -93,7 +117,7 @@ class Handler(BaseHTTPRequestHandler):
                         values["pane"],
                         values["surface"],
                         values["draft"],
-                        now,
+                        now.isoformat(),
                         row["id"],
                     ),
                 )
@@ -127,25 +151,52 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def _row_for_cookie(conn, token):
+def _row_for_cookie(conn, token, now):
     row = None
     if token:
         row = conn.execute("SELECT * FROM sessions WHERE id = ?", (token,)).fetchone()
     if row is not None:
         return row
-    now = _now()
+    stamp = now.isoformat()
     new_id = secrets.token_urlsafe(32)
     conn.execute(
         "INSERT INTO sessions (id, draft, created_at, updated_at) VALUES (?, '', ?, ?)",
-        (new_id, now, now),
+        (new_id, stamp, stamp),
     )
     conn.commit()
     return conn.execute("SELECT * FROM sessions WHERE id = ?", (new_id,)).fetchone()
 
 
-def _apply_changes(row, changes: dict) -> dict:
-    """Return the stored columns. A different turn on this same row is a 409."""
-    current = json.loads(row["turn_json"]) if row["turn_json"] else None
+def _expire_stale(conn, now: datetime) -> None:
+    """Drop turns that have not been written within TURN_TTL. The chat is free."""
+    rows = conn.execute("SELECT id, turn_json FROM sessions WHERE turn_json IS NOT NULL").fetchall()
+    stale = []
+    for row in rows:
+        held = _held_at(row["turn_json"])
+        if held is None or now - held >= TURN_TTL:
+            stale.append(row["id"])
+    stamp = now.isoformat()
+    for session_id in stale:
+        conn.execute(
+            "UPDATE sessions SET turn_json = NULL, updated_at = ? WHERE id = ?",
+            (stamp, session_id),
+        )
+
+
+def _held_at(turn_json: str):
+    try:
+        raw = json.loads(turn_json)["held_at"]
+        held = datetime.fromisoformat(raw)
+    except (KeyError, TypeError, ValueError):
+        return None
+    if held.tzinfo is None:
+        held = held.replace(tzinfo=timezone.utc)
+    return held
+
+
+def _apply_changes(conn, row, changes: dict, now: datetime) -> dict:
+    """Return the stored columns. Another device's live turn on this chat is a 409."""
+    current = _public_turn(row["turn_json"])
     turn = current
     if "turn" in changes:
         turn = changes["turn"]
@@ -159,16 +210,48 @@ def _apply_changes(row, changes: dict) -> dict:
         still_held = turn if "turn" in changes else current
         if current and still_held and chat_id != row["chat_id"]:
             raise MidTurn()
+    if turn is not None:
+        if not chat_id:
+            raise ValueError("A turn needs a chat")
+        holder = conn.execute(
+            """
+            SELECT id FROM sessions
+            WHERE chat_id = ? AND id != ? AND turn_json IS NOT NULL
+            """,
+            (chat_id, row["id"]),
+        ).fetchone()
+        if holder is not None:
+            raise ChatHeld()
+    if turn is None:
+        turn_json = None
+    elif "turn" in changes:
+        stored = dict(turn)
+        stored["held_at"] = now.isoformat()
+        turn_json = _dump(stored)
+    else:
+        turn_json = row["turn_json"]
     pane = changes["pane"] if "pane" in changes else row["pane"]
     surface = changes["surface"] if "surface" in changes else row["surface"]
     draft = changes["draft"] if "draft" in changes else row["draft"]
     return {
         "chat_id": chat_id,
-        "turn_json": None if turn is None else json.dumps(turn, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+        "turn_json": turn_json,
         "pane": pane,
         "surface": surface,
         "draft": draft,
     }
+
+
+def _public_turn(turn_json):
+    if not turn_json:
+        return None
+    turn = json.loads(turn_json)
+    turn.pop("held_at", None)
+    return turn
+
+
+def _dump(value) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
 def _parse_changes(data: dict) -> dict:
@@ -239,7 +322,7 @@ def _public(row) -> dict:
     return {
         "id": row["id"],
         "chat_id": row["chat_id"],
-        "turn": json.loads(row["turn_json"]) if row["turn_json"] else None,
+        "turn": _public_turn(row["turn_json"]),
         "pane": row["pane"],
         "surface": row["surface"],
         "draft": row["draft"],
@@ -263,10 +346,6 @@ def _guard(session_id: str) -> threading.Lock:
             lock = threading.Lock()
             _GUARDS[session_id] = lock
         return lock
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def main(argv: list[str] | None = None) -> int:

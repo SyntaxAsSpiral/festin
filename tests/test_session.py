@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+from datetime import datetime, timedelta, timezone
 from http.client import HTTPConnection
 
 import pytest
@@ -95,29 +96,75 @@ def test_each_session_keeps_its_own_chat_and_draft(kitchen):
     assert bram_body["surface"] == "tucked"
 
 
-def test_a_held_turn_does_not_block_the_other_device(kitchen):
+def test_a_turn_on_one_chat_does_not_block_another_chat(kitchen):
     port = kitchen.server_address[1]
     alice = Client(port)
     bram = Client(port)
-    held = alice.put({"chat_id": "shared-chat", "turn": {"id": "turn-a", "phase": "thinking"}, "draft": "alice"})
+    held = alice.put({"chat_id": "chat-a", "turn": {"id": "turn-a", "phase": "thinking"}, "draft": "alice"})
     assert held[0] == 200
-    other = bram.put({"chat_id": "shared-chat", "turn": {"id": "turn-b", "phase": "thinking"}, "draft": "bram"})
+    other = bram.put({"chat_id": "chat-b", "turn": {"id": "turn-b", "phase": "thinking"}, "draft": "bram"})
     assert other[0] == 200
     assert other[1]["turn"]["id"] == "turn-b"
-    assert other[1]["draft"] == "bram"
+    assert other[1]["chat_id"] == "chat-b"
     assert alice.get()[1]["turn"]["id"] == "turn-a"
+    assert alice.get()[1]["chat_id"] == "chat-a"
 
     blocked = alice.put({"turn": {"id": "turn-c", "phase": "thinking"}})
     assert blocked[0] == 409
+    assert blocked[1]["error"] == "This session is mid-turn."
     switched = alice.put({"chat_id": "somewhere-else"})
     assert switched[0] == 409
     assert bram.put({"draft": "still bram"})[0] == 200
-    assert bram.get()[1]["draft"] == "still bram"
     assert bram.get()[1]["turn"]["id"] == "turn-b"
 
-    assert alice.put({"turn": None, "chat_id": "somewhere-else"})[0] == 200
+
+def test_a_second_session_on_the_same_chat_gets_409(kitchen):
+    port = kitchen.server_address[1]
+    alice = Client(port)
+    bram = Client(port)
+    assert alice.put({"chat_id": "chat-a", "turn": {"id": "turn-a", "phase": "thinking"}})[0] == 200
+    assert bram.put({"chat_id": "chat-a", "draft": "just looking"})[0] == 200
+    blocked = bram.put({"turn": {"id": "turn-b", "phase": "thinking"}})
+    assert blocked[0] == 409
+    assert blocked[1]["error"] == "Babette is answering this chat on another device."
+    assert alice.get()[1]["turn"]["id"] == "turn-a"
+    assert bram.get()[1]["turn"] is None
+    assert bram.get()[1]["draft"] == "just looking"
+
+
+def test_clearing_a_turn_frees_its_chat(kitchen):
+    port = kitchen.server_address[1]
+    alice = Client(port)
+    bram = Client(port)
+    assert alice.put({"chat_id": "chat-a", "turn": {"id": "turn-a", "phase": "thinking"}})[0] == 200
+    assert bram.put({"chat_id": "chat-a"})[0] == 200
+    assert bram.put({"turn": {"id": "turn-b", "phase": "thinking"}})[0] == 409
+    assert alice.put({"turn": None})[0] == 200
     assert alice.get()[1]["turn"] is None
-    assert alice.get()[1]["chat_id"] == "somewhere-else"
+    taken = bram.put({"turn": {"id": "turn-b", "phase": "thinking"}})
+    assert taken[0] == 200
+    assert taken[1]["turn"]["id"] == "turn-b"
+    assert alice.get()[1]["turn"] is None
+
+
+def test_a_stale_turn_expires(kitchen):
+    start = datetime(2026, 10, 18, 18, 0, tzinfo=timezone.utc)
+    kitchen.now = lambda: start
+    port = kitchen.server_address[1]
+    alice = Client(port)
+    bram = Client(port)
+    assert alice.put({"chat_id": "chat-a", "turn": {"id": "turn-a", "phase": "thinking"}})[0] == 200
+
+    start = start + timedelta(minutes=9)
+    still = bram.put({"chat_id": "chat-a", "turn": {"id": "turn-b", "phase": "thinking"}})
+    assert still[0] == 409
+    assert alice.get()[1]["turn"]["id"] == "turn-a"
+
+    start = start + timedelta(minutes=1)
+    taken = bram.put({"chat_id": "chat-a", "turn": {"id": "turn-b", "phase": "thinking"}})
+    assert taken[0] == 200
+    assert taken[1]["turn"]["id"] == "turn-b"
+    assert alice.get()[1]["turn"] is None
 
 
 def test_the_same_cookie_returns_the_same_session(kitchen):

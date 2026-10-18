@@ -165,7 +165,7 @@ def _version_1(conn: sqlite3.Connection) -> None:
 
 
 def _version_2(conn: sqlite3.Connection) -> None:
-    """One row per device. Its turn is the chat lock; there is no global one."""
+    """One row per device. A live turn locks that row's chat, not the process."""
     conn.executescript(
         """
         CREATE TABLE IF NOT EXISTS sessions (
