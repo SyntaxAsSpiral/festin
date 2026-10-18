@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { rememberOrigin } from '../cards/origin.js'
 import { CATEGORY_LABELS, plateFor } from '../cards/kinds.js'
 import { fetchLogPage } from './plan.js'
+import { formatLogWhen } from './logDate.js'
 
 const WEEK_TONE = [
   ['#8b5365', '#8b5365'],
@@ -24,14 +25,7 @@ function formatRange(weekStart) {
 }
 
 function formatWhen(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10)
-  const day = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '')
-  const hasTime = /T\d{2}:/.test(iso) && !iso.endsWith('T23:59:59.000000Z')
-  if (!hasTime) return day
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-  return `${day} · ${time}`
+  return formatLogWhen(iso)
 }
 
 function weekSummary(nights) {
@@ -230,7 +224,7 @@ export function KitchenLog() {
                 >
                   <span>
                     <small>
-                      {formatWhen(entry.at)} · Chat{entry.dateApprox ? ' · around' : ''}
+                      {formatLogWhen(entry.at, { approx: Boolean(entry.dateApprox) })} · Chat
                     </small>
                     <span className="trl">
                       <b>{entry.title}</b>

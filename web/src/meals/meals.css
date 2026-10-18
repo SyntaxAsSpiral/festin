@@ -9,7 +9,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  background: var(--bb-tone-1) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  /* Same paper + grain as the other tabs (mock Meals sits on paper). */
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
   background-blend-mode: multiply;
 }
 
@@ -85,15 +86,26 @@
 .slip h2.slipT {
   text-align: center;
   font-weight: 600;
-  font-size: clamp(18px, 8.5cqi, 34px);
-  letter-spacing: 0.22em;
-  line-height: 1;
-  margin-right: -0.22em;
-  white-space: nowrap;
+  /* Short titles (LE FESTIN) hit the 34px / 0.22em caps. Long imported titles
+     wrap with balance and step down via the same clamps — no JS measuring. */
+  font-size: clamp(15px, 8.5cqi, 34px);
+  letter-spacing: clamp(0.06em, 1.9cqi, 0.22em);
+  line-height: 1.12;
+  margin-inline: auto;
+  max-width: 100%;
+  white-space: normal;
+  text-wrap: balance;
+  overflow-wrap: break-word;
   cursor: text;
   outline: none;
   caret-color: var(--bb-ink);
   background-image: linear-gradient(transparent, transparent);
+}
+@container slip (max-width: 360px) {
+  .slip h2.slipT {
+    font-size: clamp(14px, 6.4cqi, 26px);
+    letter-spacing: clamp(0.04em, 1.2cqi, 0.14em);
+  }
 }
 .slip h2.slipT:hover,
 .slip h2.slipT:focus {
