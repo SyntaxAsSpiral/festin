@@ -14,6 +14,9 @@ from festin.weather import weather_context
 
 HISTORY_WINDOW = 40
 
+LOOKING_TABS = ("meals", "recipes", "notes", "chats")
+LOOKING_CARD_KINDS = ("recipes", "notes", "chats")
+
 
 def message_count(conn: sqlite3.Connection, chat_id: str) -> int:
     row = conn.execute(
@@ -190,6 +193,78 @@ def inject_household(message_count_value: int) -> bool:
     return message_count_value <= 1
 
 
+def resolve_looking_at(conn: sqlite3.Connection, context) -> dict | None:
+    """Resolve tab + card pointer from SQLite. Never trusts client title/text."""
+    if not isinstance(context, dict):
+        return None
+    tab = context.get("tab")
+    if tab not in LOOKING_TABS:
+        return None
+    resolved: dict = {"tab": tab}
+    card = context.get("card")
+    if not isinstance(card, dict):
+        return resolved
+    kind = card.get("kind")
+    ident = card.get("id")
+    if kind not in LOOKING_CARD_KINDS or not isinstance(ident, str) or not ident.strip():
+        return resolved
+    ident = ident.strip()
+    if kind == "recipes":
+        row = conn.execute(
+            "SELECT id, title, kind FROM recipes WHERE id = ?", (ident,)
+        ).fetchone()
+        if row:
+            resolved["card"] = {
+                "kind": "recipes",
+                "id": row["id"],
+                "title": row["title"],
+                "recipe_kind": row["kind"],
+            }
+    elif kind == "notes":
+        row = conn.execute(
+            "SELECT id, kind, text FROM notes WHERE id = ?", (ident,)
+        ).fetchone()
+        if row:
+            text = " ".join(str(row["text"] or "").split())
+            if len(text) > 120:
+                text = text[:117] + "..."
+            resolved["card"] = {
+                "kind": "notes",
+                "id": row["id"],
+                "note_kind": row["kind"],
+                "text": text,
+            }
+    elif kind == "chats":
+        row = conn.execute(
+            "SELECT id, title FROM chats WHERE id = ?", (ident,)
+        ).fetchone()
+        if row:
+            resolved["card"] = {
+                "kind": "chats",
+                "id": row["id"],
+                "title": row["title"],
+            }
+    return resolved
+
+
+def looking_at_block(resolved: dict | None) -> str | None:
+    """Short system block: tab always; card line only when SQLite found it."""
+    if not resolved:
+        return None
+    lines = ["The cook is looking at:", f"- tab: {resolved['tab']}"]
+    card = resolved.get("card")
+    if isinstance(card, dict):
+        kind = card["kind"]
+        if kind == "recipes":
+            label = "praxis" if card.get("recipe_kind") == "praxis" else "recipe"
+            lines.append(f"- {label} {card['id']} · {card['title']}")
+        elif kind == "notes":
+            lines.append(f"- note {card['id']} ({card['note_kind']}) · {card['text']}")
+        elif kind == "chats":
+            lines.append(f"- chat {card['id']} · {card['title']}")
+    return "\n".join(lines)
+
+
 def build_chat_messages(
     conn: sqlite3.Connection,
     *,
@@ -201,6 +276,7 @@ def build_chat_messages(
     data_dir: Path,
     persona_path=None,
     opening_extras: dict | None = None,
+    looking_at: dict | None = None,
 ):
     """System prompt + optional new-chat context + history window."""
     on = household_today(conn)
@@ -215,6 +291,9 @@ def build_chat_messages(
             + json.dumps(editor_context(conn, week, editor_plan, on), ensure_ascii=False),
         }
     ]
+    block = looking_at_block(looking_at)
+    if block:
+        messages.append({"role": "system", "content": block})
     stored = load_messages(conn, chat_id)
     if inject_household(len(stored)):
         opening = {

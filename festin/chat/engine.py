@@ -23,6 +23,7 @@ from festin.chat.messages import (
     load_messages,
     message_count,
     parse_week_start,
+    resolve_looking_at,
 )
 from festin.chat.photos import store_photos
 from festin.chat.provider import complete as default_complete
@@ -54,11 +55,15 @@ def chat(
     persona_path=None,
     model_key=None,
     tools_supported=True,
+    context=None,
 ):
     """Run one turn. Emits live NDJSON event dicts via emit(event).
 
     Stale checks use this device's session_chat_id and that chat's message count.
     The API layer takes the per-chat lock before calling.
+
+    context is {tab, card: {kind, id}|null} from the client. Card titles and
+    note text are loaded from SQLite; client-sent labels are ignored.
     """
     data_dir = Path(data_dir)
 
@@ -184,6 +189,7 @@ def chat(
             opening_extras.setdefault("plugin_context", [])
             opening_extras["plugin_context"].append(snippet)
 
+        looking_at = resolve_looking_at(conn, context)
         messages, stored = build_chat_messages(
             conn,
             chat_id=active_id,
@@ -194,6 +200,7 @@ def chat(
             data_dir=data_dir,
             persona_path=persona_path,
             opening_extras=opening_extras or None,
+            looking_at=looking_at,
         )
         completed = stored[-1].get("tool_results", []) if stored else []
         for item in completed:

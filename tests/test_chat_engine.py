@@ -431,3 +431,72 @@ def test_tool_trace_round_trip(db):
     assert row["color"] == "green"
     assert row["open"] == 1
     assert events[-1]["type"] == "done"
+
+
+def test_looking_at_context_resolved_from_sqlite(db):
+    conn, data_dir = db
+    conn.execute(
+        """
+        INSERT INTO recipes (
+            id, title, kind, voice, source, ingredients_json, method, updated_at
+        ) VALUES ('CBK-0042', 'Real Soup', 'recipe', 'zk', 'unknown', '[]', '', '2026-01-01T00:00:00Z')
+        """
+    )
+    conn.commit()
+    seen = {}
+
+    class Capture(FakeCompleter):
+        def __call__(self, base, settings, key, messages, tools, request_id, turn,
+                     on_delta=None, on_reset=None, delivery=None):
+            seen["messages"] = messages
+            return super().__call__(
+                base, settings, key, messages, tools, request_id, turn,
+                on_delta, on_reset, delivery,
+            )
+
+    fake = Capture([{"message": {"role": "assistant", "content": "Oui."}}])
+    chat(
+        conn,
+        text="About this?",
+        week=SAT,
+        chat_id="chat-1",
+        session_chat_id="chat-1",
+        data_dir=data_dir,
+        emit=lambda e: None,
+        completer=fake,
+        image_support=True,
+        context={
+            "tab": "recipes",
+            "card": {
+                "kind": "recipes",
+                "id": "CBK-0042",
+                "title": "CLIENT LIE — ignore me",
+            },
+        },
+    )
+    blocks = [m["content"] for m in seen["messages"] if m["role"] == "system"]
+    looking = next(b for b in blocks if b.startswith("The cook is looking at:"))
+    assert "- tab: recipes" in looking
+    assert "CBK-0042" in looking
+    assert "Real Soup" in looking
+    assert "CLIENT LIE" not in looking
+
+    # Unknown id: tab only.
+    seen.clear()
+    fake = Capture([{"message": {"role": "assistant", "content": "Ok."}}])
+    chat(
+        conn,
+        text="Still here",
+        week=SAT,
+        chat_id="chat-1",
+        session_chat_id="chat-1",
+        data_dir=data_dir,
+        emit=lambda e: None,
+        completer=fake,
+        image_support=True,
+        context={"tab": "notes", "card": {"kind": "notes", "id": "missing-note"}},
+    )
+    blocks = [m["content"] for m in seen["messages"] if m["role"] == "system"]
+    looking = next(b for b in blocks if b.startswith("The cook is looking at:"))
+    assert looking == "The cook is looking at:\n- tab: notes"
+    assert "missing-note" not in looking
