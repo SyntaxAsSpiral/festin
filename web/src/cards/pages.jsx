@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Message } from '../chat/Transcript.jsx'
-import { chatDate, dayOf, plateFor, provenance } from './kinds.js'
+import { CATEGORY_LABELS, chatDate, dayOf, plateFor, provenance } from './kinds.js'
 
 // Live stores file paths under data/; the kitchen serves them at these URLs.
 function served(path) {
@@ -89,6 +89,44 @@ export function RecipePage({ recipe }) {
           <img src={scan} alt={'The original card for ' + recipe.title} />
         </button>
       )}
+    </article>
+  )
+}
+
+export function RecipeEditor({ draft, onDraft }) {
+  function set(key, value) {
+    onDraft({ ...draft, [key]: value })
+  }
+  const known = Object.prototype.hasOwnProperty.call(CATEGORY_LABELS, draft.category)
+  return (
+    <article className="page page-recipe">
+      <img className="frontis" src={plateFor(draft.category)} alt="" />
+      <header className="page-head">
+        <input className="page-title" aria-label="Title" value={draft.title} placeholder="Title" onChange={(e) => set('title', e.target.value)} autoFocus />
+        <select className="page-cat" aria-label="Category" value={draft.category || ''} onChange={(e) => set('category', e.target.value)}>
+          <option value="">Uncategorized</option>
+          {!known && draft.category ? <option value={draft.category}>{draft.category}</option> : null}
+          {Object.entries(CATEGORY_LABELS).map(([id, label]) => (
+            <option key={id} value={id}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </header>
+      <div className="recipe-body">
+        <section className="ingredients">
+          <h2>Ingredients</h2>
+          <textarea className="page-area" aria-label="Ingredients" value={draft.ingredients} placeholder="One ingredient on each line" onChange={(e) => set('ingredients', e.target.value)} />
+        </section>
+        <section className="method">
+          <h2>Method</h2>
+          <textarea className="page-area" aria-label="Method" value={draft.method} onChange={(e) => set('method', e.target.value)} />
+        </section>
+      </div>
+      <section className="kitchen">
+        <h2>Notes</h2>
+        <textarea className="page-area" aria-label="Notes" value={draft.notes} onChange={(e) => set('notes', e.target.value)} />
+      </section>
     </article>
   )
 }

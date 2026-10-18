@@ -14,7 +14,7 @@ from festin import log as kitchen_log
 from festin.errors import NotFound, StaleState
 
 PAGE_SIZE = 20
-RECIPE_ID = re.compile(r"^CBK-\d+$")
+RECIPE_ID = re.compile(r"^CBK-(\d+)$")
 
 # Writable fields on create/edit (API camelCase → column).
 _STRING_FIELDS = {
@@ -396,17 +396,36 @@ def _public(row) -> dict:
         "createdAt": row["created_at"],
         "updatedAt": row["updated_at"],
     }
+    scans = _ocr_photos(row["extra_json"])
+    if scans:
+        out["ocrPhotos"] = scans
     return out
 
 
+def _ocr_photos(raw) -> list:
+    """Scans ride in extra_json. The page shows the first one as 'from the box'."""
+    try:
+        extra = json.loads(raw or "{}")
+    except json.JSONDecodeError:
+        return []
+    photos = extra.get("ocrPhotos") if isinstance(extra, dict) else None
+    if not isinstance(photos, list) or not all(isinstance(item, str) for item in photos):
+        return []
+    return photos
+
+
 def _card(item: dict) -> dict:
-    """List row: name · category · ID plus a short description."""
+    """List row: name, who it came from, and enough text to search."""
     return {
         "id": item["id"],
         "title": item["title"],
         "kind": item["kind"],
         "category": item["category"],
+        "source": item["source"],
+        "voice": item["voice"],
         "searchDescription": item["searchDescription"],
+        "ingredients": item["ingredients"],
+        "notes": item["notes"],
         "stub": item["stub"],
         "needsPracticeReview": item["needsPracticeReview"],
         "updatedAt": item["updatedAt"],

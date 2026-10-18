@@ -3,10 +3,21 @@ import { useAnimate } from 'motion/react'
 import { useLocation, useNavigate } from 'react-router'
 import { transition } from '../motion.js'
 import { useReducedMotion } from '../useReducedMotion.js'
-import { KINDS, loadItems, notYet } from './kinds.js'
+import { useSurface } from '../chat/Surface.jsx'
+import {
+  ConflictError,
+  KINDS,
+  cookTonight,
+  loadItem,
+  pointSessionAt,
+  removeItem,
+  saveNote,
+  saveRecipe,
+  toItem,
+} from './kinds.js'
 import { useLookingAt } from './looking.js'
 import { forgetOrigin, originRect } from './origin.js'
-import { ChatPage, NotePage, RecipePage } from './pages.jsx'
+import { ChatPage, NotePage, RecipeEditor, RecipePage } from './pages.jsx'
 
 function Confirm({ noun, onYes, onNo }) {
   const yes = useRef(null)
@@ -41,16 +52,33 @@ function fromRect(page, rect) {
 
 const AT_REST = { x: 0, y: 0, scaleX: 1, scaleY: 1, rotateY: 0, opacity: 1 }
 
+function blankRecipe() {
+  return { title: '', category: '', ingredients: '', method: '', notes: '' }
+}
+
+function draftFrom(recipe) {
+  return {
+    title: recipe.title || '',
+    category: recipe.category || '',
+    ingredients: (recipe.ingredients || []).join('\n'),
+    method: recipe.method || '',
+    notes: recipe.notes || '',
+  }
+}
+
 // One card at a time, over its kind's list. Card machine: Opening -> Viewing <-> Editing,
 // Delete via Confirm, Closing back into the list (state-machine.md §4).
-export function CardOverlay({ kind, id }) {
+export function CardOverlay({ kind, id, onChanged }) {
   const navigate = useNavigate()
   const location = useLocation()
   const reduced = useReducedMotion()
+  const { open } = useSurface()
   const [scope, animate] = useAnimate()
-  const [item, setItem] = useState(undefined)
+  const [item, setItem] = useState(() => (id === 'new' ? null : undefined))
   const [phase, setPhase] = useState(id === 'new' ? 'editing' : 'viewing')
   const [draft, setDraft] = useState('')
+  const [noteColor, setNoteColor] = useState('none')
+  const [recipeDraft, setRecipeDraft] = useState(blankRecipe)
   const [confirming, setConfirming] = useState(false)
   const [note, setNote] = useState('')
   const closing = useRef(false)
@@ -59,7 +87,7 @@ export function CardOverlay({ kind, id }) {
   useEffect(() => {
     if (id === 'new') return setItem(null)
     let gone = false
-    loadItems(kind).then((items) => !gone && setItem(items.find((it) => it.id === id) || null), () => !gone && setItem(null))
+    loadItem(kind, id).then((next) => !gone && setItem(next), () => !gone && setItem(null))
     return () => {
       gone = true
     }
@@ -88,9 +116,30 @@ export function CardOverlay({ kind, id }) {
     else navigate('/' + kind, { replace: true })
   }
 
-  function act(promise) {
+  function act(work) {
     setNote('')
-    promise.catch((err) => setNote(err.message))
+    return Promise.resolve()
+      .then(work)
+      .catch(async (err) => {
+        setNote(err.message || 'The kitchen did not save that.')
+        if (err instanceof ConflictError && id !== 'new') {
+          const next = await loadItem(kind, id).catch(() => null)
+          setItem(next)
+          setPhase('viewing')
+          onChanged?.()
+        }
+      })
+  }
+
+  function applySaved(record, stay) {
+    setItem(toItem(kind, record))
+    if (!stay) setPhase('viewing')
+    onChanged?.()
+  }
+
+  function openSaved(record) {
+    onChanged?.()
+    navigate('/' + kind + '/' + encodeURIComponent(record.id), { replace: true, state: location.state })
   }
 
   // Esc closes Confirm first, then leaves editing, then closes the card.
@@ -108,8 +157,11 @@ export function CardOverlay({ kind, id }) {
   })
 
   const raw = item?.raw
-  const title = id === 'new' ? 'New ' + spec.noun : item?.title || ''
-  useLookingAt(title, kind, id === 'new' ? null : item?.id)
+  const creating = id === 'new'
+  const editingRecipe = kind === 'recipes' && (creating || phase === 'editing')
+  const editingNote = kind === 'notes' && (creating || phase === 'editing')
+  const title = creating ? 'New ' + spec.noun : item?.title || ''
+  useLookingAt(title, kind, creating ? null : item?.id)
 
   return (
     <div className="card-layer" onClick={(event) => event.target === event.currentTarget && close()}>
@@ -129,21 +181,26 @@ export function CardOverlay({ kind, id }) {
           }}
         >
           {item === undefined && <p className="lstate">Opening…</p>}
-          {item === null && id !== 'new' && <p className="lstate">This {spec.noun} isn't in the box any more.</p>}
-          {id === 'new' && (
-            <article className="page">
-              <p className="quiet">New {spec.noun}s are written here once the new kitchen backend lands. Until then, ask Babette to add one.</p>
-            </article>
-          )}
-          {raw && kind === 'recipes' && <RecipePage recipe={raw} />}
-          {raw && kind === 'notes' && (
-            <NotePage note={raw} editing={phase === 'editing'} draft={draft} onDraft={setDraft} onColor={() => act(notYet())} />
+          {item === null && !creating && <p className="lstate">This {spec.noun} isn't in the box any more.</p>}
+          {editingRecipe && <RecipeEditor draft={recipeDraft} onDraft={setRecipeDraft} />}
+          {raw && kind === 'recipes' && phase !== 'editing' && <RecipePage recipe={raw} />}
+          {(raw || creating) && kind === 'notes' && (
+            <NotePage
+              note={creating ? { type: 'note', text: draft, color: noteColor, date: '' } : raw}
+              editing={editingNote}
+              draft={draft}
+              onDraft={setDraft}
+              onColor={(color) => {
+                if (creating) setNoteColor(color)
+                else act(() => saveNote(raw, { color }).then((saved) => applySaved(saved, phase === 'editing')))
+              }}
+            />
           )}
           {raw && kind === 'chats' && <ChatPage chat={raw} />}
         </div>
-        {raw && (
+        {(raw || creating) && (
           <div className="card-foot">
-            {kind === 'recipes' && (
+            {kind === 'recipes' && raw && !editingRecipe && (
               <button type="button" className="card-id" title="Copy the ID" onClick={() => navigator.clipboard?.writeText(raw.id).then(() => setNote('Copied ' + raw.id), () => {})}>
                 {raw.id}
               </button>
@@ -154,9 +211,35 @@ export function CardOverlay({ kind, id }) {
               </p>
             )}
             <div className="card-actions">
+              {editingRecipe && (
+                <>
+                  <button type="button" onClick={() => (creating ? close() : setPhase('viewing'))}>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      act(() =>
+                        saveRecipe(creating ? null : raw, recipeDraft).then((saved) => (creating ? openSaved(saved) : applySaved(saved))),
+                      )
+                    }
+                  >
+                    Save
+                  </button>
+                </>
+              )}
               {kind === 'notes' &&
-                (phase === 'editing' ? (
-                  <button type="button" onClick={() => act(notYet())}>
+                (editingNote ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      act(() =>
+                        saveNote(creating ? null : raw, { text: draft, color: creating ? noteColor : undefined }).then((saved) =>
+                          creating ? openSaved(saved) : applySaved(saved),
+                        ),
+                      )
+                    }
+                  >
                     Done
                   </button>
                 ) : (
@@ -164,24 +247,26 @@ export function CardOverlay({ kind, id }) {
                     Edit
                   </button>
                 ))}
-              {kind === 'recipes' && (
+              {kind === 'recipes' && raw && !editingRecipe && (
                 <>
-                  <button type="button" onClick={() => act(notYet())}>
+                  <button type="button" onClick={() => (setRecipeDraft(draftFrom(raw)), setPhase('editing'))}>
                     Edit
                   </button>
-                  <button type="button" onClick={() => act(notYet())}>
+                  <button type="button" onClick={() => act(() => cookTonight(raw).then(() => setNote('Cooked tonight.')))}>
                     Cooked tonight
                   </button>
                 </>
               )}
-              {kind === 'chats' && (
-                <button type="button" onClick={() => act(notYet())}>
+              {kind === 'chats' && raw && (
+                <button type="button" onClick={() => act(() => pointSessionAt(raw.id).then(() => open()))}>
                   Reopen in Babette
                 </button>
               )}
-              <button type="button" className="danger" onClick={() => setConfirming(true)}>
-                Delete
-              </button>
+              {raw && !editingRecipe && (
+                <button type="button" className="danger" onClick={() => setConfirming(true)}>
+                  Delete
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -191,7 +276,7 @@ export function CardOverlay({ kind, id }) {
             onNo={() => setConfirming(false)}
             onYes={() => {
               setConfirming(false)
-              act(notYet())
+              act(() => removeItem(kind, raw).then(() => (onChanged?.(), close())))
             }}
           />
         )}

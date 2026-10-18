@@ -18,7 +18,7 @@ function typing(el) {
 }
 
 // One copy of the list machine per tab: Layout, Query, Results, Cursor (§4).
-export function Collection({ kind, cardOpen }) {
+export function Collection({ kind, cardOpen, revision = 0 }) {
   const spec = KINDS[kind]
   const navigate = useNavigate()
   const [items, setItems] = useState(null)
@@ -31,13 +31,27 @@ export function Collection({ kind, cardOpen }) {
   const list = useRef(null)
   const more = useRef(null)
 
+  // Chats search on the server (the list row has no transcript). Recipes and notes
+  // come back with their text, so the filter stays on this page.
+  const serverQuery = kind === 'chats' ? query.trim() : ''
   useEffect(() => {
     let gone = false
-    loadItems(kind).then((next) => !gone && setItems(next), () => !gone && setFailed(true))
+    const timer = setTimeout(() => {
+      loadItems(kind, serverQuery).then(
+        (next) => {
+          if (!gone) {
+            setItems(next)
+            setFailed(false)
+          }
+        },
+        () => !gone && setFailed(true),
+      )
+    }, serverQuery ? 160 : 0)
     return () => {
       gone = true
+      clearTimeout(timer)
     }
-  }, [kind])
+  }, [kind, serverQuery, revision])
 
   useEffect(() => {
     try {
@@ -47,7 +61,11 @@ export function Collection({ kind, cardOpen }) {
     }
   }, [kind, layout])
 
-  const results = useMemo(() => (items ? items.filter((it) => !query.trim() || matches(it, query)) : []), [items, query])
+  const results = useMemo(() => {
+    if (!items) return []
+    if (kind === 'chats' || !query.trim()) return items
+    return items.filter((it) => matches(it, query))
+  }, [items, query, kind])
   useEffect(() => {
     setShown(PAGE)
     setCursor(-1)
@@ -127,8 +145,8 @@ export function Collection({ kind, cardOpen }) {
       </div>
       {failed && <p className="lstate">The kitchen did not answer. Try again in a moment.</p>}
       {!failed && !items && <p className="lstate">Opening the box…</p>}
-      {items && !items.length && <p className="lstate">{spec.empty}</p>}
-      {items && items.length > 0 && !results.length && <p className="lstate">Nothing by that name. Ask Babette.</p>}
+      {items && !results.length && query.trim() && <p className="lstate">Nothing by that name. Ask Babette.</p>}
+      {items && !items.length && !query.trim() && <p className="lstate">{spec.empty}</p>}
       <ol ref={list} className={'nlist nlist-' + layout}>
         {results.slice(0, shown).map((item, i) => (
           <li key={item.id}>

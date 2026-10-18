@@ -13,6 +13,15 @@ Babette's kitchen app, rebuilt: Vite + React + Motion front end, Python backend 
 
 `nix develop` gives node, python with pytest, and sqlite. Add tools to `flake.nix`; no global installs.
 
+Dev kitchen for the card system (chat stays on the live app at `127.0.0.1:8876`):
+
+```
+python -m festin.importer /mnt/echo/festin-wt/live-copy /mnt/echo/festin-wt/kitchen.db
+npm run kitchen
+```
+
+`npm run kitchen` serves that database at `127.0.0.1:8879`. Vite sends `/api/chat`, `/api/stop`, `/api/new-chat` and `/api/state` to live, and `/cards` and `/photos` there too. Every other `/api` goes to this server.
+
 ## Rules for workers
 
 - Work only in your own git worktree and branch. The foreman merges.

@@ -1,6 +1,17 @@
-// The three kinds the card machine runs (state-machine.md §4). Each kind maps its
-// raw records onto one item shape: { id, title, line, tip, search, raw }.
-import { liveState } from '../backend.js'
+// The three kinds the card machine runs (state-machine.md §4). Each kind maps a
+// Festin record onto one item shape: { id, title, line, tip, search, raw }.
+// Lists page through GET /api/<kind>. Writes send expected_updated_at and turn
+// a 409 into one conflict the card can show, then reload.
+
+export const CONFLICT_MESSAGE = 'Changed on another device. Reloaded.'
+
+export class ConflictError extends Error {
+  constructor() {
+    super(CONFLICT_MESSAGE)
+    this.name = 'ConflictError'
+    this.status = 409
+  }
+}
 
 export const CATEGORY_LABELS = {
   breads: 'Breads',
@@ -25,6 +36,8 @@ export const CATEGORY_LABELS = {
 }
 
 const PLACEHOLDER = /^(unknown|zk-chat|)$/i
+const WEEKDAYS = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 }
+const LIST_KEY = { recipes: 'recipes', notes: 'notes', chats: 'chats' }
 
 export function plateFor(category) {
   return '/plates/' + (CATEGORY_LABELS[category] ? category : 'uncategorized') + '.jpg'
@@ -47,16 +60,61 @@ export function dayOf(iso) {
   return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''
 }
 
-// A chat's date. Festin chats carry created_at; chats imported from live have none,
-// so they show the earliest week they planned against, as an approximation.
+// A chat's date. A real createdAt is the day. Imported chats are an approximation
+// (dateApprox, or the older created_at plus the earliest planned week).
 export function chatDate(chat) {
-  if (chat.created_at && !chat.date_approx) return dayOf(chat.created_at)
+  const created = chat.createdAt || chat.created_at || ''
+  const approx = Boolean(chat.dateApprox || chat.date_approx)
+  if (created && !approx) return dayOf(created)
+  if (created && approx) return 'Around the week of ' + dayOf(String(created).slice(0, 10))
   const weeks = (chat.messages || [])
     .map((m) => m.role === 'user' && m.plan && m.plan.weekStart)
     .filter(Boolean)
     .sort()
-  const week = chat.created_at || weeks[0]
-  return week ? 'Around the week of ' + dayOf(week.slice(0, 10)) : 'Undated'
+  return weeks[0] ? 'Around the week of ' + dayOf(weeks[0].slice(0, 10)) : 'Undated'
+}
+
+export function recipeItem(r) {
+  return {
+    id: r.id,
+    title: r.title || r.id,
+    line: provenance(r),
+    tip: r.searchDescription || '',
+    search: [r.id, r.title, r.category, r.source, r.voice, r.searchDescription, r.notes, ...(r.ingredients || [])].join(' ').toLowerCase(),
+    raw: r,
+  }
+}
+
+export function noteItem(n) {
+  return {
+    id: n.id,
+    title: firstLine(n.text, 70) || 'A note',
+    line: [n.type ? n.type[0].toUpperCase() + n.type.slice(1) : 'Note', dayOf(n.date)].filter(Boolean).join(', '),
+    tip: '',
+    search: [n.type, n.text].join(' ').toLowerCase(),
+    raw: n,
+  }
+}
+
+export function chatItem(c) {
+  const said = (c.messages || []).filter((m) => m.role === 'user' || m.role === 'assistant')
+  const title = firstLine(c.title || said[0]?.content || 'A chat', 80)
+  const assistant = said.find((m) => m.role === 'assistant')?.content
+  const tipSrc = assistant || (c.preview && c.preview !== c.title ? c.preview : '')
+  return {
+    id: c.id,
+    title,
+    line: chatDate(c),
+    tip: firstLine(tipSrc, 120),
+    search: [c.title, c.preview, ...said.map((m) => m.content)].join(' ').toLowerCase(),
+    raw: c,
+  }
+}
+
+const TO_ITEM = { recipes: recipeItem, notes: noteItem, chats: chatItem }
+
+export function toItem(kind, row) {
+  return TO_ITEM[kind](row)
 }
 
 export const KINDS = {
@@ -66,15 +124,7 @@ export const KINDS = {
     canCreate: true,
     searchLabel: 'Search recipes',
     empty: 'The recipe box is empty. Add a recipe, or ask Babette to.',
-    items: (body) =>
-      (body.recipes?.recipes || body.recipes || []).map((r) => ({
-        id: r.id,
-        title: r.title || r.id,
-        line: provenance(r),
-        tip: r.searchDescription || '',
-        search: [r.id, r.title, r.category, r.source, r.voice, ...(r.ingredients || [])].join(' ').toLowerCase(),
-        raw: r,
-      })),
+    items: (rows) => rows.map(recipeItem),
   },
   notes: {
     id: 'notes',
@@ -82,15 +132,7 @@ export const KINDS = {
     canCreate: true,
     searchLabel: 'Search notes',
     empty: 'No notes yet. Write one, or ask Babette to keep one.',
-    items: (body) =>
-      (body.state?.journal || []).map((n) => ({
-        id: n.id,
-        title: firstLine(n.text, 70),
-        line: [n.type ? n.type[0].toUpperCase() + n.type.slice(1) : 'Note', dayOf(n.date)].filter(Boolean).join(', '),
-        tip: '',
-        search: [n.type, n.text].join(' ').toLowerCase(),
-        raw: n,
-      })),
+    items: (rows) => rows.map(noteItem),
   },
   chats: {
     id: 'chats',
@@ -98,24 +140,61 @@ export const KINDS = {
     canCreate: false,
     searchLabel: 'Search chats',
     empty: 'No filed chats yet. +chat in the chat files the current one here.',
-    items: (body) =>
-      (body.state?.chats || []).map((c) => {
-        const said = (c.messages || []).filter((m) => m.role === 'user' || m.role === 'assistant')
-        return {
-          id: c.id,
-          title: firstLine(c.title || said[0]?.content || 'A chat', 80),
-          line: chatDate(c),
-          tip: firstLine(said.find((m) => m.role === 'assistant')?.content, 120),
-          search: said.map((m) => m.content).join(' ').toLowerCase(),
-          raw: c,
-        }
-      }),
+    items: (rows) => rows.map(chatItem),
   },
 }
 
-// Every kind reads from the one live state body (fetched once; see backend.js).
-export function loadItems(kind) {
-  return liveState().then((body) => KINDS[kind].items(body))
+async function send(method, path, body, { conflict = true } = {}) {
+  const res = await fetch(path, {
+    method,
+    headers: {
+      Accept: 'application/json',
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  let data = null
+  try {
+    data = await res.json()
+  } catch {
+    data = null
+  }
+  if (res.status === 409) {
+    if (conflict) throw new ConflictError()
+    throw new Error((data && data.error) || CONFLICT_MESSAGE)
+  }
+  if (!res.ok) throw new Error((data && data.error) || 'The kitchen did not save that.')
+  return data
+}
+
+async function pageAll(kind, query) {
+  const key = LIST_KEY[kind]
+  const rows = []
+  const seen = new Set()
+  let cursor = ''
+  for (;;) {
+    const params = new URLSearchParams({ limit: '100' })
+    if (query) params.set('q', query)
+    if (cursor) params.set('cursor', cursor)
+    const page = await send('GET', '/api/' + kind + '?' + params)
+    rows.push(...(page[key] || []))
+    const next = page.nextCursor || ''
+    if (!next || seen.has(next)) break
+    seen.add(next)
+    cursor = next
+  }
+  return rows
+}
+
+// Recipes and notes come back whole enough to search here. Chats are summaries,
+// so a typed query uses the server's q=, which reads the transcript.
+export function loadItems(kind, query = '') {
+  const q = kind === 'chats' ? query.trim() : ''
+  return pageAll(kind, q).then((rows) => KINDS[kind].items(rows))
+}
+
+export function loadItem(kind, id) {
+  return send('GET', '/api/' + kind + '/' + encodeURIComponent(id)).then((row) => toItem(kind, row))
 }
 
 export function matches(item, query) {
@@ -123,8 +202,92 @@ export function matches(item, query) {
   return words.every((w) => item.search.includes(w) || item.title.toLowerCase().includes(w))
 }
 
-// Writes arrive with the Festin API (festin-3d6.12.3). Until then the card says so
-// rather than writing to the live kitchen.
-export function notYet() {
-  return Promise.reject(new Error('Saving arrives with the new kitchen backend. Nothing was changed.'))
+export function recipeFields(draft) {
+  return {
+    title: String(draft.title || '').trim(),
+    category: draft.category || '',
+    ingredients: String(draft.ingredients || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean),
+    method: draft.method || '',
+    notes: draft.notes || '',
+  }
+}
+
+export function saveRecipe(recipe, draft) {
+  const fields = recipeFields(draft)
+  if (!recipe) return send('POST', '/api/recipes', fields)
+  return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id), {
+    expected_updated_at: recipe.updatedAt,
+    ...fields,
+  })
+}
+
+export function saveNote(note, fields) {
+  if (!note) {
+    return send('POST', '/api/notes', {
+      text: fields.text,
+      type: 'note',
+      color: fields.color || 'none',
+    })
+  }
+  const body = { expected_updated_at: note.updatedAt }
+  if (fields.text !== undefined) body.text = fields.text
+  if (fields.color !== undefined) body.color = fields.color
+  return send('POST', '/api/notes/' + encodeURIComponent(note.id), body)
+}
+
+export function removeItem(kind, raw) {
+  return send('DELETE', '/api/' + kind + '/' + encodeURIComponent(raw.id), {
+    expected_updated_at: raw.updatedAt,
+  })
+}
+
+// Calendar date in the household zone. en-CA formats as YYYY-MM-DD.
+export function householdDate(timeZone, now = new Date()) {
+  const zone = timeZone && timeZone !== 'auto' ? timeZone : undefined
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+  } catch {
+    return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+  }
+}
+
+// Week start on or before `iso`, using the same weekday numbers as the kitchen.
+export function weekStartOn(iso, startDay) {
+  const [y, m, d] = iso.split('-').map(Number)
+  const date = new Date(Date.UTC(y, m - 1, d))
+  const weekday = (date.getUTCDay() + 6) % 7
+  const target = WEEKDAYS[startDay] ?? WEEKDAYS.sat
+  date.setUTCDate(date.getUTCDate() - ((weekday - target + 7) % 7))
+  return date.toISOString().slice(0, 10)
+}
+
+// Marks tonight's plan night cooked, and names this recipe on it.
+export async function cookTonight(recipe) {
+  const settings = await send('GET', '/api/settings')
+  const today = householdDate(settings.weather && settings.weather.timezone)
+  const start = weekStartOn(today, settings.weekStart)
+  const plan = await send('GET', '/api/plans/' + start)
+  let found = false
+  const days = (plan.days || []).map((day) => {
+    if (day.date !== today) return day
+    found = true
+    return { ...day, recipe: recipe.id, title: day.title || recipe.title || '', cooked: true }
+  })
+  if (!found) throw new Error("Tonight is not on this week's plan.")
+  return send('POST', '/api/plans/' + encodeURIComponent(start), {
+    weekStart: start,
+    slipTitle: plan.slipTitle || '',
+    notes: plan.notes || '',
+    ...(plan.plates ? { plates: plan.plates } : {}),
+    expected_updated_at: plan.updatedAt,
+    days,
+  })
+}
+
+// Points this device's session at the chat. A mid-turn 409 stays the server's words.
+export function pointSessionAt(chatId) {
+  return send('PUT', '/api/session', { chat_id: chatId }, { conflict: false })
 }
