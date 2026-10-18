@@ -179,7 +179,10 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                   <button type="button" className="nitem" data-cursor={i === cursor || undefined} onClick={(event) => open(item, event.currentTarget)}>
                     {layout === 'cards' && kind === 'recipes' && <img className="nplate" src={plateFor(item.raw.category)} alt="" loading="lazy" />}
                     {layout === 'cards' && kind === 'notes' && <span className="nswatch" data-color={item.raw.color || 'none'} />}
-                    <span className="ntitle">{face.title}</span>
+                    <span className="nhead">
+                      <span className="ntitle">{face.title}</span>
+                      {kind === 'recipes' && <span className="nid">{item.id}</span>}
+                    </span>
                     <span className="nline">{face.line}</span>
                     {face.tip && <span className="ntip">{face.tip}</span>}
                   </button>

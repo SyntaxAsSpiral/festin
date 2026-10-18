@@ -53,6 +53,15 @@
 .nitem:hover .ntitle { color: var(--bb-rose); }
 .nitem[data-cursor] { background: color-mix(in srgb, var(--bb-yellow-latte) 35%, var(--bb-paper)); }
 .ntitle { font-size: 18px; line-height: 1.25; }
+/* Title line: the title, and a recipe's ID right-aligned and quiet. */
+.nhead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.nid {
+  flex: none;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--bb-tone-3);
+}
 .nline { font-style: italic; font-size: 13.5px; color: var(--bb-tone-4); }
 .ntip { font-size: 14.5px; color: var(--bb-tone-5); }
 
