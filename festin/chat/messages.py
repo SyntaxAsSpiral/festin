@@ -70,10 +70,11 @@ def ensure_chat(conn: sqlite3.Connection, chat_id: str, title: str = "Current co
     now = datetime.now(timezone.utc).isoformat()
     conn.execute(
         """
-        INSERT INTO chats (id, title, ordinal, imported_active, updated_at)
-        VALUES (?, ?, NULL, 1, ?)
+        INSERT INTO chats (
+            id, title, ordinal, imported_active, updated_at, created_at, date_approx
+        ) VALUES (?, ?, NULL, 1, ?, ?, 0)
         """,
-        (chat_id, title, now),
+        (chat_id, title, now, now),
     )
     conn.commit()
 
