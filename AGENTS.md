@@ -16,11 +16,11 @@ Babette's kitchen app, rebuilt: Vite + React + Motion front end, Python backend 
 Dev kitchen for the card system (chat stays on the live app at `127.0.0.1:8876`):
 
 ```
-python -m festin.importer /mnt/echo/festin-wt/live-copy /mnt/echo/festin-wt/kitchen.db
-npm run kitchen
+python -m festin.importer <copy of the live data dir> data/kitchen.db
+npm run kitchen        # or FESTIN_DB=<path> npm run kitchen
 ```
 
-`npm run kitchen` serves that database at `127.0.0.1:8879`. Vite sends `/api/chat`, `/api/stop`, `/api/new-chat` and `/api/state` to live, and `/cards` and `/photos` there too. Every other `/api` goes to this server.
+`npm run kitchen` serves that database (`data/` is gitignored) at `127.0.0.1:8879`. Vite sends `/api/chat`, `/api/stop`, `/api/new-chat` and `/api/state` to live, and `/cards` and `/photos` there too. Every other `/api` goes to this server.
 
 ## Rules for workers
 
