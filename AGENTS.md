@@ -13,14 +13,14 @@ Babette's kitchen app, rebuilt: Vite + React + Motion front end, Python backend 
 
 `nix develop` gives node, python with pytest, and sqlite. Add tools to `flake.nix`; no global installs.
 
-Dev kitchen for the card system (chat stays on the live app at `127.0.0.1:8876`):
+Dev kitchen (the whole app, chat included, runs on it):
 
 ```
 python -m festin.importer <copy of the live data dir> data/kitchen.db
 npm run kitchen        # or FESTIN_DB=<path> npm run kitchen
 ```
 
-`npm run kitchen` serves that database (`data/` is gitignored) at `127.0.0.1:8879`. Vite sends `/api/chat`, `/api/stop`, `/api/new-chat` and `/api/state` to live, and `/cards` and `/photos` there too. Every other `/api` goes to this server.
+`npm run kitchen` serves that database (`data/` is gitignored) at `127.0.0.1:8879`. Vite sends every `/api` call there; start Vite with `FESTIN_PORT=<port>` to use your own dev kitchen. Only `/cards` (recipe scans) and `/photos` (cooking photos) still come from the live app's files until the switchover copies them. Chat needs a model key in the environment (`OPENROUTER_API_KEY` or `FESTIN_MODEL_KEY`) or a 0600 `model.key` next to the database.
 
 ## Rules for workers
 
