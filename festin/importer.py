@@ -21,9 +21,10 @@ import os
 import re
 import sqlite3
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
+from festin import settings as core_settings
 from festin.schema import NOTE_COLORS, PRIORITIES, WEEKDAYS, apply, connect
 
 PLAN_FILE = re.compile(r"^\d{4}-\d{2}-\d{2}\.json$")
@@ -54,8 +55,18 @@ RECIPE_FIELDS = {
 }
 
 
-def import_directory(data_dir: str | Path, db_path: str | Path) -> dict[str, int]:
-    """Load one copy of the live data into the store. Safe to run again."""
+def import_directory(
+    data_dir: str | Path,
+    db_path: str | Path,
+    *,
+    now: datetime | None = None,
+) -> dict[str, int]:
+    """Load one copy of the live data into the store. Safe to run again.
+
+    `now` is the import instant used to clamp approximate chat dates to the
+    household week that contains it. A second run with the same dump and the
+    same week writes the same rows.
+    """
     root = Path(data_dir)
     state = _read_json(root / "babette.json")
     if not isinstance(state, dict):
@@ -72,7 +83,7 @@ def import_directory(data_dir: str | Path, db_path: str | Path) -> dict[str, int
             _import_settings(conn, state.get("settings") or {})
             _replace_notes(conn, state.get("journal") or [], memory)
             _replace_plans(conn, plans)
-            _replace_chats(conn, state)
+            _replace_chats(conn, state, now=now)
             if recipes is not None:
                 _replace_recipes(conn, recipes)
         return _counts(conn)
@@ -412,10 +423,18 @@ def _recipe_id(value):
     return text or None
 
 
-def _replace_chats(conn: sqlite3.Connection, state: dict) -> None:
+def _replace_chats(
+    conn: sqlite3.Connection,
+    state: dict,
+    *,
+    now: datetime | None = None,
+) -> None:
     filed = state.get("chats") or []
     if not isinstance(filed, list):
         raise ValueError("chats must be a list")
+    # Ceiling: start of the household week that contains the import instant.
+    # Plans often look ahead, so an unclamped weekStart can land in the future.
+    ceiling = core_settings.week_bounds(conn, now=now)[0].isoformat()
     chats = []
     messages = []
     seen = set()
@@ -431,7 +450,7 @@ def _replace_chats(conn: sqlite3.Connection, state: dict) -> None:
         seen.add(chat_id)
         title = chat.get("title") if isinstance(chat.get("title"), str) else ""
         raw_messages = chat.get("messages") or []
-        created_at, date_approx = _chat_approx_created_at(raw_messages)
+        created_at, date_approx = _chat_approx_created_at(raw_messages, ceiling=ceiling)
         chats.append((chat_id, title, ordinal, 0, None, created_at, date_approx))
         messages.extend(_message_rows(chat_id, raw_messages))
     active_id = state.get("activeChatId")
@@ -444,7 +463,7 @@ def _replace_chats(conn: sqlite3.Connection, state: dict) -> None:
                 for c in chats
             ]
         else:
-            created_at, date_approx = _chat_approx_created_at(active_messages)
+            created_at, date_approx = _chat_approx_created_at(active_messages, ceiling=ceiling)
             chats.append(
                 (active_id, _active_title(active_messages), None, 1, None, created_at, date_approx)
             )
@@ -468,8 +487,13 @@ def _replace_chats(conn: sqlite3.Connection, state: dict) -> None:
     )
 
 
-def _chat_approx_created_at(messages) -> tuple[str | None, int]:
-    """Earliest plan.weekStart on user messages. Live stored no chat times."""
+def _chat_approx_created_at(messages, *, ceiling: str) -> tuple[str | None, int]:
+    """Earliest plan.weekStart on user messages, clamped to the import week.
+
+    Live chats stored no times. The earliest attached plan week is the best
+    signal, but planning ahead can push that into next week — clamp so the
+    approximate date is never after the household week that contains import.
+    """
     starts = []
     if not isinstance(messages, list):
         return None, 0
@@ -492,7 +516,10 @@ def _chat_approx_created_at(messages) -> tuple[str | None, int]:
         starts.append(text)
     if not starts:
         return None, 0
-    return min(starts), 1
+    earliest = min(starts)
+    if earliest > ceiling:
+        earliest = ceiling
+    return earliest, 1
 
 
 def _active_title(messages) -> str:
