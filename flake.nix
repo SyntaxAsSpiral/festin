@@ -10,7 +10,7 @@
         default = pkgs.mkShell {
           packages = [
             pkgs.nodejs_22
-            (pkgs.python3.withPackages (ps: [ ps.pytest ]))
+            (pkgs.python3.withPackages (ps: [ ps.pytest ps.pillow ]))
             pkgs.sqlite
           ];
         };

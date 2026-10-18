@@ -12,7 +12,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert SCHEMA_VERSION == 4
+    assert SCHEMA_VERSION == 5
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "sessions" in tables
@@ -33,6 +33,8 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
         "weather_latitude",
         "weather_longitude",
         "weather_timezone",
+        "model_base_url",
+        "model_name",
     }
     assert conn.execute("SELECT table_name FROM settings").fetchone()[0] == "Babette's Table"
     weather = conn.execute(
@@ -45,6 +47,11 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     assert "created_at" in chat_columns
     assert "date_approx" in chat_columns
     assert "updated_at" in chat_columns
+    model = conn.execute(
+        "SELECT model_base_url, model_name FROM settings WHERE id = 1"
+    ).fetchone()
+    assert model["model_base_url"] == "https://openrouter.ai/api/v1"
+    assert model["model_name"] == ""
 
     first = "\n".join(conn.iterdump())
     apply(conn)
@@ -65,9 +72,11 @@ def test_v4_adds_chat_created_at_on_existing_rows(tmp_path):
     assert "created_at" not in {row["name"] for row in conn.execute("PRAGMA table_info(chats)")}
 
     apply(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     row = conn.execute("SELECT created_at, date_approx, updated_at FROM chats WHERE id = 'c1'").fetchone()
     assert row["created_at"] is None
     assert row["date_approx"] == 0
     assert row["updated_at"] is None
+    model = conn.execute("SELECT model_base_url FROM settings WHERE id = 1").fetchone()
+    assert model["model_base_url"] == "https://openrouter.ai/api/v1"
     conn.close()

@@ -148,6 +148,8 @@ def _import_settings(conn: sqlite3.Connection, settings: dict) -> None:
         latitude = None
         longitude = None
         timezone_name = ""
+    base_url = str(settings.get("base_url") or "").strip().rstrip("/") or "https://openrouter.ai/api/v1"
+    model_name = " ".join(str(settings.get("model") or "").split())
     conn.execute(
         """
         UPDATE settings SET
@@ -157,7 +159,9 @@ def _import_settings(conn: sqlite3.Connection, settings: dict) -> None:
             weather_label = ?,
             weather_latitude = ?,
             weather_longitude = ?,
-            weather_timezone = ?
+            weather_timezone = ?,
+            model_base_url = ?,
+            model_name = ?
         WHERE id = 1
         """,
         (
@@ -168,6 +172,8 @@ def _import_settings(conn: sqlite3.Connection, settings: dict) -> None:
             latitude,
             longitude,
             timezone_name,
+            base_url,
+            model_name,
         ),
     )
 

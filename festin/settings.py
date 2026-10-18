@@ -16,6 +16,7 @@ from festin.weather import resolve_weather_location
 DEFAULT_TABLE_NAME = "Babette's Table"
 DEFAULT_DINNER_HOUR = "17:30"
 DEFAULT_WEEK_START = "sat"
+DEFAULT_MODEL_BASE_URL = "https://openrouter.ai/api/v1"
 
 # Python weekday numbers match the importer.
 _WEEKDAY_NUMBER = {
@@ -35,7 +36,8 @@ def get_settings(conn: sqlite3.Connection) -> dict:
         """
         SELECT table_name, week_start_day, dinner_hour, updated_at,
                weather_location, weather_label, weather_latitude,
-               weather_longitude, weather_timezone
+               weather_longitude, weather_timezone,
+               model_base_url, model_name
         FROM settings WHERE id = 1
         """
     ).fetchone()
@@ -56,6 +58,11 @@ def get_settings(conn: sqlite3.Connection) -> dict:
         "dinner_hour": row["dinner_hour"],
         "updated_at": row["updated_at"],
         "weather": weather,
+        # Live chat() names these base_url / model.
+        "base_url": row["model_base_url"] or DEFAULT_MODEL_BASE_URL,
+        "model": row["model_name"] or "",
+        "model_base_url": row["model_base_url"] or DEFAULT_MODEL_BASE_URL,
+        "model_name": row["model_name"] or "",
     }
 
 
@@ -66,6 +73,8 @@ def update_settings(
     week_start_day: str | None = None,
     dinner_hour: str | None = None,
     weather_location: str | None = None,
+    model_base_url: str | None = None,
+    model_name: str | None = None,
     now: datetime | None = None,
 ) -> dict:
     """Write core fields. Geocode when the weather location string changes."""
@@ -77,6 +86,12 @@ def update_settings(
     next_dinner = (
         current["dinner_hour"] if dinner_hour is None else _clean_dinner_hour(dinner_hour)
     )
+    next_base = (
+        current["model_base_url"]
+        if model_base_url is None
+        else _clean_model_base_url(model_base_url)
+    )
+    next_model = current["model_name"] if model_name is None else _clean_model_name(model_name)
 
     weather = dict(current["weather"])
     if weather_location is not None:
@@ -98,6 +113,8 @@ def update_settings(
             weather_latitude = ?,
             weather_longitude = ?,
             weather_timezone = ?,
+            model_base_url = ?,
+            model_name = ?,
             updated_at = ?
         WHERE id = 1
         """,
@@ -110,6 +127,8 @@ def update_settings(
             weather.get("latitude"),
             weather.get("longitude"),
             weather.get("timezone") or "",
+            next_base,
+            next_model,
             stamp,
         ),
     )
@@ -184,3 +203,21 @@ def _clean_dinner_hour(value) -> str:
     if hour > 23 or minute > 59 or (len(parts) == 3 and int(parts[2]) > 59):
         raise ValueError("Use a dinner hour like 17:30.")
     return f"{hour:02d}:{minute:02d}"
+
+
+def _clean_model_base_url(value) -> str:
+    from urllib.parse import urlparse
+
+    base = str(value or "").strip().rstrip("/")
+    if not base:
+        return DEFAULT_MODEL_BASE_URL
+    parsed = urlparse(base)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ValueError("Use an HTTP(S) API base URL without credentials or query parameters.")
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError("Use an HTTP(S) API base URL without credentials or query parameters.")
+    return base
+
+
+def _clean_model_name(value) -> str:
+    return " ".join(str(value or "").split())

@@ -381,7 +381,8 @@ def _assert_live_plans(conn):
         """
         SELECT table_name, dinner_hour, week_start_day,
                weather_location, weather_label, weather_latitude,
-               weather_longitude, weather_timezone
+               weather_longitude, weather_timezone,
+               model_base_url, model_name
         FROM settings
         """
     ).fetchone()
@@ -394,6 +395,8 @@ def _assert_live_plans(conn):
     assert stored["weather_latitude"] == live_weather["latitude"]
     assert stored["weather_longitude"] == live_weather["longitude"]
     assert stored["weather_timezone"] == live_weather["timezone"]
+    assert stored["model_base_url"] == state["settings"]["base_url"].rstrip("/")
+    assert stored["model_name"] == state["settings"]["model"]
 
 
 def _assert_live_notes(conn):
