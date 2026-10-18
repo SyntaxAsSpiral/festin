@@ -30,6 +30,7 @@ from festin import weather as weather_mod
 from festin.chat.engine import chat as run_chat
 from festin.chat.flights import stop_request
 from festin.errors import NotFound, StaleState
+from festin.plugins import host as plugins_host
 from festin.schema import apply, connect
 
 COOKIE = "festin_session"
@@ -88,6 +89,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_file(self.server.photos_dir, path[len("/photos/"):])
             if path.startswith("/cards/"):
                 return self._send_file(self.server.cards_dir, path[len("/cards/"):])
+            if path.startswith("/slips/"):
+                return self._send_file(self.server.data_dir / "slips", path[len("/slips/"):])
+            if path == "/api/plugins" or path.startswith("/api/plugins/"):
+                return self._plugins_get(path)
             if path == "/api/session":
                 return self._session(None)
             if path == "/api/settings":
@@ -168,6 +173,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, stop_request(request_id=body.get("request_id"), submission_id=body.get("submission_id")))
         try:
             with self._db() as conn:
+                if path == "/api/plugins" or path.startswith("/api/plugins/"):
+                    return self._plugins_post(conn, path, body)
                 if path == "/api/settings":
                     return self._send(200, self._save_settings(conn, body))
                 if path == "/api/recipes":
@@ -258,6 +265,14 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": str(exc) or "Bad request"})
         try:
             with self._db() as conn:
+                if path.startswith("/api/plugins/"):
+                    plugin_id, action = plugins_host.parse_plugin_path(path)
+                    if action:
+                        raise NotFound("Not found")
+                    return self._send(
+                        200,
+                        plugins_host.update_plugin(conn, plugin_id, body, now=self.server.now()),
+                    )
                 if path.startswith("/api/recipes/"):
                     return self._send(
                         200,
@@ -324,6 +339,33 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(404, {"error": str(exc) or "Not found"})
         except ValueError as exc:
             return self._send(400, {"error": str(exc)})
+
+    def _plugins_get(self, path: str):
+        with self._db() as conn:
+            if path == "/api/plugins":
+                return self._send(200, {"plugins": plugins_host.list_plugins(conn)})
+            plugin_id, action = plugins_host.parse_plugin_path(path)
+            if not action:
+                return self._send(200, plugins_host.get_plugin(conn, plugin_id))
+            if action == "feed":
+                return self._send(200, plugins_host.feed(plugin_id))
+            return self._send(404, {"error": "Not found"})
+
+    def _plugins_post(self, conn, path: str, body: dict):
+        plugin_id, action = plugins_host.parse_plugin_path(path)
+        if not action or action == "feed":
+            raise NotFound("Not found")
+        return self._send(
+            200,
+            plugins_host.call_action(
+                conn,
+                plugin_id,
+                action,
+                body,
+                data_dir=self.server.data_dir,
+                now=self.server.now(),
+            ),
+        )
 
     def _get_settings(self):
         with self._db() as conn:

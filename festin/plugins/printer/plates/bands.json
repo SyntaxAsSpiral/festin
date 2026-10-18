@@ -1,0 +1,57 @@
+{
+  "bands": [
+    {
+      "id": "scroll",
+      "file": "header.jpg",
+      "flat_edge": "none",
+      "description": "mirrored engraved scroll and vine ornament, classic"
+    },
+    {
+      "id": "bay",
+      "file": "pantry-header-autumn.jpg",
+      "flat_edge": "none",
+      "description": "paired bay sprigs, slow pots and the larder"
+    },
+    {
+      "id": "rose",
+      "file": "header-spring.jpg",
+      "flat_edge": "none",
+      "description": "mirrored rose sprigs, sweet things and celebration"
+    },
+    {
+      "id": "wheat",
+      "file": "header-summer.jpg",
+      "flat_edge": "bottom",
+      "description": "wheat sheaves over loaves, bread, grain and breakfast"
+    },
+    {
+      "id": "rosemary",
+      "file": "header-winter.jpg",
+      "flat_edge": "bottom",
+      "description": "paired rosemary sprigs, roasts and herbs"
+    }
+  ],
+  "categories": {
+    "breads": "wheat",
+    "cakes": "rose",
+    "pies-tarts": "rose",
+    "cookies": "rose",
+    "casseroles": "bay",
+    "soups-stews": "bay",
+    "fish-seafood": "bay",
+    "chicken": "rosemary",
+    "meats": "rosemary",
+    "pasta": "wheat",
+    "salads-sides": "rosemary",
+    "pantry-party": "scroll",
+    "sweets": "rose",
+    "sauces-dressings": "bay",
+    "drinks": "scroll",
+    "pickles-preserves": "bay",
+    "eggs-breakfast": "wheat",
+    "seasonings": "rosemary",
+    "snacks-sandwiches": "wheat",
+    "misc": "scroll"
+  },
+  "default": "scroll"
+}

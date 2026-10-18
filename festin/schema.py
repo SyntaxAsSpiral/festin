@@ -240,8 +240,48 @@ def _version_6(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_7(conn: sqlite3.Connection) -> None:
+    """Plugin switches and the printer's slip registry (live babette.json 'slips')."""
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS plugin_settings (
+            plugin_id TEXT PRIMARY KEY,
+            enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
+            settings_json TEXT NOT NULL DEFAULT '{}',
+            updated_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS slips (
+            id TEXT PRIMARY KEY,
+            kind TEXT NOT NULL,
+            status TEXT NOT NULL,
+            title TEXT NOT NULL DEFAULT '',
+            image TEXT NOT NULL,
+            rendered_text TEXT NOT NULL DEFAULT '',
+            request_key TEXT NOT NULL DEFAULT '',
+            signature TEXT NOT NULL DEFAULT '',
+            sha256 TEXT NOT NULL DEFAULT '',
+            payload_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT,
+            updated_at TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS slips_by_request ON slips (request_key, signature);
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
-MIGRATIONS = (_version_1, _version_2, _version_3, _version_4, _version_5, _version_6)
+# v6 is the Kitchen Log. Plugin tables are v7.
+MIGRATIONS = (
+    _version_1,
+    _version_2,
+    _version_3,
+    _version_4,
+    _version_5,
+    _version_6,
+    _version_7,
+)
 
 SCHEMA_VERSION = len(MIGRATIONS)
 

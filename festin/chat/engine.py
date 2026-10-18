@@ -143,9 +143,9 @@ def chat(
         )
 
     if registry is None:
-        from festin.chat.core_tools import build_core_registry
+        from festin.plugins.host import build_registry
 
-        registry = build_core_registry()
+        registry = build_registry(conn)
 
     tools = registry.openai_tools()
 
@@ -260,6 +260,15 @@ def chat(
                 arguments, result = {}, None
                 try:
                     arguments = json.loads(call["function"]["arguments"])
+                    if (
+                        tool_name == "prepare_slip"
+                        and isinstance(arguments, dict)
+                        and arguments.get("kind") == "plan"
+                        and isinstance(editor_plan, dict)
+                        and arguments.get("week_start") == editor_plan.get("weekStart")
+                    ):
+                        # The open Meals draft wins over the saved week, as live does.
+                        arguments["_plan"] = editor_plan
                     if tool_name == "attach_recipe_photos":
                         revisions = edited_revisions.get(arguments.get("recipe_id"))
                         if revisions and arguments.get("expected_updated_at") == revisions[0]:
