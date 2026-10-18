@@ -4,6 +4,8 @@ import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'reac
 import { transition } from './motion.js'
 import { tabFromPath, TABS } from './tabs.js'
 import { Placeholder } from './Placeholder.jsx'
+import { CardTab } from './cards/CardTab.jsx'
+import { LookingContext } from './cards/looking.js'
 import { useReducedMotion } from './useReducedMotion.js'
 import Surface, { SurfaceProvider, useSurface } from './chat/Surface.jsx'
 import { ChatPanel, chatHeader, peekLine } from './chat/ChatPanel.jsx'
@@ -75,6 +77,7 @@ function ShellFrame({ boot }) {
   const { pathname } = useLocation()
   const tab = tabFromPath(pathname)
   const chat = useChat()
+  const [cardTitle, setCardTitle] = useState(null)
   const trouble = boot.phase === 'trouble'
   const meals = tab?.id === 'meals'
   const reduced = useReducedMotion()
@@ -135,20 +138,19 @@ function ShellFrame({ boot }) {
           <Gear />
         </header>
         <div className="stage">
+          <LookingContext.Provider value={setCardTitle}>
           <Routes>
             <Route index element={<Navigate to="/meals" replace />} />
             <Route path="meals" element={<Placeholder id="meals" />} />
-            <Route path="recipes" element={<Placeholder id="recipes" />} />
-            <Route path="recipes/*" element={<Placeholder id="recipes" />} />
-            <Route path="notes" element={<Placeholder id="notes" />} />
-            <Route path="notes/*" element={<Placeholder id="notes" />} />
-            <Route path="chats" element={<Placeholder id="chats" />} />
-            <Route path="chats/*" element={<Placeholder id="chats" />} />
+            <Route path="recipes/*" element={<CardTab kind="recipes" />} />
+            <Route path="notes/*" element={<CardTab kind="notes" />} />
+            <Route path="chats/*" element={<CardTab kind="chats" />} />
             <Route path="*" element={<Placeholder id="missing" />} />
           </Routes>
+          </LookingContext.Provider>
         </div>
       </div>
-      <Surface peekLine={peekLine(chat)} lookingAt={LOOK[tab?.id] || 'the kitchen'} header={chatHeader(chat)}>
+      <Surface peekLine={peekLine(chat)} lookingAt={cardTitle || LOOK[tab?.id] || 'the kitchen'} header={chatHeader(chat)}>
         <ChatPanel chat={chat} />
       </Surface>
     </div>

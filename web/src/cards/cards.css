@@ -1,0 +1,262 @@
+/* Card system: one list machine and one card, read as pages from a family cookbook.
+   Bold in one place: the engraved plates. Everything else stays quiet. */
+
+.collection { max-width: 64rem; }
+
+/* List bar */
+.lbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.lsearch {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 18px;
+  color: var(--bb-ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bb-tone-3);
+  padding: 6px 2px;
+}
+.lsearch::placeholder { color: var(--bb-tone-3); font-style: italic; }
+.lsearch:focus { outline: none; border-bottom-color: var(--bb-rose); }
+.lnew { white-space: nowrap; }
+.llayout { display: flex; }
+.llayout button { padding: 2px 9px; }
+.llayout button + button { border-left: 0; }
+.llayout button[aria-pressed='true'] { background: var(--bb-tone-1); color: var(--bb-ink); }
+.lstate {
+  color: var(--bb-tone-4);
+  font-style: italic;
+  margin: 24px 2px;
+}
+
+/* List and cards */
+.nlist { list-style: none; margin: 0; padding: 0; }
+.nitem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--bb-ink);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--bb-tone-1);
+  padding: 11px 4px 12px;
+  cursor: pointer;
+}
+.nitem:hover .ntitle { color: var(--bb-rose); }
+.nitem[data-cursor] { background: color-mix(in srgb, var(--bb-yellow-latte) 35%, var(--bb-paper)); }
+.ntitle { font-size: 18px; line-height: 1.25; }
+.nline { font-style: italic; font-size: 13.5px; color: var(--bb-tone-4); }
+.ntip { font-size: 14.5px; color: var(--bb-tone-5); }
+
+.nlist-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 18px 16px;
+}
+.nlist-cards .nitem {
+  height: 100%;
+  border: 1px solid var(--bb-tone-1);
+  background: var(--bb-paper);
+  padding: 0 12px 12px;
+}
+.nlist-cards .ntip { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.nplate {
+  display: block;
+  width: calc(100% + 24px);
+  margin: 0 -12px 8px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  mix-blend-mode: multiply;
+  border-bottom: 1px solid color-mix(in srgb, var(--bb-gold) 45%, transparent);
+}
+.nswatch {
+  display: block;
+  height: 6px;
+  margin: 0 -12px 10px;
+  background: var(--note-tint, transparent);
+}
+
+/* The open card: a page laid over the tab */
+.card-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 30; /* under the chat surface (36) */
+  display: grid;
+  place-items: center;
+  --pad-top: 18px;
+  --pad-bottom: 18px;
+  padding: var(--pad-top) 18px var(--pad-bottom);
+  background: color-mix(in srgb, var(--bb-tone-1) 72%, transparent);
+  perspective: 1400px;
+}
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(44rem, 100%);
+  max-height: calc(100dvh - var(--pad-top) - var(--pad-bottom));
+  background: var(--bb-paper);
+  border: 1px solid var(--bb-tone-2);
+  box-shadow: 0 1px 0 var(--bb-tone-1), 0 18px 40px -24px color-mix(in srgb, var(--bb-ink) 55%, transparent);
+  transform-origin: center;
+  backface-visibility: hidden;
+}
+@media (max-width: 900px) {
+  .card-layer { --pad-top: 10px; --pad-bottom: 62px; padding-left: 8px; padding-right: 8px; } /* clear the tucked chat strip */
+}
+.card-bar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+}
+.card-close { background: color-mix(in srgb, var(--bb-paper) 85%, transparent); }
+.card-scroll { overflow: auto; overscroll-behavior: contain; }
+.card-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--bb-tone-1);
+}
+.card-actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.card-id {
+  font-variant-numeric: lining-nums;
+  letter-spacing: 0.04em;
+  color: var(--bb-rose);
+  border-color: color-mix(in srgb, var(--bb-rose) 40%, transparent);
+}
+.card-note { margin: 0; font-style: italic; color: var(--bb-tone-5); }
+button.danger { color: var(--bb-rose); }
+
+/* The page */
+.page {
+  padding: 0 clamp(18px, 5vw, 44px) 28px;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--bb-ink);
+}
+.page .quiet { color: var(--bb-tone-4); font-style: italic; padding-top: 28px; }
+.page-head { padding-top: 26px; }
+.page h1 {
+  margin: 0;
+  font-weight: 400;
+  font-style: italic;
+  font-size: clamp(30px, 5vw, 40px);
+  line-height: 1.1;
+  letter-spacing: -0.005em;
+}
+.prov { margin: 6px 0 0; font-style: italic; color: var(--bb-tone-4); font-size: 15px; }
+.page h2 {
+  margin: 22px 0 6px;
+  font-weight: 400;
+  font-style: italic;
+  font-size: 19px;
+  color: var(--bb-sage);
+}
+
+/* Recipe page */
+.frontis {
+  display: block;
+  width: calc(100% + 2 * clamp(18px, 5vw, 44px));
+  margin: 0 calc(-1 * clamp(18px, 5vw, 44px));
+  aspect-ratio: 21 / 9;
+  object-fit: cover;
+  object-position: 50% 55%;
+  mix-blend-mode: multiply;
+  border-bottom: 1px solid color-mix(in srgb, var(--bb-gold) 55%, transparent);
+}
+.standfirst { margin: 14px 0 0; font-size: 17.5px; color: var(--bb-tone-5); max-width: 34em; }
+.recipe-body { display: flow-root; }
+.ingredients ul { list-style: none; margin: 0; padding: 0; }
+.ingredients li {
+  padding-left: 1.1em;
+  text-indent: -1.1em;
+  font-variant-numeric: oldstyle-nums diagonal-fractions;
+}
+.method p { margin: 0 0 10px; max-width: 34em; font-variant-numeric: oldstyle-nums; }
+.from-box {
+  float: right;
+  width: min(42%, 220px);
+  margin: 26px 0 12px 22px;
+}
+.from-box button { display: block; padding: 0; border: 1px solid var(--bb-tone-2); background: none; cursor: zoom-in; }
+.from-box img { display: block; width: 100%; height: auto; transform: rotate(-1.2deg); }
+.from-box figcaption { margin-top: 6px; font-style: italic; font-size: 13.5px; color: var(--bb-tone-4); text-align: center; }
+@media (max-width: 560px) {
+  .from-box { float: none; width: 100%; margin: 18px 0 0; }
+  .from-box img { transform: none; }
+}
+.cooked-photos { display: flex; gap: 8px; margin-top: 16px; overflow-x: auto; }
+.cooked-photos img { height: 120px; border: 1px solid var(--bb-tone-1); }
+.kitchen p { margin: 0 0 10px; max-width: 34em; }
+.fleuron { text-align: center; color: var(--bb-rose); margin: 26px 0 0; font-size: 20px; }
+.scan-full {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border: 0;
+  background: color-mix(in srgb, var(--bb-ink) 80%, transparent);
+  cursor: zoom-out;
+}
+.scan-full img { max-width: 100%; max-height: 100%; }
+
+/* Note page: the note's colour tints the paper */
+.page-note { background: var(--note-tint, transparent); }
+.note-body p { margin: 0 0 10px; max-width: 34em; }
+.note-edit {
+  width: 100%;
+  min-height: 12em;
+  box-sizing: border-box;
+  font: inherit;
+  color: inherit;
+  background: color-mix(in srgb, var(--bb-paper) 70%, transparent);
+  border: 1px solid var(--bb-tone-2);
+  padding: 8px;
+}
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
+.swatches button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--bb-tone-2);
+  background: var(--note-swatch, var(--bb-paper));
+}
+.swatches button[data-color='none'] {
+  background: linear-gradient(135deg, var(--bb-paper) 45%, var(--bb-tone-3) 47%, var(--bb-tone-3) 53%, var(--bb-paper) 55%);
+}
+.swatches button[aria-pressed='true'] { outline: 2px solid var(--bb-ink); outline-offset: 1px; }
+
+/* Chat page */
+.chat-read { padding-top: 14px; }
+
+/* Note colours (Catppuccin Latte, softened into the paper) */
+[data-color='rosewater'] { --note-swatch: #dc8a78; }
+[data-color='flamingo'] { --note-swatch: #dd7878; }
+[data-color='pink'] { --note-swatch: #ea76cb; }
+[data-color='mauve'] { --note-swatch: #8839ef; }
+[data-color='red'] { --note-swatch: #d20f39; }
+[data-color='maroon'] { --note-swatch: #e64553; }
+[data-color='peach'] { --note-swatch: #fe640b; }
+[data-color='yellow'] { --note-swatch: #df8e1d; }
+[data-color='green'] { --note-swatch: #40a02b; }
+[data-color='teal'] { --note-swatch: #179299; }
+[data-color='sky'] { --note-swatch: #04a5e5; }
+[data-color='sapphire'] { --note-swatch: #209fb5; }
+[data-color='blue'] { --note-swatch: #1e66f5; }
+[data-color='lavender'] { --note-swatch: #7287fd; }
+[data-color]:not([data-color='none']) { --note-tint: color-mix(in srgb, var(--note-swatch) 9%, var(--bb-paper)); }
+.nswatch[data-color]:not([data-color='none']) { background: color-mix(in srgb, var(--note-swatch) 45%, var(--bb-paper)); }

@@ -64,7 +64,7 @@ function Markdown({ text }) {
   return <div className="markdown-body" dangerouslySetInnerHTML={{ __html: renderChatMarkdown(text) }} />
 }
 
-function Message({ message, live }) {
+export function Message({ message, live }) {
   const { role, content, photos, trace, stopped } = message
   return (
     <div className={'msg ' + (role === 'user' ? 'msg-you' : 'msg-babette') + (live ? ' msg-live' : '')}>
