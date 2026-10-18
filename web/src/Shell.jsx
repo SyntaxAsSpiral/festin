@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
-import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { transition } from './motion.js'
 import { tabFromPath, TABS } from './tabs.js'
 import { Placeholder } from './Placeholder.jsx'
 import { CardTab } from './cards/CardTab.jsx'
 import { LookingContext } from './cards/looking.js'
 import { useReducedMotion } from './useReducedMotion.js'
-import Surface, { SurfaceProvider, useSurface } from './chat/Surface.jsx'
+import Surface, { SurfaceProvider } from './chat/Surface.jsx'
 import { ChatPanel, chatHeader, peekLine } from './chat/ChatPanel.jsx'
 import { useChat } from './chat/useChat.js'
+import { SettingsSidebar, useOpenSettings, useSettingsOpen } from './settings/Sidebar.jsx'
 
 const LOOK = {
   meals: "this week's meals",
@@ -47,7 +48,9 @@ function FullscreenButton() {
 }
 
 function Gear() {
-  const { tuck } = useSurface()
+  const openSettings = useOpenSettings()
+  const settingsOpen = useSettingsOpen()
+  const [, setParams] = useSearchParams()
   return (
     <button
       type="button"
@@ -55,8 +58,16 @@ function Gear() {
       id="gear"
       aria-label="Settings"
       title="Settings"
+      aria-expanded={settingsOpen}
+      aria-controls="sidebar"
       onClick={() => {
-        if (window.matchMedia('(max-width: 900px)').matches) tuck()
+        if (settingsOpen) {
+          const copy = new URLSearchParams(window.location.search)
+          copy.delete('settings')
+          setParams(copy, { replace: true })
+          return
+        }
+        openSettings('model')
       }}
     >
       ⚙
@@ -154,6 +165,7 @@ function ShellFrame({ boot }) {
       <Surface peekLine={peekLine(chat)} lookingAt={card?.title || LOOK[tab?.id] || 'the kitchen'} header={chatHeader(chat)}>
         <ChatPanel chat={chat} />
       </Surface>
+      <SettingsSidebar />
     </div>
   )
 }

@@ -110,6 +110,9 @@ function SurfaceView({ peekLine, lookingAt, header, children }) {
       const typing = event.target?.closest?.('input, textarea, select, [contenteditable="true"]')
       if (event.key === 'Escape') {
         if (typing || state === 'tucked') return
+        // Confirm, Card, then Settings close first (state-machine.md §2.5 / §5).
+        if (document.getElementById('sidebar')?.classList.contains('open')) return
+        if (document.querySelector('.card-layer .card, .confirm')) return
         event.preventDefault()
         tuck()
         return
