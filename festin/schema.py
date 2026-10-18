@@ -164,8 +164,27 @@ def _version_1(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_2(conn: sqlite3.Connection) -> None:
+    """One row per device. Its turn is the chat lock; there is no global one."""
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS sessions (
+            id TEXT PRIMARY KEY,
+            chat_id TEXT,
+            turn_json TEXT,
+            pane TEXT,
+            surface TEXT CHECK (surface IS NULL OR surface IN ('tucked', 'peek', 'full')),
+            draft TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
-MIGRATIONS = (_version_1,)
+# Version 3 is reserved for the settings bead. Do not take it.
+MIGRATIONS = (_version_1, _version_2)
 
 SCHEMA_VERSION = len(MIGRATIONS)
 
