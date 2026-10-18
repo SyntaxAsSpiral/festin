@@ -424,24 +424,32 @@ def _replace_chats(conn: sqlite3.Connection, state: dict) -> None:
             raise ValueError(f"duplicate chat id {chat_id}")
         seen.add(chat_id)
         title = chat.get("title") if isinstance(chat.get("title"), str) else ""
-        chats.append((chat_id, title, ordinal, 0, None))
-        messages.extend(_message_rows(chat_id, chat.get("messages") or []))
+        raw_messages = chat.get("messages") or []
+        created_at, date_approx = _chat_approx_created_at(raw_messages)
+        chats.append((chat_id, title, ordinal, 0, None, created_at, date_approx))
+        messages.extend(_message_rows(chat_id, raw_messages))
     active_id = state.get("activeChatId")
     active_messages = state.get("messages") or []
     if isinstance(active_id, str) and active_id.strip():
         active_id = active_id.strip()
         if active_id in seen:
-            conn_ready = [(c[0], c[1], c[2], 1 if c[0] == active_id else c[3], c[4]) for c in chats]
-            chats = conn_ready
+            chats = [
+                (c[0], c[1], c[2], 1 if c[0] == active_id else c[3], c[4], c[5], c[6])
+                for c in chats
+            ]
         else:
-            chats.append((active_id, _active_title(active_messages), None, 1, None))
+            created_at, date_approx = _chat_approx_created_at(active_messages)
+            chats.append(
+                (active_id, _active_title(active_messages), None, 1, None, created_at, date_approx)
+            )
             messages.extend(_message_rows(active_id, active_messages))
     conn.execute("DELETE FROM chat_messages")
     conn.execute("DELETE FROM chats")
     conn.executemany(
         """
-        INSERT INTO chats (id, title, ordinal, imported_active, updated_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO chats (
+            id, title, ordinal, imported_active, updated_at, created_at, date_approx
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         chats,
     )
@@ -452,6 +460,33 @@ def _replace_chats(conn: sqlite3.Connection, state: dict) -> None:
         """,
         messages,
     )
+
+
+def _chat_approx_created_at(messages) -> tuple[str | None, int]:
+    """Earliest plan.weekStart on user messages. Live stored no chat times."""
+    starts = []
+    if not isinstance(messages, list):
+        return None, 0
+    for message in messages:
+        if not isinstance(message, dict) or message.get("role") != "user":
+            continue
+        plan = message.get("plan")
+        if not isinstance(plan, dict):
+            continue
+        week = plan.get("weekStart")
+        if not isinstance(week, str):
+            continue
+        text = week.strip()
+        if len(text) >= 10:
+            text = text[:10]
+        try:
+            date.fromisoformat(text)
+        except ValueError:
+            continue
+        starts.append(text)
+    if not starts:
+        return None, 0
+    return min(starts), 1
 
 
 def _active_title(messages) -> str:

@@ -85,7 +85,7 @@ def update_settings(
             weather = resolve_weather_location(requested)
 
     stamp = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
+        "%Y-%m-%dT%H:%M:%S.%fZ"
     )
     conn.execute(
         """

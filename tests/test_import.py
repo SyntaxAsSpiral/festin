@@ -26,7 +26,19 @@ def _days():
     return [{"day": day, "recipe": None, "title": "", "ingredients": []} for day in WEEKDAYS]
 
 
-def write_copy(root: Path, *, journal=None, plan=None, recipes=None, memory=None, settings=None, template=False):
+def write_copy(
+    root: Path,
+    *,
+    journal=None,
+    plan=None,
+    recipes=None,
+    memory=None,
+    settings=None,
+    template=False,
+    chats=None,
+    messages=None,
+    active_chat_id=None,
+):
     plans = root / "plans"
     plans.mkdir(parents=True)
     if template:
@@ -42,10 +54,12 @@ def write_copy(root: Path, *, journal=None, plan=None, recipes=None, memory=None
     (plans / f"{body['weekStart']}.json").write_text(json.dumps(body), encoding="utf-8")
     state = {
         "journal": journal or [],
-        "chats": [],
-        "messages": [],
+        "chats": chats if chats is not None else [],
+        "messages": messages if messages is not None else [],
         "settings": {"family": "Holliday", "dinner_hour": "17:30"} if settings is None else settings,
     }
+    if active_chat_id is not None:
+        state["activeChatId"] = active_chat_id
     (root / "babette.json").write_text(json.dumps(state), encoding="utf-8")
     if recipes is not None:
         (root / "recipes.json").write_text(json.dumps(recipes), encoding="utf-8")
@@ -107,6 +121,53 @@ def test_note_open_and_closed_are_kept(tmp_path):
     conn = connect(db)
     assert conn.execute("SELECT open FROM notes WHERE id = 'open-note'").fetchone()[0] == 1
     assert conn.execute("SELECT open FROM notes WHERE id = 'shut-note'").fetchone()[0] == 0
+    conn.close()
+
+
+def test_imported_chat_date_from_earliest_plan_week_start(tmp_path):
+    root = write_copy(
+        tmp_path / "live",
+        chats=[
+            {
+                "id": "with-plans",
+                "title": "Dinner talk",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "later week",
+                        "plan": {"weekStart": "2026-10-17", "days": _days()},
+                    },
+                    {"role": "assistant", "content": "oui"},
+                    {
+                        "role": "user",
+                        "content": "earlier week",
+                        "plan": {"weekStart": "2026-09-12", "days": _days()},
+                    },
+                ],
+            },
+            {
+                "id": "no-plans",
+                "title": "Undated",
+                "messages": [
+                    {"role": "user", "content": "no plan attached"},
+                    {"role": "assistant", "content": "still here"},
+                ],
+            },
+        ],
+    )
+    db = tmp_path / "store.sqlite"
+    import_directory(root, db)
+    conn = connect(db)
+    dated = conn.execute(
+        "SELECT created_at, date_approx FROM chats WHERE id = 'with-plans'"
+    ).fetchone()
+    assert dated["created_at"] == "2026-09-12"
+    assert dated["date_approx"] == 1
+    bare = conn.execute(
+        "SELECT created_at, date_approx FROM chats WHERE id = 'no-plans'"
+    ).fetchone()
+    assert bare["created_at"] is None
+    assert bare["date_approx"] == 0
     conn.close()
 
 
@@ -366,3 +427,15 @@ def _assert_live_chats(conn):
     messages = conn.execute("SELECT count(*) FROM chat_messages").fetchone()[0]
     expect = sum(len(chat["messages"]) for chat in state["chats"]) + len(state["messages"])
     assert messages == expect
+    approx = conn.execute("SELECT count(*) FROM chats WHERE date_approx = 1").fetchone()[0]
+    undated = conn.execute(
+        "SELECT count(*) FROM chats WHERE created_at IS NULL AND date_approx = 0"
+    ).fetchone()[0]
+    assert approx + undated == conn.execute("SELECT count(*) FROM chats").fetchone()[0]
+    assert approx >= 1
+    assert undated >= 1
+    sample = conn.execute(
+        "SELECT id, created_at FROM chats WHERE date_approx = 1 ORDER BY created_at LIMIT 1"
+    ).fetchone()
+    assert sample["created_at"]
+    date.fromisoformat(sample["created_at"])
