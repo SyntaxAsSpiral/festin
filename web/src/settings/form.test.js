@@ -30,7 +30,22 @@ describe('settings form mapping', () => {
     })
   })
 
-  it('keeps model fields when the API starts returning them', () => {
+  it('reads the nested model object without treating it as the name', () => {
+    const draft = draftFromSettings({
+      tableName: "Babette's Table",
+      model: {
+        baseUrl: 'http://127.0.0.1:1234/v1',
+        name: 'qwen2.5-7b-instruct',
+        keySet: true,
+      },
+    })
+    expect(draft.modelName).toBe('qwen2.5-7b-instruct')
+    expect(draft.modelBaseUrl).toBe('http://127.0.0.1:1234/v1')
+    expect(draft.keySet).toBe(true)
+    expect(providerOf(draft.modelBaseUrl)).toBe('local')
+  })
+
+  it('keeps flat model fields when a caller still sends them', () => {
     const draft = draftFromSettings({
       tableName: "Babette's Table",
       dinnerHour: '17:30',

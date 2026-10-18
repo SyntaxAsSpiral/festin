@@ -7,7 +7,9 @@ import {
   fetchPlugins,
   fetchSettings,
   saveContextLane,
+  saveModelKey,
   saveSettings,
+  testModel,
 } from './api.js'
 import {
   CONTEXT_LANES,
@@ -24,6 +26,15 @@ import './settings.css'
 
 const NARROW = '(max-width: 900px)'
 const EMPTY_DRAFT = draftFromSettings({})
+
+function calmStatus(status) {
+  return (
+    status === 'Saved.' ||
+    status === 'Key stored.' ||
+    status === 'Key cleared.' ||
+    status.startsWith('Connected.')
+  )
+}
 
 function typingTarget(el) {
   return Boolean(el?.closest?.('input, textarea, select, [contenteditable="true"]'))
@@ -75,6 +86,7 @@ export function SettingsSidebar() {
   const [editText, setEditText] = useState('')
   const [plugins, setPlugins] = useState({ status: 'loading', plugins: [] })
   const [status, setStatus] = useState('')
+  const [keyText, setKeyText] = useState('')
   const [busy, setBusy] = useState(false)
   const [motionOn, setMotionOn] = useState(() => !prefersReducedMotion())
 
@@ -183,6 +195,27 @@ export function SettingsSidebar() {
     return result
   }
 
+  async function commitKey(value) {
+    setBusy(true)
+    const result = await saveModelKey(value)
+    setBusy(false)
+    if (!result.ok) {
+      setStatus(result.error)
+      return
+    }
+    setKeyText('')
+    setDraft(draftFromSettings(result.body))
+    setStatus(String(value || '').trim() ? 'Key stored.' : 'Key cleared.')
+  }
+
+  async function runTest() {
+    setBusy(true)
+    const result = await testModel()
+    setBusy(false)
+    const message = (result.body && result.body.message) || result.error || 'The model test failed.'
+    setStatus(message)
+  }
+
   function patch(partial) {
     const next = { ...draftRef.current, ...partial }
     setDraft(next)
@@ -236,7 +269,7 @@ export function SettingsSidebar() {
         </button>
       </div>
       {status && (
-        <p className={'status-line' + (status === 'Saved.' ? '' : ' err')} role="status">
+        <p className={'status-line' + (calmStatus(status) ? '' : ' err')} role="status">
           {status}
         </p>
       )}
@@ -303,20 +336,38 @@ export function SettingsSidebar() {
                   disabled={busy || provider === 'openrouter'}
                 />
               </div>
-              <div className="sf q0">
+              <div className="sf">
                 <label htmlFor="s-key">API key</label>
-                <input id="s-key" type="password" disabled placeholder="set on the server" autoComplete="off" />
+                <input
+                  id="s-key"
+                  type="password"
+                  value={keyText}
+                  placeholder={draft.keySet ? 'Key stored — paste a new one to replace it' : 'Paste an API key'}
+                  spellCheck={false}
+                  autoCapitalize="none"
+                  autoComplete="off"
+                  onChange={(e) => setKeyText(e.target.value)}
+                  disabled={busy}
+                />
                 <p className="fine">
-                  The key is never stored in the shared database. Set <code>FESTIN_MODEL_KEY</code> (or{' '}
-                  <code>OPENROUTER_API_KEY</code>) or a <code>model.key</code> file next to the database.
+                  {draft.keySet
+                    ? 'A key is stored next to the database. It is never sent back to the browser.'
+                    : 'No key is stored yet. It stays out of the shared database.'}
+                </p>
+                <p className="fine">
+                  <button type="button" onClick={() => commitKey(keyText)} disabled={busy || !keyText.trim()}>
+                    Save key
+                  </button>
+                  {draft.keySet ? (
+                    <button type="button" onClick={() => commitKey('')} disabled={busy}>
+                      Clear key
+                    </button>
+                  ) : null}
                 </p>
               </div>
               <div className="snc">
-                <p className="fine">
-                  Shared settings keep the table and weather today; model name and base URL ride in the same POST when
-                  the API accepts them.
-                </p>
-                <button type="button" disabled title="Connection test lands with the chat engine">
+                <p className="fine">Model name and base URL are saved with the other settings.</p>
+                <button type="button" onClick={runTest} disabled={busy}>
                   Test
                 </button>
               </div>

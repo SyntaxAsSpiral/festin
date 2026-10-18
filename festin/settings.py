@@ -220,4 +220,7 @@ def _clean_model_base_url(value) -> str:
 
 
 def _clean_model_name(value) -> str:
-    return " ".join(str(value or "").split())
+    name = " ".join(str(value or "").split())
+    if len(name) > 200:
+        raise ValueError("Use a model name under 200 characters.")
+    return name

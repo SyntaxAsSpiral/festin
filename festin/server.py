@@ -29,6 +29,8 @@ from festin import settings as core_settings
 from festin import weather as weather_mod
 from festin.chat.engine import chat as run_chat
 from festin.chat.flights import stop_request
+from festin.chat.keys import model_key_is_set, resolve_model_key, write_model_key
+from festin.chat.model_probe import probe_model
 from festin.errors import NotFound, StaleState
 from festin.plugins import host as plugins_host
 from festin.schema import apply, connect
@@ -172,6 +174,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/stop":
             return self._send(200, stop_request(request_id=body.get("request_id"), submission_id=body.get("submission_id")))
         try:
+            if path == "/api/settings/model-key":
+                return self._send(200, self._save_model_key(body))
+            if path == "/api/settings/model-test":
+                return self._send(200, self._test_model())
             with self._db() as conn:
                 if path == "/api/plugins" or path.startswith("/api/plugins/"):
                     return self._plugins_post(conn, path, body)
@@ -369,7 +375,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _get_settings(self):
         with self._db() as conn:
-            return self._send(200, _public_settings(core_settings.get_settings(conn)))
+            return self._send(200, self._settings_body(conn))
 
     def _get_weather(self):
         with self._db() as conn:
@@ -383,15 +389,37 @@ class Handler(BaseHTTPRequestHandler):
         expected = body.get("expected_updated_at", body.get("expectedUpdatedAt"))
         if expected is not None and expected != current["updated_at"]:
             raise StaleState("Settings changed. Refresh before saving.")
-        saved = core_settings.update_settings(
+        core_settings.update_settings(
             conn,
             table_name=_pick(body, "tableName", "table_name"),
             week_start_day=_pick(body, "weekStart", "week_start_day"),
             dinner_hour=_pick(body, "dinnerHour", "dinner_hour"),
             weather_location=_weather_location(body),
+            model_base_url=_pick(body, "modelBaseUrl", "model_base_url"),
+            model_name=_pick(body, "modelName", "model_name"),
             now=self.server.now(),
         )
-        return _public_settings(saved)
+        return self._settings_body(conn)
+
+    def _settings_body(self, conn) -> dict:
+        return _public_settings(
+            core_settings.get_settings(conn),
+            model_key_is_set(self.server.data_dir),
+        )
+
+    def _save_model_key(self, body: dict) -> dict:
+        if "key" not in body:
+            raise ValueError("API key must be a string.")
+        write_model_key(self.server.data_dir, body.get("key"))
+        with self._db() as conn:
+            return self._settings_body(conn)
+
+    def _test_model(self) -> dict:
+        with self._db() as conn:
+            raw = core_settings.get_settings(conn)
+        key = resolve_model_key(self.server.data_dir, raw["model_base_url"])
+        return probe_model(raw["model_base_url"], raw["model_name"], key)
+
     def _session(self, changes):
         token = _cookie(self.headers.get("Cookie"))
         conn = connect(self.server.db_path)
@@ -615,13 +643,18 @@ class _closing:
         self.conn.close()
         return False
 
-def _public_settings(raw: dict) -> dict:
+def _public_settings(raw: dict, key_set: bool) -> dict:
     return {
         "tableName": raw["table_name"],
         "dinnerHour": raw["dinner_hour"],
         "weekStart": raw["week_start_day"],
         "weather": raw["weather"],
         "updatedAt": raw["updated_at"],
+        "model": {
+            "baseUrl": raw["model_base_url"],
+            "name": raw["model_name"],
+            "keySet": bool(key_set),
+        },
     }
 
 
