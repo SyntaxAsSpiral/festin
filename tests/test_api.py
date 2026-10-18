@@ -384,6 +384,8 @@ def test_new_chat_creates_row_and_points_session(kitchen):
     assert status == 200
     status, first = client.request("POST", "/api/chats", {"title": ""})
     assert status == 201
+    assert first["createdAt"]
+    assert first["dateApprox"] is False
     status, session = client.request("GET", "/api/session")
     assert session["chat_id"] == first["id"]
 
@@ -400,10 +402,14 @@ def test_new_chat_creates_row_and_points_session(kitchen):
     status, second = client.request("POST", "/api/chats", {})
     assert status == 201
     assert second["id"] != first["id"]
+    assert second["createdAt"]
+    assert second["dateApprox"] is False
     status, session = client.request("GET", "/api/session")
     assert session["chat_id"] == second["id"]
     status, listed = client.request("GET", "/api/chats")
-    assert any(chat["id"] == first["id"] for chat in listed["chats"])
+    filed = next(chat for chat in listed["chats"] if chat["id"] == first["id"])
+    assert filed["createdAt"] == first["createdAt"]
+    assert filed["dateApprox"] is False
 
 
 def test_note_toggle_and_stale_delete(kitchen):

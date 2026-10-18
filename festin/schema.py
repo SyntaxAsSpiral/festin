@@ -195,8 +195,19 @@ def _version_3(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_4(conn: sqlite3.Connection) -> None:
+    """Chat dates. New chats store a real created_at; import may set an approximate week."""
+    conn.executescript(
+        """
+        ALTER TABLE chats ADD COLUMN created_at TEXT;
+        ALTER TABLE chats ADD COLUMN date_approx INTEGER NOT NULL DEFAULT 0
+            CHECK (date_approx IN (0, 1));
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
-MIGRATIONS = (_version_1, _version_2, _version_3)
+MIGRATIONS = (_version_1, _version_2, _version_3, _version_4)
 
 SCHEMA_VERSION = len(MIGRATIONS)
 

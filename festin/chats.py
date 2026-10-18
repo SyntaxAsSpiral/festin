@@ -99,10 +99,11 @@ def create_chat(
         )
     conn.execute(
         """
-        INSERT INTO chats (id, title, ordinal, imported_active, updated_at)
-        VALUES (?, ?, NULL, 0, ?)
+        INSERT INTO chats (
+            id, title, ordinal, imported_active, updated_at, created_at, date_approx
+        ) VALUES (?, ?, NULL, 0, ?, ?, 0)
         """,
-        (chat_id, title, stamp),
+        (chat_id, title, stamp, stamp),
     )
     conn.commit()
     return get_chat(conn, chat_id)
@@ -197,6 +198,8 @@ def _summary(conn: sqlite3.Connection, row) -> dict:
         "title": row["title"] or preview or "Conversation",
         "preview": preview,
         "messageCount": count,
+        "createdAt": row["created_at"],
+        "dateApprox": bool(row["date_approx"]),
         "updatedAt": row["updated_at"],
     }
 

@@ -12,7 +12,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert SCHEMA_VERSION == 3
+    assert SCHEMA_VERSION == 4
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "sessions" in tables
@@ -41,9 +41,33 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     assert weather["weather_location"] == ""
     assert weather["weather_latitude"] is None
     assert weather["weather_timezone"] == ""
+    chat_columns = {row["name"] for row in conn.execute("PRAGMA table_info(chats)")}
+    assert "created_at" in chat_columns
+    assert "date_approx" in chat_columns
+    assert "updated_at" in chat_columns
 
     first = "\n".join(conn.iterdump())
     apply(conn)
     assert "\n".join(conn.iterdump()) == first
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+    conn.close()
+
+
+def test_v4_adds_chat_created_at_on_existing_rows(tmp_path):
+    conn = connect(tmp_path / "store.sqlite")
+    for step in MIGRATIONS[:3]:
+        step(conn)
+    conn.execute("PRAGMA user_version = 3")
+    conn.execute(
+        "INSERT INTO chats (id, title, ordinal, imported_active, updated_at) VALUES ('c1', 'Old', 0, 0, NULL)"
+    )
+    conn.commit()
+    assert "created_at" not in {row["name"] for row in conn.execute("PRAGMA table_info(chats)")}
+
+    apply(conn)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 4
+    row = conn.execute("SELECT created_at, date_approx, updated_at FROM chats WHERE id = 'c1'").fetchone()
+    assert row["created_at"] is None
+    assert row["date_approx"] == 0
+    assert row["updated_at"] is None
     conn.close()
