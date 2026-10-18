@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from festin.importer import import_directory
@@ -168,6 +168,52 @@ def test_imported_chat_date_from_earliest_plan_week_start(tmp_path):
     ).fetchone()
     assert bare["created_at"] is None
     assert bare["date_approx"] == 0
+    conn.close()
+
+
+def test_imported_chat_future_plan_week_clamps_to_import_week(tmp_path):
+    """A chat that only plans next week is dated to this week's start, still approx."""
+    root = write_copy(
+        tmp_path / "live",
+        settings={
+            "family": "Holliday",
+            "dinner_hour": "17:30",
+            "weather": {
+                "location": "83835",
+                "label": "Hayden, Idaho, United States",
+                "latitude": 47.76602,
+                "longitude": -116.78658,
+                "timezone": "America/Los_Angeles",
+            },
+        },
+        chats=[
+            {
+                "id": "ahead",
+                "title": "Planning ahead",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "next Saturday's slip",
+                        "plan": {"weekStart": "2026-10-24", "days": _days()},
+                    },
+                    {"role": "assistant", "content": "noted"},
+                ],
+            },
+        ],
+    )
+    db = tmp_path / "store.sqlite"
+    # Sunday 2026-10-18 in America/Los_Angeles; week starts Saturday → 2026-10-17.
+    import_at = datetime(2026, 10, 18, 22, 0, tzinfo=timezone.utc)
+    import_directory(root, db, now=import_at)
+    conn = connect(db)
+    row = conn.execute(
+        "SELECT created_at, date_approx FROM chats WHERE id = 'ahead'"
+    ).fetchone()
+    assert row["created_at"] == "2026-10-17"
+    assert row["date_approx"] == 1
+    first = dump(db)
+    import_directory(root, db, now=import_at)
+    assert dump(db) == first
     conn.close()
 
 
