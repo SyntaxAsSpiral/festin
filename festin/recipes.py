@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from festin import log as kitchen_log
 from festin.errors import NotFound, StaleState
 
 PAGE_SIZE = 20
@@ -126,6 +127,14 @@ def create_recipe(conn: sqlite3.Connection, body: dict, *, now: datetime | None 
         """,
         tuple(columns.values()),
     )
+    kitchen_log.record_event(
+        conn,
+        "recipe_added",
+        ref_id=recipe_id,
+        at=stamp,
+        title=columns["title"],
+        extra={"category": columns.get("category")},
+    )
     conn.commit()
     return get_recipe(conn, recipe_id)
 
@@ -173,6 +182,14 @@ def edit_recipe(
         if not merged.get("ingredients") and merged.get("stub") is False:
             conn.rollback()
             raise ValueError("A finished recipe needs ingredients.")
+    kitchen_log.record_event(
+        conn,
+        "recipe_edited",
+        ref_id=recipe_id,
+        at=stamp,
+        title=merged["title"],
+        extra={"category": merged.get("category")},
+    )
     conn.commit()
     return get_recipe(conn, recipe_id)
 

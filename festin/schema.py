@@ -217,8 +217,31 @@ def _version_5(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_6(conn: sqlite3.Connection) -> None:
+    """Kitchen Log: recipe/note events going forward, and weather snapshotted on plan save."""
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS kitchen_log_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kind TEXT NOT NULL
+                CHECK (kind IN ('recipe_added', 'recipe_edited', 'note_created')),
+            at TEXT NOT NULL,
+            ref_id TEXT NOT NULL,
+            title TEXT NOT NULL DEFAULT '',
+            detail TEXT NOT NULL DEFAULT '',
+            extra_json TEXT NOT NULL DEFAULT '{}'
+        );
+
+        CREATE INDEX IF NOT EXISTS kitchen_log_events_by_at
+            ON kitchen_log_events (at DESC, id DESC);
+
+        ALTER TABLE weeks ADD COLUMN weather_json TEXT;
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
-MIGRATIONS = (_version_1, _version_2, _version_3, _version_4, _version_5)
+MIGRATIONS = (_version_1, _version_2, _version_3, _version_4, _version_5, _version_6)
 
 SCHEMA_VERSION = len(MIGRATIONS)
 

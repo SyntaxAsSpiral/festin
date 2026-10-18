@@ -8,6 +8,7 @@ import secrets
 import sqlite3
 from datetime import date, datetime, timezone
 
+from festin import log as kitchen_log
 from festin.errors import NotFound, StaleState
 from festin.schema import NOTE_COLORS, PRIORITIES
 
@@ -90,6 +91,18 @@ def create_note(conn: sqlite3.Connection, body: dict, *, now: datetime | None = 
             band,
             stamp,
         ),
+    )
+    title = " ".join(text.split())
+    if len(title) > 80:
+        title = title[:79] + "…"
+    kitchen_log.record_event(
+        conn,
+        "note_created",
+        ref_id=note_id,
+        at=stamp,
+        title=title,
+        detail=kind,
+        extra={"type": kind},
     )
     conn.commit()
     return get_note(conn, note_id)
