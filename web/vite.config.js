@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 // Proxy to the live kitchen. The dev server and preview both use it.
 // Live only accepts writes whose Origin matches its own host.
-const LIVE = 'http://127.0.0.1:8879'
+const LIVE = 'http://127.0.0.1:8885'
 const live = {
   '/cards': { target: LIVE, changeOrigin: true },
   '/photos': { target: LIVE, changeOrigin: true },
