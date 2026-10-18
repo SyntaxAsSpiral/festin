@@ -109,7 +109,7 @@ export function CardOverlay({ kind, id }) {
 
   const raw = item?.raw
   const title = id === 'new' ? 'New ' + spec.noun : item?.title || ''
-  useLookingAt(title)
+  useLookingAt(title, kind, id === 'new' ? null : item?.id)
 
   return (
     <div className="card-layer" onClick={(event) => event.target === event.currentTarget && close()}>

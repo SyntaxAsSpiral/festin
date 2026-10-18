@@ -36,10 +36,13 @@ function hostOf(url) {
 }
 
 // The chat on the live kitchen: transcript, turn machine, and the actions on it.
-export function useChat() {
+export function useChat(context = null) {
   const [kitchen, setKitchen] = useState(null)
   const [turn, dispatch] = useReducer(turnReducer, undefined, startTurn)
   const flight = useRef(null)
+  // The context at the moment of sending, not at render: read through a ref.
+  const looking = useRef(context)
+  looking.current = context
 
   useEffect(() => {
     let gone = false
@@ -85,6 +88,7 @@ export function useChat() {
         chat_id: state?.activeChatId,
         expected_messages: state?.messages?.length,
         submission_id: sent.submissionId,
+        context: looking.current,
       }
       sendChat(body, (event) => dispatch({ type: 'event', event }), control.signal)
         .catch((err) => {

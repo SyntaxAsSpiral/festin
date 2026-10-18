@@ -76,8 +76,9 @@ function ShellFrame({ boot }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const tab = tabFromPath(pathname)
-  const chat = useChat()
-  const [cardTitle, setCardTitle] = useState(null)
+  const [card, setCard] = useState(null)
+  // Each message carries what the cook is looking at: the tab plus a pointer to the open card.
+  const chat = useChat({ tab: tab?.id || null, card: card?.id ? { kind: card.kind, id: card.id } : null })
   const trouble = boot.phase === 'trouble'
   const meals = tab?.id === 'meals'
   const reduced = useReducedMotion()
@@ -138,7 +139,7 @@ function ShellFrame({ boot }) {
           <Gear />
         </header>
         <div className="stage">
-          <LookingContext.Provider value={setCardTitle}>
+          <LookingContext.Provider value={setCard}>
           <Routes>
             <Route index element={<Navigate to="/meals" replace />} />
             <Route path="meals" element={<Placeholder id="meals" />} />
@@ -150,7 +151,7 @@ function ShellFrame({ boot }) {
           </LookingContext.Provider>
         </div>
       </div>
-      <Surface peekLine={peekLine(chat)} lookingAt={cardTitle || LOOK[tab?.id] || 'the kitchen'} header={chatHeader(chat)}>
+      <Surface peekLine={peekLine(chat)} lookingAt={card?.title || LOOK[tab?.id] || 'the kitchen'} header={chatHeader(chat)}>
         <ChatPanel chat={chat} />
       </Surface>
     </div>
