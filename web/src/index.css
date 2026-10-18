@@ -49,6 +49,14 @@
   --frieze-open: 170px;
   --chat: 56px;
   --banner-ratio: 2 / 1;
+  --drawer-ms: 280ms;
+  --ease-drawer: cubic-bezier(0.55, 0, 0.45, 1);
+}
+
+@property --frieze {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 170px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -73,7 +81,7 @@ kbd {
 }
 
 .app {
-  --frieze: var(--frieze-open);
+  --frieze: 170px;
   display: grid;
   height: 100dvh;
   min-height: 0;
@@ -81,6 +89,7 @@ kbd {
   grid-template-columns: var(--frieze) minmax(0, 1fr) var(--chat);
   grid-template-rows: minmax(0, 1fr);
   grid-template-areas: "frieze main chat";
+  transition: --frieze var(--drawer-ms) var(--ease-drawer);
 }
 .app[data-frieze="out"] { --frieze: 0px; }
 .app.trouble {
@@ -241,10 +250,10 @@ kbd {
 }
 
 @media (min-width: 901px) and (max-width: 1100px) {
-  .app { --frieze-open: 124px; --chat: 48px; }
+  .app { --frieze-open: 124px; --frieze: 124px; --chat: 48px; }
 }
 @media (min-width: 1800px) {
-  .app { --frieze-open: 180px; --chat: 72px; }
+  .app { --frieze-open: 180px; --frieze: 180px; --chat: 72px; }
 }
 @media (max-width: 1100px) {
   .bar kbd { display: none; }
@@ -252,6 +261,7 @@ kbd {
 @media (max-width: 900px) {
   .app {
     --frieze-open: 128px;
+    --frieze: 128px;
     --chat: 52px;
     --tab-h: 36px;
     --bar-py: 3px;
@@ -278,6 +288,7 @@ kbd {
 @media (max-width: 560px) {
   .app {
     --frieze-open: 100px;
+    --frieze: 100px;
     --bar-px: 4px;
     --bar-gap: 4px;
     --tab-px: 6px;
@@ -287,4 +298,23 @@ kbd {
   .bar-gap { display: none; }
   .views { flex: 1 1 auto; min-width: 0; }
   .views a { flex: 1 1 auto; min-width: 0; }
+  /* The mock hid full screen here to save a row. It stays. */
+  #fs { display: inline-flex; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app,
+  .frieze-scroll,
+  .banner-slide,
+  .card-flip {
+    transition: none;
+    animation: none;
+  }
+}
+html[data-motion="off"] .app,
+html[data-motion="off"] .frieze-scroll,
+html[data-motion="off"] .banner-slide,
+html[data-motion="off"] .card-flip {
+  transition: none;
+  animation: none;
 }

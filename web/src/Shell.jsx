@@ -1,11 +1,37 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { motion } from 'motion/react'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
+import { transition } from './motion.js'
 import { tabFromPath, TABS } from './tabs.js'
 import { Placeholder } from './Placeholder.jsx'
+import { useReducedMotion } from './useReducedMotion.js'
 
 function typingTarget(el) {
   if (!el || typeof el.closest !== 'function') return false
   return Boolean(el.closest('input, textarea, select, [contenteditable="true"]'))
+}
+
+function FullscreenButton() {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    const sync = () => setOn(Boolean(document.fullscreenElement))
+    document.addEventListener('fullscreenchange', sync)
+    return () => document.removeEventListener('fullscreenchange', sync)
+  }, [])
+  async function toggle() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen()
+      else await document.documentElement.requestFullscreen()
+    } catch {
+      /* the browser refused; leave the button as it is */
+    }
+  }
+  const label = on ? 'Exit full screen' : 'Full screen'
+  return (
+    <button type="button" className="ic" id="fs" aria-label={label} title={label} onClick={toggle}>
+      {on ? '🗗' : '⛶'}
+    </button>
+  )
 }
 
 export function Shell({ boot }) {
@@ -13,6 +39,8 @@ export function Shell({ boot }) {
   const { pathname } = useLocation()
   const tab = tabFromPath(pathname)
   const trouble = boot.phase === 'trouble'
+  const meals = tab?.id === 'meals'
+  const reduced = useReducedMotion()
 
   useEffect(() => {
     function onKey(event) {
@@ -29,7 +57,7 @@ export function Shell({ boot }) {
   }, [navigate, pathname])
 
   return (
-    <div className={trouble ? 'app trouble' : 'app'} data-app={boot.phase} data-frieze={tab?.id === 'meals' ? 'in' : 'out'}>
+    <div className={trouble ? 'app trouble' : 'app'} data-app={boot.phase} data-motion={reduced ? 'off' : 'on'} data-frieze={meals ? 'in' : 'out'}>
       {trouble && (
         <div className="trouble" role="status">
           <p>The kitchen is quiet just now. This is the last copy, and it is read only.</p>
@@ -37,9 +65,16 @@ export function Shell({ boot }) {
         </div>
       )}
       <div className="frieze-slot">
-        <aside className="frieze" aria-label="Frieze" aria-hidden={tab?.id === 'meals' ? undefined : true}>
+        <motion.aside
+          className="frieze frieze-scroll"
+          aria-label="Frieze"
+          aria-hidden={meals ? undefined : true}
+          initial={false}
+          animate={{ x: meals ? '0%' : '-100%', opacity: meals ? 1 : 0.6 }}
+          transition={transition(reduced, 'drawer')}
+        >
           <p className="slot-label">Frieze</p>
-        </aside>
+        </motion.aside>
       </div>
       <div className="main">
         <header className="bar">
@@ -59,6 +94,7 @@ export function Shell({ boot }) {
               <circle cx="12" cy="8" r=".6" fill="currentColor" stroke="none" />
             </svg>
           </button>
+          <FullscreenButton />
           <button type="button" className="ic" id="gear" aria-label="Settings" title="Settings">⚙</button>
         </header>
         <div className="stage">

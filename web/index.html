@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Babette's Table</title>
+    <script>
+      (function () {
+        var off = matchMedia('(prefers-reduced-motion: reduce)').matches
+        try { if (localStorage.getItem('festin.motion') === 'off') off = true } catch (e) {}
+        document.documentElement.dataset.motion = off ? 'off' : 'on'
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
