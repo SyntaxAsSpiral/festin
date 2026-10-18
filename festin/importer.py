@@ -2,14 +2,14 @@
 
     python -m festin.importer <live-data-dir> <db-path>
 
-Reads babette.json and plans/*.json. recipes.json and memory.json are used
-when the copy has them. The source directory is only opened for reading.
+Reads babette.json, plans/*.json, and, when the copy has them, recipes.json
+and memory.json. The source directory is only opened for reading.
 
-A second run replaces the imported tables with the same rows. Sessions,
-plugin settings, and the weather cache stay.
+A second run replaces the imported tables with the same rows.
 
-Left in the live file, and not stored: statusPane (the dropped status card)
-and slips (the print-job ledger). Meal plans come from plans/*.json.
+statusPane (the dropped status card) is not stored. Print-job slips stay
+where the live file put them: inside a message's extra JSON. Meal plans
+come from plans/*.json.
 """
 
 from __future__ import annotations
@@ -68,9 +68,6 @@ def import_directory(data_dir: str | Path, db_path: str | Path) -> dict[str, int
     try:
         apply(conn)
         conn.execute("PRAGMA foreign_keys = ON")
-        saved_chats = conn.execute(
-            "SELECT id, chat_id FROM sessions WHERE chat_id IS NOT NULL"
-        ).fetchall()
         with conn:
             _import_settings(conn, state.get("settings") or {})
             _replace_notes(conn, state.get("journal") or [], memory)
@@ -78,7 +75,6 @@ def import_directory(data_dir: str | Path, db_path: str | Path) -> dict[str, int
             _replace_chats(conn, state)
             if recipes is not None:
                 _replace_recipes(conn, recipes)
-            _restore_session_chats(conn, saved_chats)
         return _counts(conn)
     finally:
         conn.close()
@@ -126,50 +122,24 @@ def _json(value) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
+def _table_name(family) -> str:
+    """Live prints and announces the kitchen as settings.family + ' Table'."""
+    if family is None:
+        return "Babette's Table"
+    name = " ".join(str(family).split())
+    if not name:
+        return "Babette's Table"
+    return name + " Table"
+
+
 def _import_settings(conn: sqlite3.Connection, settings: dict) -> None:
     if not isinstance(settings, dict):
         raise ValueError("settings must be an object")
-    weather = settings.get("weather") or {}
-    if not isinstance(weather, dict):
-        weather = {}
-    family = settings.get("family")
-    table_name = " ".join(str(family).split()) if family else "Babette's Table"
     dinner = " ".join(str(settings.get("dinner_hour") or "17:30").split())
-    tts = settings.get("tts") if isinstance(settings.get("tts"), dict) else {}
     conn.execute(
-        """
-        UPDATE settings SET
-            table_name = ?,
-            dinner_hour = ?,
-            weather_location = ?,
-            weather_label = ?,
-            latitude = ?,
-            longitude = ?,
-            timezone = ?,
-            model_base_url = ?,
-            model_name = ?,
-            tts_json = ?
-        WHERE id = 1
-        """,
-        (
-            table_name or "Babette's Table",
-            dinner or "17:30",
-            str(weather.get("location") or ""),
-            str(weather.get("label") or ""),
-            _real(weather.get("latitude")),
-            _real(weather.get("longitude")),
-            _text(weather.get("timezone")),
-            str(settings.get("base_url") or ""),
-            str(settings.get("model") or ""),
-            _json(tts),
-        ),
+        "UPDATE settings SET table_name = ?, dinner_hour = ? WHERE id = 1",
+        (_table_name(settings.get("family")), dinner or "17:30"),
     )
-
-
-def _real(value):
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return float(value)
-    return None
 
 
 def _text(value):
@@ -537,17 +507,6 @@ def _replace_recipes(conn: sqlite3.Connection, document) -> None:
         rows,
     )
     conn.execute("UPDATE catalog_meta SET next_numeric_id = ? WHERE id = 1", (next_id,))
-
-
-def _restore_session_chats(conn: sqlite3.Connection, saved) -> None:
-    for session_id, chat_id in saved:
-        conn.execute(
-            """
-            UPDATE sessions SET chat_id = ?
-            WHERE id = ? AND EXISTS (SELECT 1 FROM chats WHERE id = ?)
-            """,
-            (chat_id, session_id, chat_id),
-        )
 
 
 def _counts(conn: sqlite3.Connection) -> dict[str, int]:

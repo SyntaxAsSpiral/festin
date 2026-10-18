@@ -6,16 +6,14 @@ later change to the configured start day regroups those dates; it does not
 move a dinner. Recipe ids are text. The live parser accepts at most four
 digits; this counter is a plain integer, so CBK-10000 is a legal id.
 
-Sessions, plugin settings, and the weather cache are here so the other
-backend beads have a place to write. This module does not fill them.
+Schema changes are steps in MIGRATIONS, keyed by PRAGMA user_version.
+Append a step. Do not edit an earlier one.
 """
 
 from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
-
-SCHEMA_VERSION = 1
 
 # Catppuccin accents, plus none. Shared by every device. §9 decision 15.
 NOTE_COLORS = (
@@ -41,9 +39,7 @@ WEEKDAYS = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
 
 PRIORITIES = ("high", "normal", "low")
 
-SCHEMA = """
-PRAGMA foreign_keys = ON;
-
+_V1 = """
 CREATE TABLE IF NOT EXISTS note_colors (
     name TEXT PRIMARY KEY
 );
@@ -55,16 +51,6 @@ CREATE TABLE IF NOT EXISTS settings (
     week_start_day TEXT NOT NULL DEFAULT 'sat'
         CHECK (week_start_day IN ('sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri')),
     dinner_hour TEXT NOT NULL DEFAULT '17:30',
-    weather_location TEXT NOT NULL DEFAULT '',
-    weather_label TEXT NOT NULL DEFAULT '',
-    latitude REAL,
-    longitude REAL,
-    timezone TEXT,
-    weather_fetched_at TEXT,
-    forecast_json TEXT,
-    model_base_url TEXT NOT NULL DEFAULT '',
-    model_name TEXT NOT NULL DEFAULT '',
-    tts_json TEXT NOT NULL DEFAULT '{}',
     updated_at TEXT
 );
 
@@ -163,38 +149,25 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     PRIMARY KEY (chat_id, position)
 );
 
--- Per-device cookie session. Empty until the session bead writes it.
-CREATE TABLE IF NOT EXISTS sessions (
-    id TEXT PRIMARY KEY,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    chat_id TEXT REFERENCES chats (id) ON DELETE SET NULL,
-    draft TEXT NOT NULL DEFAULT '',
-    pane TEXT,
-    chat_surface TEXT,
-    drawer_height REAL,
-    rail_width REAL,
-    composer_height REAL,
-    motion INTEGER CHECK (motion IS NULL OR motion IN (0, 1)),
-    settings_tab TEXT,
-    list_layouts_json TEXT NOT NULL DEFAULT '{}',
-    turn_json TEXT,
-    lock_chat_id TEXT
-);
-
-CREATE TABLE IF NOT EXISTS plugin_settings (
-    plugin_id TEXT PRIMARY KEY,
-    settings_json TEXT NOT NULL DEFAULT '{}',
-    updated_at TEXT
-);
-
 CREATE INDEX IF NOT EXISTS nights_by_recipe ON nights (recipe_id);
 CREATE INDEX IF NOT EXISTS nights_by_week ON nights (week_start);
 CREATE INDEX IF NOT EXISTS notes_by_kind ON notes (kind);
 CREATE INDEX IF NOT EXISTS chats_by_ordinal ON chats (ordinal);
-
-PRAGMA user_version = 1;
 """
+
+
+def _version_1(conn: sqlite3.Connection) -> None:
+    conn.executescript(_V1)
+    conn.executemany(
+        "INSERT OR IGNORE INTO note_colors (name) VALUES (?)",
+        [(name,) for name in NOTE_COLORS],
+    )
+
+
+# Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
+MIGRATIONS = (_version_1,)
+
+SCHEMA_VERSION = len(MIGRATIONS)
 
 
 def connect(path: str | Path) -> sqlite3.Connection:
@@ -206,12 +179,13 @@ def connect(path: str | Path) -> sqlite3.Connection:
 
 
 def apply(conn: sqlite3.Connection) -> None:
-    """Create the store if needed. Safe to run on a database that already has it."""
-    conn.executescript(SCHEMA)
-    for name in NOTE_COLORS:
-        conn.execute("INSERT OR IGNORE INTO note_colors (name) VALUES (?)", (name,))
+    """Run any migration newer than this file. A second call changes nothing."""
     current = conn.execute("PRAGMA user_version").fetchone()[0]
     if current > SCHEMA_VERSION:
         raise RuntimeError(f"database schema v{current} is newer than this code (v{SCHEMA_VERSION})")
-    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    for version, step in enumerate(MIGRATIONS, start=1):
+        if version <= current:
+            continue
+        step(conn)
+        conn.execute(f"PRAGMA user_version = {version}")
     conn.commit()
