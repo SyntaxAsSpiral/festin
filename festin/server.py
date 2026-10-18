@@ -10,8 +10,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import mimetypes
+import re
 import secrets
 import threading
+import uuid
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -23,6 +26,8 @@ from festin import plans as plans_mod
 from festin import recipes as recipes_mod
 from festin import settings as core_settings
 from festin import weather as weather_mod
+from festin.chat.engine import chat as run_chat
+from festin.chat.flights import stop_request
 from festin.errors import NotFound, StaleState
 from festin.schema import apply, connect
 
@@ -32,6 +37,9 @@ FIELDS = ("chat_id", "turn", "pane", "surface", "draft")
 TURN_TTL = timedelta(minutes=10)
 CHAT_HELD = "Babette is answering this chat on another device."
 BODY_LIMIT = 57_000_000
+BUSY = "Babette is still answering."
+FILE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$")
+TERMINAL = frozenset({"done", "stopped", "error"})
 _GUARDS: dict[str, threading.Lock] = {}
 _GUARDS_LOCK = threading.Lock()
 
@@ -48,8 +56,14 @@ class KitchenServer(ThreadingHTTPServer):
     def __init__(self, server_address, db_path, *, origins=None, photos_dir=None):
         self.db_path = str(db_path)
         self.origins = tuple(origin.rstrip("/") for origin in (origins or ()) if origin)
-        self.photos_dir = Path(photos_dir) if photos_dir else Path(db_path).resolve().parent / "cooking-photos"
+        # Kitchen files live beside the database: photos/ (chat and recipe photos) and
+        # cards/ (scans of the original recipe cards).
+        self.data_dir = Path(db_path).resolve().parent
+        self.photos_dir = Path(photos_dir) if photos_dir else self.data_dir / "photos"
+        self.cards_dir = self.data_dir / "cards"
         self.now = lambda: datetime.now(timezone.utc)
+        # Extra arguments for the chat engine (tests pass a fake model here).
+        self.chat_options = {}
         conn = connect(db_path)
         try:
             apply(conn)
@@ -69,6 +83,10 @@ class Handler(BaseHTTPRequestHandler):
         path = parsed.path
         query = parse_qs(parsed.query)
         try:
+            if path.startswith("/photos/"):
+                return self._send_file(self.server.photos_dir, path[len("/photos/"):])
+            if path.startswith("/cards/"):
+                return self._send_file(self.server.cards_dir, path[len("/cards/"):])
             if path == "/api/session":
                 return self._session(None)
             if path == "/api/settings":
@@ -133,6 +151,10 @@ class Handler(BaseHTTPRequestHandler):
             body = self._read_body()
         except (ValueError, json.JSONDecodeError) as exc:
             return self._send(400, {"error": str(exc) or "Bad request"})
+        if path == "/api/chat":
+            return self._chat(body)
+        if path == "/api/stop":
+            return self._send(200, stop_request(request_id=body.get("request_id"), submission_id=body.get("submission_id")))
         try:
             with self._db() as conn:
                 if path == "/api/settings":
@@ -371,6 +393,119 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, _public_session(row), row["id"])
         finally:
             conn.close()
+
+    def _chat(self, body: dict) -> None:
+        """One chat turn as NDJSON, as live streams it. The turn locks this device's chat."""
+        token = _cookie(self.headers.get("Cookie"))
+        conn = connect(self.server.db_path)
+        conn.execute("PRAGMA busy_timeout = 5000")
+        held = None  # the session whose turn this request took, if any
+        try:
+            row = _row_for_cookie(conn, token, self.server.now())
+            session_id = row["id"]
+            turn_id = body.get("submission_id") if isinstance(body.get("submission_id"), str) else str(uuid.uuid4())
+            # Take the turn: a device with no chat yet gets a fresh one.
+            with _guard(session_id):
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    now = self.server.now()
+                    _expire_stale(conn, now)
+                    row = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
+                    changes = {"turn": {"id": turn_id}}
+                    if not row["chat_id"]:
+                        changes["chat_id"] = str(uuid.uuid4())
+                    values = _apply_changes(conn, row, changes, now)
+                except (MidTurn, ChatHeld) as exc:
+                    conn.rollback()
+                    return self._send(409, {"error": CHAT_HELD if isinstance(exc, ChatHeld) else BUSY}, session_id)
+                except ValueError as exc:
+                    conn.rollback()
+                    return self._send(400, {"error": str(exc)}, session_id)
+                conn.execute(
+                    "UPDATE sessions SET chat_id = ?, turn_json = ?, updated_at = ? WHERE id = ?",
+                    (values["chat_id"], values["turn_json"], now.isoformat(), session_id),
+                )
+                conn.commit()
+                held = session_id
+            chat_id = values["chat_id"]
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-ndjson")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Connection", "close")
+            self.send_header("Set-Cookie", f"{COOKIE}={session_id}; HttpOnly; Path=/; SameSite=Lax")
+            self.end_headers()
+            self.close_connection = True
+            alive = True
+            ended = False
+
+            # A browser that goes away does not stop the turn or leave the chat locked.
+            def emit(event):
+                nonlocal alive, ended
+                ended = ended or event.get("type") in TERMINAL
+                if not alive:
+                    return
+                try:
+                    self.wfile.write(json.dumps(event, ensure_ascii=False).encode("utf-8") + b"\n")
+                    self.wfile.flush()
+                except OSError:
+                    alive = False
+
+            try:
+                text = str(body.get("text") or "").strip()
+                if not text:
+                    raise ValueError("Write a message.")
+                week = body.get("week") or core_settings.week_bounds(conn)[0].isoformat()
+                outcome = run_chat(
+                    conn,
+                    text=text,
+                    week=week,
+                    chat_id=body.get("chat_id"),
+                    session_chat_id=chat_id,
+                    data_dir=self.server.data_dir,
+                    photos=body.get("photos") or [],
+                    retry=bool(body.get("retry")),
+                    editor_plan=body.get("plan"),
+                    expected_messages=body.get("expected_messages"),
+                    submission_id=body.get("submission_id"),
+                    emit=emit,
+                    context=body.get("context"),
+                    **self.server.chat_options,
+                )
+                # A deduplicated submission returns without a stream; close it as done.
+                if not ended:
+                    emit({"type": "stopped"} if isinstance(outcome, dict) and outcome.get("stopped") else {"type": "done", "ok": True})
+            except StaleState as exc:
+                if not ended:
+                    emit({"type": "error", "error": str(exc), "status": 409})
+            except (ValueError, KeyError) as exc:
+                if not ended:
+                    emit({"type": "error", "error": str(exc), "status": 400})
+            except Exception as exc:  # noqa: BLE001 - the stream must always end
+                if not ended:
+                    emit({"type": "error", "error": "Request failed (" + type(exc).__name__ + "). Check the connection and model, then retry.", "status": 400})
+        finally:
+            if held:
+                try:
+                    conn.execute("UPDATE sessions SET turn_json = NULL, updated_at = ? WHERE id = ?", (self.server.now().isoformat(), held))
+                    conn.commit()
+                except Exception:  # noqa: BLE001 - the stale-turn expiry frees it otherwise
+                    pass
+            conn.close()
+
+    def _send_file(self, folder: Path, name: str) -> None:
+        name = unquote(name)
+        file = folder / name
+        if not FILE_NAME.match(name) or not file.is_file():
+            return self._send(404, {"error": "Not found"})
+        data = file.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", mimetypes.guess_type(name)[0] or "application/octet-stream")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "private, max-age=86400")
+        self.end_headers()
+        self.wfile.write(data)
 
     def _db(self):
         conn = connect(self.server.db_path)
