@@ -57,7 +57,7 @@ export function Shell({ boot }) {
   }, [navigate, pathname])
 
   return (
-    <div className={trouble ? 'app trouble' : 'app'} data-app={boot.phase} data-motion={reduced ? 'off' : 'on'} data-frieze={meals ? 'in' : 'out'}>
+    <div className="app" data-app={boot.phase} data-motion={reduced ? 'off' : 'on'} data-frieze={meals ? 'in' : 'out'}>
       {trouble && (
         <div className="trouble" role="status">
           <p>The kitchen is quiet just now. This is the last copy, and it is read only.</p>
