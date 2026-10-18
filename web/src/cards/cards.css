@@ -240,6 +240,55 @@ button.danger { color: var(--bb-rose); }
 }
 .swatches button[aria-pressed='true'] { outline: 2px solid var(--bb-ink); outline-offset: 1px; }
 
+/* Recipe editor: the same page, fields where the type already sits. */
+.page-title {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0 0 2px;
+  font: inherit;
+  font-weight: 400;
+  font-style: italic;
+  font-size: clamp(30px, 5vw, 40px);
+  line-height: 1.1;
+  letter-spacing: -0.005em;
+  color: var(--bb-ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bb-tone-1);
+}
+.page-title::placeholder { color: var(--bb-tone-3); }
+.page-cat {
+  display: block;
+  max-width: 34em;
+  margin-top: 6px;
+  padding: 2px 0;
+  font: inherit;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--bb-tone-4);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bb-tone-1);
+}
+.page-area {
+  display: block;
+  width: 100%;
+  min-height: 7em;
+  padding: 2px 0;
+  font: inherit;
+  line-height: 1.55;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bb-tone-1);
+  resize: vertical;
+}
+.page-area::placeholder { color: var(--bb-tone-3); font-style: italic; }
+.ingredients .page-area { font-variant-numeric: oldstyle-nums diagonal-fractions; }
+.method .page-area,
+.kitchen .page-area { max-width: 34em; }
+
 /* Chat page */
 .chat-read { padding-top: 14px; }
 

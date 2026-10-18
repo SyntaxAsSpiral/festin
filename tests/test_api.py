@@ -192,6 +192,24 @@ def test_weather_read(kitchen):
     assert forecast["days"][0]["conditions"] == "clear"
 
 
+def test_delete_recipe_keeps_the_id_counter(kitchen):
+    client = Client(kitchen.server_address[1])
+    status, recipe = client.request("POST", "/api/recipes", {"title": "Gone", "ingredients": ["salt"]})
+    assert status == 201
+    status, deleted = client.request(
+        "DELETE",
+        f"/api/recipes/{recipe['id']}",
+        {"expected_updated_at": recipe["updatedAt"]},
+    )
+    assert status == 200
+    assert deleted["status"] == "deleted"
+    status, missing = client.request("GET", f"/api/recipes/{recipe['id']}")
+    assert status == 404
+    status, nxt = client.request("POST", "/api/recipes", {"title": "Next", "ingredients": ["salt"]})
+    assert status == 201
+    assert nxt["id"] != recipe["id"]
+
+
 def test_stale_recipe_and_plan_write_get_409(kitchen):
     client = Client(kitchen.server_address[1])
     status, recipe = client.request("POST", "/api/recipes", {"title": "Soup", "ingredients": ["water"]})
@@ -354,6 +372,29 @@ def test_recipes_notes_plans_page_and_item_reads(kitchen):
     assert status == 200
     assert recipe["id"] == recipe_id
     assert "ingredients" in recipe
+
+    status, made = client.request(
+        "POST",
+        "/api/recipes",
+        {"title": "Tamale Joe", "category": "casseroles", "source": "Quita", "voice": "grandma", "ingredients": ["masa"]},
+    )
+    assert status == 201
+    conn = connect(kitchen.db_path)
+    conn.execute(
+        "UPDATE recipes SET extra_json = ? WHERE id = ?",
+        (json.dumps({"ocrPhotos": ["data/cards/tamale.jpg"]}), made["id"]),
+    )
+    conn.commit()
+    conn.close()
+    status, full = client.request("GET", f"/api/recipes/{made['id']}")
+    assert status == 200
+    assert full["ocrPhotos"] == ["data/cards/tamale.jpg"]
+    status, found = client.request("GET", "/api/recipes?q=Tamale%20Joe")
+    assert status == 200
+    row = next(item for item in found["recipes"] if item["id"] == made["id"])
+    assert row["source"] == "Quita"
+    assert row["voice"] == "grandma"
+    assert row["ingredients"] == ["masa"]
 
     status, notes = client.request("GET", "/api/notes?limit=2")
     assert status == 200
