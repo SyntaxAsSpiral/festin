@@ -6,12 +6,12 @@ import { useReducedMotion } from '../useReducedMotion.js'
 import { fetchRecipes } from './plan.js'
 
 const MOTIFS = [
-  '/art/motifs/scroll.webp',
-  '/art/motifs/rose.webp',
-  '/art/motifs/wheat.webp',
-  '/art/motifs/blossom.webp',
-  '/art/motifs/sage.webp',
-  '/art/motifs/acanthus.webp',
+  '/art/frieze/motif-scroll.png',
+  '/art/frieze/motif-rose.png',
+  '/art/frieze/motif-wheat.png',
+  '/art/frieze/motif-blossom.png',
+  '/art/frieze/motif-sage.png',
+  '/art/frieze/motif-acanthus.png',
 ]
 
 function buildItems(recipes) {
