@@ -40,12 +40,16 @@ export function baseUrlForProvider(provider, current) {
   return now
 }
 
-/** Map GET /api/settings (and optional model fields) into the form draft. */
+/** Map GET /api/settings into the form draft. Model is { baseUrl, name, keySet }. */
 export function draftFromSettings(body) {
   const weather = body?.weather && typeof body.weather === 'object' ? body.weather : {}
+  const nested = body?.model && typeof body.model === 'object' ? body.model : null
   const modelBaseUrl =
-    pick(body, 'modelBaseUrl', 'model_base_url', 'baseUrl', 'base_url') || OPENROUTER_BASE
-  const modelName = pick(body, 'modelName', 'model_name', 'model') || ''
+    (nested && pick(nested, 'baseUrl', 'base_url')) ||
+    pick(body, 'modelBaseUrl', 'model_base_url', 'baseUrl', 'base_url') ||
+    OPENROUTER_BASE
+  const named = nested && typeof nested.name === 'string' ? nested.name : undefined
+  const modelName = named ?? pick(body, 'modelName', 'model_name') ?? (typeof body?.model === 'string' ? body.model : '')
   return {
     tableName: String(body?.tableName || body?.table_name || DEFAULT_TABLE).trim() || DEFAULT_TABLE,
     dinnerHour: normalizeHour(body?.dinnerHour || body?.dinner_hour || '17:30'),
@@ -53,11 +57,12 @@ export function draftFromSettings(body) {
     weatherLocation: String(weather.location || body?.weatherLocation || '').trim(),
     modelName: String(modelName).trim(),
     modelBaseUrl: String(modelBaseUrl).trim().replace(/\/+$/, '') || OPENROUTER_BASE,
+    keySet: Boolean(nested ? nested.keySet : body?.keySet),
     updatedAt: body?.updatedAt || body?.updated_at || null,
   }
 }
 
-/** Body for POST /api/settings. Model fields ride along for when the API accepts them. */
+/** Body for POST /api/settings. The key is a separate write and never rides along. */
 export function settingsSaveBody(draft, expectedUpdatedAt) {
   const body = {
     tableName: String(draft.tableName || '').trim() || DEFAULT_TABLE,

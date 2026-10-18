@@ -19,6 +19,26 @@ export async function fetchSettings() {
   return draftFromSettings(body)
 }
 
+export async function saveModelKey(key) {
+  const res = await fetch('/api/settings/model-key', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key }),
+  })
+  const body = await readJson(res)
+  return readSaveResult(res.status, body)
+}
+
+export async function testModel() {
+  const res = await fetch('/api/settings/model-test', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  })
+  const body = await readJson(res)
+  return readSaveResult(res.status, body)
+}
+
 export async function saveSettings(draft, expectedUpdatedAt) {
   const res = await fetch('/api/settings', {
     method: 'POST',
