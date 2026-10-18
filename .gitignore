@@ -1,0 +1,15 @@
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
+*.gate.lock*
+.beads/
+ref/
+node_modules/
+dist/
+__pycache__/
+*.sqlite
+*.sqlite3
+result
