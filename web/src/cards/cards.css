@@ -64,7 +64,8 @@
 .nlist-cards .nitem {
   height: 100%;
   border: 1px solid var(--bb-tone-1);
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
   padding: 0 12px 12px;
 }
 .nlist-cards .ntip { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
@@ -103,7 +104,8 @@
   flex-direction: column;
   width: min(44rem, 100%);
   max-height: calc(100dvh - var(--pad-top) - var(--pad-bottom));
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
   border: 1px solid var(--bb-tone-2);
   box-shadow: 0 1px 0 var(--bb-tone-1), 0 18px 40px -24px color-mix(in srgb, var(--bb-ink) 55%, transparent);
   transform-origin: center;

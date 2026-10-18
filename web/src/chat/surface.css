@@ -14,7 +14,8 @@
   padding: 12px 0 0;
   border: 0;
   border-left: 1px solid var(--bb-tone-2);
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
   color: var(--bb-tone-4);
   font: italic 13px/1 var(--bb-font);
   letter-spacing: 0.12em;
@@ -29,7 +30,8 @@
 .surface-panel {
   display: flex;
   flex-direction: column;
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
   color: var(--bb-ink);
   overflow: hidden;
   min-width: 0;

@@ -40,7 +40,8 @@
 .composer {
   border-top: 1px solid var(--bb-tone-2);
   padding: 8px 12px 10px;
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
 }
 .composer textarea {
   display: block;

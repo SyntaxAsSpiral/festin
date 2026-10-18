@@ -14,6 +14,9 @@
 }
 
 :root {
+  /* Paper texture: a tile drawn once by paper.js; none until then, or without WebGL. */
+  --paper-grain: none;
+  --paper-tile: 512px;
   --bb-paper: #fffaf0; /* L*98.4 */
   --bb-tone-1: #e0dad5; /* L*87.4 */
   --bb-tone-2: #c2bbba; /* L*76.4 */
@@ -62,7 +65,8 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
 body {
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
   color: var(--bb-ink);
   font-family: var(--bb-font);
   font-size: var(--bb-text);
@@ -85,7 +89,8 @@ kbd {
   display: grid;
   height: 100dvh;
   min-height: 0;
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
   grid-template-columns: var(--frieze) minmax(0, 1fr) var(--chat);
   grid-template-rows: minmax(0, 1fr);
   grid-template-areas: "frieze main chat";
@@ -114,7 +119,8 @@ kbd {
   flex: none;
   font-size: 13px;
   font-style: normal;
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
   border: 1px solid var(--bb-ink);
   padding: 2px 10px;
 }
@@ -124,7 +130,8 @@ kbd {
   height: 100dvh;
   display: grid;
   place-items: center;
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
   color: var(--bb-tone-4);
   font-style: italic;
 }
@@ -139,7 +146,8 @@ kbd {
 .frieze {
   width: var(--frieze-open);
   height: 100%;
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
 }
 .slot-label {
   padding: 14px 8px;
@@ -164,14 +172,16 @@ kbd {
   gap: var(--bar-gap);
   padding: var(--bar-py) var(--bar-px);
   border-bottom: 1px solid var(--bb-tone-2);
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
 }
 .bar-gap { flex: 1; }
 .views {
   display: inline-flex;
   height: calc(var(--tab-h) + 2px);
   border: 1px solid var(--bb-tone-2);
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
 }
 .views a {
   display: inline-flex;
@@ -227,7 +237,8 @@ kbd {
   min-height: 0;
   overflow: auto;
   padding: var(--stage-pt) var(--stage-px) var(--stage-pb);
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
 }
 .placeholder h1 {
   font-weight: 400;
@@ -244,7 +255,8 @@ kbd {
   margin-bottom: 16px;
   border-top: 1px solid var(--bb-tone-2);
   border-bottom: 1px solid var(--bb-tone-2);
-  background: var(--bb-paper);
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
 }
 .banner img {
   position: absolute;
