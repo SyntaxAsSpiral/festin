@@ -35,7 +35,7 @@
 }
 
 /* List and cards */
-.nlist { list-style: none; margin: 0; padding: 0; }
+.nlist, .ncol { list-style: none; margin: 0; padding: 0; }
 .nitem {
   display: flex;
   flex-direction: column;
@@ -57,27 +57,39 @@
 .ntip { font-size: 14.5px; color: var(--bb-tone-5); }
 
 .nlist-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 18px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.nlist-cards .ncol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 .nlist-cards .nitem {
-  height: 100%;
   border: 1px solid var(--bb-tone-1);
   background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
   background-blend-mode: multiply;
   padding: 0 12px 12px;
 }
-.nlist-cards .ntip { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.nlist-cards .ntip { white-space: pre-line; }
+.nlist-cards .nitem { position: relative; isolation: isolate; overflow: hidden; }
+/* The category plate is a watermark: faint, behind the text, taking no space. */
 .nplate {
-  display: block;
-  width: calc(100% + 24px);
-  margin: 0 -12px 8px;
-  aspect-ratio: 16 / 9;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  object-position: 70% 50%;
+  opacity: 0.16;
   mix-blend-mode: multiply;
-  border-bottom: 1px solid color-mix(in srgb, var(--bb-gold) 45%, transparent);
+  pointer-events: none;
 }
+.nlist-cards .nitem { padding-top: 12px; }
 .nswatch {
   display: block;
   height: 6px;
@@ -167,15 +179,21 @@ button.danger { color: var(--bb-rose); }
 }
 
 /* Recipe page */
+/* The open recipe's plate is a watermark too: it sits behind the page head. */
+.page-recipe { position: relative; isolation: isolate; }
 .frontis {
-  display: block;
-  width: calc(100% + 2 * clamp(18px, 5vw, 44px));
-  margin: 0 calc(-1 * clamp(18px, 5vw, 44px));
-  aspect-ratio: 21 / 9;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: -1;
+  width: min(100%, 520px);
+  aspect-ratio: 16 / 9;
   object-fit: cover;
-  object-position: 50% 55%;
+  opacity: 0.2;
   mix-blend-mode: multiply;
-  border-bottom: 1px solid color-mix(in srgb, var(--bb-gold) 55%, transparent);
+  -webkit-mask-image: radial-gradient(ellipse at 70% 40%, #000 35%, transparent 75%);
+  mask-image: radial-gradient(ellipse at 70% 40%, #000 35%, transparent 75%);
+  pointer-events: none;
 }
 .standfirst { margin: 14px 0 0; font-size: 17.5px; color: var(--bb-tone-5); max-width: 34em; }
 .recipe-body { display: flow-root; }

@@ -152,3 +152,16 @@ describe('list paging and the 409 path', () => {
     })
   })
 })
+
+describe('chat cards', async () => {
+  const { chatItem } = await import('./kinds.js')
+  it('use the whole first line when live cut the stored title short', () => {
+    const item = chatItem({ id: 'c', title: 'Hello! My mother would like to make a soup with gnocchi and sausage. what are s', preview: 'Hello! My mother would like to make a soup with gnocchi and sausage. what are some suggestions?' })
+    expect(item.card.title).toBe('Hello! My mother would like to make a soup with gnocchi and sausage. what are some suggestions?')
+    expect(item.card.tip).toBe('')
+  })
+  it('keep a real title and show the reply opening', () => {
+    const item = chatItem({ id: 'c', title: 'Soup ideas', messages: [{ role: 'user', content: 'gnocchi?' }, { role: 'assistant', content: 'Bien sûr, a zuppa toscana.' }] })
+    expect(item.card).toEqual({ title: 'Soup ideas', tip: 'Bien sûr, a zuppa toscana.' })
+  })
+})

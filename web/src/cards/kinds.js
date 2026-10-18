@@ -50,8 +50,12 @@ export function provenance(recipe) {
   return from ? label + ', from ' + from : label
 }
 
+function lines(text) {
+  return String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+}
+
 function firstLine(text, max = 90) {
-  const line = String(text || '').split('\n').map((l) => l.trim()).find(Boolean) || ''
+  const line = lines(text)[0] || ''
   return line.length > max ? line.slice(0, max - 1).trimEnd() + '…' : line
 }
 
@@ -81,6 +85,7 @@ export function recipeItem(r) {
     line: provenance(r),
     tip: r.searchDescription || '',
     search: [r.id, r.title, r.category, r.source, r.voice, r.searchDescription, r.notes, ...(r.ingredients || [])].join(' ').toLowerCase(),
+    card: null,
     raw: r,
   }
 }
@@ -92,8 +97,21 @@ export function noteItem(n) {
     line: [n.type ? n.type[0].toUpperCase() + n.type.slice(1) : 'Note', dayOf(n.date)].filter(Boolean).join(', '),
     tip: '',
     search: [n.type, n.text].join(' ').toLowerCase(),
+    // Cards show the whole note: its first line as the title, the rest below.
+    card: { title: lines(n.text)[0] || 'A note', tip: lines(n.text).slice(1).join('\n') },
     raw: n,
   }
+}
+
+// Cards show the first lines whole. Live cut stored chat titles short, so when the
+// title is just the start of the first message, the card uses the whole line and
+// doesn't repeat it underneath.
+function chatCard(c, said, tipSrc) {
+  const stored = lines(c.title)[0] || ''
+  const opening = lines(c.preview || said[0]?.content)[0] || ''
+  const title = opening && opening.startsWith(stored.replace(/[\s\\]+$/, '')) ? opening : stored || opening || 'A chat'
+  const tip = lines(tipSrc)[0] || ''
+  return { title, tip: tip === title || title.startsWith(tip) ? '' : tip }
 }
 
 export function chatItem(c) {
@@ -107,6 +125,7 @@ export function chatItem(c) {
     line: chatDate(c),
     tip: firstLine(tipSrc, 120),
     search: [c.title, c.preview, ...said.map((m) => m.content)].join(' ').toLowerCase(),
+    card: chatCard(c, said, tipSrc),
     raw: c,
   }
 }

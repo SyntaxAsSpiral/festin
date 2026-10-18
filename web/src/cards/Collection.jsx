@@ -4,6 +4,23 @@ import { KINDS, loadItems, matches, plateFor } from './kinds.js'
 import { rememberOrigin } from './origin.js'
 
 const PAGE = 60
+const CARD_MIN = 230 // narrowest card column, px
+const CARD_GAP = 16
+
+// How many card columns fit the list's width.
+function useColumns(ref, active) {
+  const [columns, setColumns] = useState(1)
+  useEffect(() => {
+    const el = ref.current
+    if (!active || !el) return undefined
+    const measure = () => setColumns(Math.max(1, Math.floor((el.clientWidth + CARD_GAP) / (CARD_MIN + CARD_GAP))))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref, active])
+  return columns
+}
 
 function storedLayout(kind) {
   try {
@@ -29,6 +46,8 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
   const [shown, setShown] = useState(PAGE)
   const search = useRef(null)
   const list = useRef(null)
+  const cardColumns = useColumns(list, layout === 'cards')
+  const columnCount = layout === 'cards' ? cardColumns : 1
   const more = useRef(null)
 
   // Chats search on the server (the list row has no transcript). Recipes and notes
@@ -96,7 +115,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
         return
       }
       if (typing(event.target) && !(event.target === search.current && /^(ArrowDown|Enter)$/.test(event.key))) return
-      const columns = layout === 'cards' ? Math.max(1, Math.round(list.current?.clientWidth / 260) || 1) : 1
+      const columns = layout === 'cards' ? cardColumns : 1
       const step = { ArrowDown: columns, j: columns, ArrowUp: -columns, k: -columns, ArrowRight: 1, ArrowLeft: -1 }[event.key]
       if (step && (layout === 'cards' || Math.abs(step) === columns)) {
         event.preventDefault()
@@ -147,19 +166,29 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
       {!failed && !items && <p className="lstate">Opening the box…</p>}
       {items && !results.length && query.trim() && <p className="lstate">Nothing by that name. Ask Babette.</p>}
       {items && !items.length && !query.trim() && <p className="lstate">{spec.empty}</p>}
-      <ol ref={list} className={'nlist nlist-' + layout}>
-        {results.slice(0, shown).map((item, i) => (
-          <li key={item.id}>
-            <button type="button" className="nitem" data-cursor={i === cursor || undefined} onClick={(event) => open(item, event.currentTarget)}>
-              {layout === 'cards' && kind === 'recipes' && <img className="nplate" src={plateFor(item.raw.category)} alt="" loading="lazy" />}
-              {layout === 'cards' && kind === 'notes' && <span className="nswatch" data-color={item.raw.color || 'none'} />}
-              <span className="ntitle">{item.title}</span>
-              <span className="nline">{item.line}</span>
-              {item.tip && <span className="ntip">{item.tip}</span>}
-            </button>
-          </li>
+      <div ref={list} className={'nlist nlist-' + layout}>
+        {/* Cards are dealt round-robin into columns, so they read left to right and
+            each keeps its own height (masonry); the list is a single column. */}
+        {Array.from({ length: columnCount }, (_, col) => (
+          <ol key={col} className="ncol">
+            {results.slice(0, shown).map((item, i) => {
+              if (i % columnCount !== col) return null
+              const face = layout === 'cards' && item.card ? { ...item, ...item.card } : item
+              return (
+                <li key={item.id}>
+                  <button type="button" className="nitem" data-cursor={i === cursor || undefined} onClick={(event) => open(item, event.currentTarget)}>
+                    {layout === 'cards' && kind === 'recipes' && <img className="nplate" src={plateFor(item.raw.category)} alt="" loading="lazy" />}
+                    {layout === 'cards' && kind === 'notes' && <span className="nswatch" data-color={item.raw.color || 'none'} />}
+                    <span className="ntitle">{face.title}</span>
+                    <span className="nline">{face.line}</span>
+                    {face.tip && <span className="ntip">{face.tip}</span>}
+                  </button>
+                </li>
+              )
+            })}
+          </ol>
         ))}
-      </ol>
+      </div>
       {results.length > shown && <div ref={more} className="lmore" aria-hidden="true" />}
     </section>
   )
