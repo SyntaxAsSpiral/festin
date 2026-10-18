@@ -20,6 +20,7 @@ import {
   parseSettingsTab,
   providerOf,
 } from './form.js'
+import { PluginPanel } from './PluginPanel.jsx'
 import './settings.css'
 
 const NARROW = '(max-width: 900px)'
@@ -433,43 +434,28 @@ export function SettingsSidebar() {
             {plugins.status !== 'ok' && (
               <p className="phint">
                 {plugins.status === 'missing'
-                  ? 'Plugin settings API is not on this kitchen yet. Printer is first when it lands.'
-                  : 'Could not load plugins.'}
+                  ? 'Plugin settings API is not on this kitchen yet.'
+                  : plugins.status === 'loading'
+                    ? 'Loading plugins…'
+                    : 'Could not load plugins.'}
               </p>
             )}
             <p className="fine plg-intro">
               Babette&apos;s core stays small; extras plug in here. Each plugin can be switched off on its own.
             </p>
-            {plugins.status === 'ok' && plugins.plugins.length > 0 ? (
+            {plugins.status === 'ok' &&
               plugins.plugins.map((plug) => (
-                <section key={plug.id || plug.name} className="sg plug">
-                  <div className="plh">
-                    <span className="plic" aria-hidden="true">
-                      {plug.icon || '·'}
-                    </span>
-                    <div className="plt">
-                      <h3>{plug.title || plug.name || plug.id}</h3>
-                      {plug.description && <p className="fine">{plug.description}</p>}
-                    </div>
-                  </div>
-                </section>
-              ))
-            ) : (
-              <section className="sg plug" aria-labelledby="sh-prn">
-                <div className="plh">
-                  <span className="plic" aria-hidden="true">
-                    ⎙
-                  </span>
-                  <div className="plt">
-                    <h3 id="sh-prn">Thermal printer</h3>
-                    <p className="fine">
-                      Prints the weekly slip, recipe cards and shopping lists on a receipt printer. Coming with the
-                      plugins API.
-                    </p>
-                  </div>
-                </div>
-              </section>
-            )}
+                <PluginPanel
+                  key={plug.id}
+                  plugin={plug}
+                  onUpdated={(next) =>
+                    setPlugins((current) => ({
+                      ...current,
+                      plugins: current.plugins.map((item) => (item.id === next.id ? next : item)),
+                    }))
+                  }
+                />
+              ))}
           </div>
         )}
       </div>

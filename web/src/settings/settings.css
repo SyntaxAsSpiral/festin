@@ -286,6 +286,54 @@ html[data-motion='off'] #sidebar,
   line-height: 1.2;
   color: var(--bb-tone-4);
 }
+#sidebar .pltg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--bb-tone-4);
+  white-space: nowrap;
+  cursor: pointer;
+}
+#sidebar .plug.on .pls {
+  color: var(--bb-green-frappe);
+}
+#sidebar .plb {
+  margin-top: 6px;
+  transition: opacity 0.2s;
+}
+#sidebar .plug:not(.on) .plb {
+  opacity: 0.5;
+}
+#sidebar .plug input[type='checkbox'] {
+  display: inline-block;
+  width: auto;
+  margin: 0;
+  accent-color: var(--bb-rose);
+}
+#sidebar .pck2 {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px !important;
+  color: var(--bb-ink) !important;
+  cursor: pointer;
+}
+#sidebar .plug button {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--bb-tone-3);
+  color: var(--bb-ink);
+  cursor: pointer;
+}
+#sidebar .plug .fine.mo {
+  font-style: italic;
+  color: var(--bb-ink);
+  border: 1px dotted var(--bb-rose);
+  padding: 4px 8px;
+}
 #sidebar .status-line {
   margin: 8px 20px 0;
   font: italic 13px / 1.35 var(--bb-font);

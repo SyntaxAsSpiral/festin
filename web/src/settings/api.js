@@ -1,4 +1,5 @@
 import { CONTEXT_LANES, draftFromSettings, readSaveResult, settingsSaveBody } from './form.js'
+import { readPluginSaveResult } from './plugins.js'
 
 async function readJson(res) {
   const type = res.headers.get('content-type') || ''
@@ -97,10 +98,7 @@ export async function saveContextLane(lane, text, expectedUpdatedAt) {
   return { ok: true, conflict: false, error: null, body }
 }
 
-/**
- * Plugin list from GET /api/plugins when the other worker has shipped it.
- * Until then the UI shows a Printer placeholder.
- */
+/** Plugin list from GET /api/plugins. */
 export async function fetchPlugins() {
   const res = await fetch('/api/plugins', { headers: { Accept: 'application/json' } })
   if (res.status === 404) return { status: 'missing', plugins: [] }
@@ -108,4 +106,27 @@ export async function fetchPlugins() {
   if (!res.ok) return { status: 'error', plugins: [], error: (body && body.error) || String(res.status) }
   const list = Array.isArray(body?.plugins) ? body.plugins : Array.isArray(body) ? body : []
   return { status: 'ok', plugins: list }
+}
+
+export async function putPlugin(pluginId, body) {
+  const res = await fetch('/api/plugins/' + encodeURIComponent(pluginId), {
+    method: 'PUT',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const payload = await readJson(res)
+  return readPluginSaveResult(res.status, payload)
+}
+
+export async function callPluginAction(pluginId, action, body = {}) {
+  const res = await fetch('/api/plugins/' + encodeURIComponent(pluginId) + '/' + encodeURIComponent(action), {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const payload = await readJson(res)
+  if (!res.ok) {
+    return { ok: false, error: (payload && payload.error) || 'Action failed (' + res.status + ').', body: payload }
+  }
+  return { ok: true, error: null, body: payload }
 }
