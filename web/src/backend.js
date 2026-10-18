@@ -25,6 +25,12 @@ export function liveState() {
   return liveBody
 }
 
+// Read the kitchen again after it changed (a chat turn, a new chat).
+export function reloadLiveState() {
+  liveBody = null
+  return liveState()
+}
+
 function nameFromFamily(body) {
   const family = body?.state?.settings?.family
   const text = typeof family === 'string' ? family.trim() : ''
