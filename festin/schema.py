@@ -164,8 +164,26 @@ def _version_1(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_2(conn: sqlite3.Connection) -> None:
+    """Reserved for the sessions bead. No-op on this branch."""
+
+
+def _version_3(conn: sqlite3.Connection) -> None:
+    """Core weather location fields. Geocode fills label/lat/lon/timezone on save."""
+    conn.executescript(
+        """
+        ALTER TABLE settings ADD COLUMN weather_location TEXT NOT NULL DEFAULT '';
+        ALTER TABLE settings ADD COLUMN weather_label TEXT NOT NULL DEFAULT '';
+        ALTER TABLE settings ADD COLUMN weather_latitude REAL;
+        ALTER TABLE settings ADD COLUMN weather_longitude REAL;
+        ALTER TABLE settings ADD COLUMN weather_timezone TEXT NOT NULL DEFAULT '';
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
-MIGRATIONS = (_version_1,)
+# v2 is reserved for sessions; this branch keeps a no-op so weather lands at v3.
+MIGRATIONS = (_version_1, _version_2, _version_3)
 
 SCHEMA_VERSION = len(MIGRATIONS)
 
