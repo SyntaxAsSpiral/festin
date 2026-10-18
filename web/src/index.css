@@ -227,7 +227,7 @@ kbd {
   min-height: 0;
   overflow: auto;
   padding: var(--stage-pt) var(--stage-px) var(--stage-pb);
-  background: var(--bb-tone-1);
+  background: var(--bb-paper);
 }
 .placeholder h1 {
   font-weight: 400;
