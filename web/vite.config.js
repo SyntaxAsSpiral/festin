@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 // Settings and plugins talk to the Festin server on :8879 (this bead).
 // Both reject a write whose Origin is not their own host, so the proxy rewrites it.
 const LIVE = 'http://127.0.0.1:8876'
-const FESTIN = 'http://127.0.0.1:8879'
+const FESTIN = 'http://127.0.0.1:8886'
 
 function rewriteOrigin(target) {
   return (proxy) => proxy.on('proxyReq', (req) => req.getHeader('origin') && req.setHeader('origin', target))
