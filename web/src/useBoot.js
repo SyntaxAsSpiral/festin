@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { DEFAULT_TABLE_NAME, fetchTableName } from './table.js'
+import { bootKitchen, DEFAULT_TABLE_NAME } from './backend.js'
 
 const RETRY_MS = 8000
 
@@ -11,18 +11,21 @@ export function useBoot() {
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
   useEffect(() => {
-    const ac = new AbortController()
-    fetchTableName(ac.signal).then(
-      (name) => {
-        setTableName(name)
+    let gone = false
+    bootKitchen().then(
+      ({ tableName }) => {
+        if (gone) return
+        setTableName(tableName)
         setPhase('ready')
       },
-      (err) => {
-        if (ac.signal.aborted || err?.name === 'AbortError') return
+      () => {
+        if (gone) return
         setPhase('trouble')
       },
     )
-    return () => ac.abort()
+    return () => {
+      gone = true
+    }
   }, [attempt])
 
   useEffect(() => {
