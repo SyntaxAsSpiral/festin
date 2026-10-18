@@ -12,14 +12,17 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert SCHEMA_VERSION == 6
+    assert SCHEMA_VERSION == 7
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "sessions" in tables
     assert "kitchen_log_events" in tables
-    assert "plugin_settings" not in tables
+    assert "plugin_settings" in tables
+    assert "slips" in tables
     week_columns = {row["name"] for row in conn.execute("PRAGMA table_info(weeks)")}
     assert "weather_json" in week_columns
+    plugin_columns = {row["name"] for row in conn.execute("PRAGMA table_info(plugin_settings)")}
+    assert plugin_columns == {"plugin_id", "enabled", "settings_json", "updated_at"}
     session_columns = {row["name"] for row in conn.execute("PRAGMA table_info(sessions)")}
     assert session_columns == {
         "id", "chat_id", "turn_json", "pane", "surface", "draft", "created_at", "updated_at",
@@ -63,6 +66,21 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.close()
 
 
+def test_v5_database_gains_plugin_tables_at_v7(tmp_path):
+    conn = connect(tmp_path / "store.sqlite")
+    for step in MIGRATIONS[:5]:
+        step(conn)
+    conn.execute("PRAGMA user_version = 5")
+    conn.commit()
+    apply(conn)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 7
+    tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    assert "kitchen_log_events" in tables
+    assert "plugin_settings" in tables
+    assert "slips" in tables
+    conn.close()
+
+
 def test_v4_adds_chat_created_at_on_existing_rows(tmp_path):
     conn = connect(tmp_path / "store.sqlite")
     for step in MIGRATIONS[:3]:
@@ -97,7 +115,7 @@ def test_v6_adds_log_events_and_week_weather(tmp_path):
     assert "weather_json" not in {row["name"] for row in conn.execute("PRAGMA table_info(weeks)")}
 
     apply(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 6
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     assert "weather_json" in {row["name"] for row in conn.execute("PRAGMA table_info(weeks)")}
     assert conn.execute("SELECT weather_json FROM weeks WHERE start_date = '2026-04-18'").fetchone()[0] is None
     kinds = conn.execute(

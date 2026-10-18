@@ -12,7 +12,11 @@
             pkgs.nodejs_22
             (pkgs.python3.withPackages (ps: [ ps.pytest ps.pillow ]))
             pkgs.sqlite
+            pkgs.liberation_ttf
           ];
+          shellHook = ''
+            export FESTIN_FONT_DIR="${pkgs.liberation_ttf}/share/fonts/truetype"
+          '';
         };
       });
     };

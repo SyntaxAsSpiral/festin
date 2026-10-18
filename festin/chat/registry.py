@@ -1,4 +1,8 @@
-"""Named tool handlers for the chat turn. Plugins register extras here later."""
+"""Named tool handlers for the chat turn.
+
+Plugins add tools with register_tool and opening text with
+register_opening_contributor. They do not keep a second registry.
+"""
 
 from __future__ import annotations
 

@@ -1,0 +1,106 @@
+[
+  {
+    "id": "top-harvest",
+    "slot": "top",
+    "file": "3.jpg",
+    "description": "Peppers, squash, garlic, tomato, cauliflower and basil heaped together; late-summer/autumn harvest."
+  },
+  {
+    "id": "top-salad",
+    "slot": "top",
+    "file": "top-spring.jpg",
+    "description": "Salad bowl, oil cruet, radishes, cucumber, green beans; spring."
+  },
+  {
+    "id": "top-pasta",
+    "slot": "top",
+    "file": "top-summer.jpg",
+    "description": "Bowl of tagliatelle with basil, pasta nests, tomatoes, a wedge of parmesan; summer."
+  },
+  {
+    "id": "top-soup",
+    "slot": "top",
+    "file": "top-winter.jpg",
+    "description": "Lidded tureen, bowl of stew, carrots, leeks, onions; winter."
+  },
+  {
+    "id": "bottom-harvest",
+    "slot": "bottom",
+    "file": "1.jpg",
+    "description": "Peppers, squash, garlic, cabbage, onion and rosemary; autumn."
+  },
+  {
+    "id": "bottom-cake",
+    "slot": "bottom",
+    "file": "bottom-spring.jpg",
+    "description": "Layer cake on a footed stand with berries and flowers; spring."
+  },
+  {
+    "id": "bottom-pie",
+    "slot": "bottom",
+    "file": "bottom-summer.jpg",
+    "description": "Lattice cherry pie with a tartlet and cherries; summer."
+  },
+  {
+    "id": "bottom-bread",
+    "slot": "bottom",
+    "file": "bottom-winter.jpg",
+    "description": "Round loaves, a braided loaf and a wheat sheaf on a cloth; winter, hearth."
+  },
+  {
+    "id": "header-scroll",
+    "slot": "header",
+    "file": "header.jpg",
+    "flat_edge": "none",
+    "description": "Mirrored engraved scroll and vine ornament; any season, classic."
+  },
+  {
+    "id": "header-rose",
+    "slot": "header",
+    "file": "header-spring.jpg",
+    "flat_edge": "none",
+    "description": "Mirrored rose sprigs; spring."
+  },
+  {
+    "id": "header-wheat",
+    "slot": "header",
+    "file": "header-summer.jpg",
+    "flat_edge": "bottom",
+    "description": "Mirrored wheat sheaves over loaves; summer harvest."
+  },
+  {
+    "id": "header-rosemary",
+    "slot": "header",
+    "file": "header-winter.jpg",
+    "flat_edge": "bottom",
+    "description": "Paired rosemary bushes; winter."
+  },
+  {
+    "id": "pantry-bay",
+    "slot": "pantry",
+    "file": "pantry-header-autumn.jpg",
+    "flat_edge": "none",
+    "description": "Paired bay sprigs; autumn."
+  },
+  {
+    "id": "pantry-rose",
+    "slot": "pantry",
+    "file": "pantry-header-spring.jpg",
+    "flat_edge": "none",
+    "description": "Small mirrored rose sprigs; spring."
+  },
+  {
+    "id": "pantry-wheat",
+    "slot": "pantry",
+    "file": "pantry-header-summer.jpg",
+    "flat_edge": "bottom",
+    "description": "Small wheat sheaves over loaves; summer."
+  },
+  {
+    "id": "pantry-rosemary",
+    "slot": "pantry",
+    "file": "pantry-header-winter.jpg",
+    "flat_edge": "bottom",
+    "description": "Paired rosemary sprigs; winter."
+  }
+]
