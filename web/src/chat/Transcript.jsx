@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { useReducedMotion } from '../useReducedMotion.js'
+import { InkReply } from './InkReply.jsx'
 import { renderChatMarkdown } from './markdown.js'
 import { traceLine } from './turn.js'
 
@@ -64,14 +66,14 @@ function Markdown({ text }) {
   return <div className="markdown-body" dangerouslySetInnerHTML={{ __html: renderChatMarkdown(text) }} />
 }
 
-export function Message({ message, live }) {
+export function Message({ message, live, body }) {
   const { role, content, photos, trace, stopped } = message
   return (
     <div className={'msg ' + (role === 'user' ? 'msg-you' : 'msg-babette') + (live ? ' msg-live' : '')}>
       {role === 'assistant' && stopped && <small className="stopped">Stopped</small>}
       {role === 'assistant' && <Trace steps={trace} open={live} />}
       {role === 'assistant' ? (
-        content && <Markdown text={content} />
+        body || (content && <Markdown text={content} />)
       ) : (
         <p>
           <Linked text={typeof content === 'string' ? content : ''} />
@@ -87,14 +89,15 @@ export function Message({ message, live }) {
 export function Transcript({ messages, turn }) {
   const end = useRef(null)
   const navigate = useNavigate()
+  const reduced = useReducedMotion()
   const sentId = turn.sent?.submissionId
   const stored = sentId && messages.some((m) => m.submission_id === sentId)
   const live = turn.phase === 'thinking' || turn.phase === 'revealing' || turn.phase === 'settled' || turn.phase === 'failed'
-  const shown = turn.text.slice(0, Math.floor(turn.shown))
+  const shownCount = Math.floor(turn.shown)
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' })
-  }, [messages.length, shown.length, turn.phase])
+  }, [messages.length, shownCount, turn.phase])
 
   // Recipe links inside rendered Markdown route in-app instead of reloading.
   function onClick(event) {
@@ -114,7 +117,11 @@ export function Transcript({ messages, turn }) {
       {live && turn.sent && !stored && <Message message={{ role: 'user', content: turn.sent.text }} />}
       {turn.phase === 'thinking' && <p className="progress">{traceLine(turn.trace) || 'Babette is reading…'}</p>}
       {(turn.phase === 'revealing' || turn.phase === 'settled') && (
-        <Message message={{ role: 'assistant', content: shown, trace: turn.trace }} live />
+        <Message
+          message={{ role: 'assistant', content: '', trace: turn.trace }}
+          live
+          body={<InkReply text={turn.text} shown={shownCount} plain={reduced} />}
+        />
       )}
       <div ref={end} />
     </div>

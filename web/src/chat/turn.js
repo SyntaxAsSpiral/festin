@@ -1,5 +1,6 @@
 // Chat Turn machine (state-machine.md §2.4, §8.4 Turn). Pure: no fetch, no timers.
-import { advance } from './reveal.js'
+import { DEFAULT_TYPE_CPS } from './ink/constants.js'
+import { typistTick } from './ink/typist.js'
 
 export const initialTurn = {
   phase: 'idle', // idle | composing | thinking | revealing | settled | failed
@@ -7,8 +8,8 @@ export const initialTurn = {
   sent: null, // { text, photos, submissionId } of the message in flight, kept for retry
   requestId: null,
   text: '', // reply received so far
-  shown: 0, // characters revealed (fractional)
-  cps: 0, // reveal pace carried between frames
+  shown: 0, // characters the ghost typist has struck (integer)
+  nextKey: 0, // performance.now()-style time the next keystroke is due
   done: false, // server said done; settle when the buffer drains
   trace: null,
   error: null,
@@ -17,6 +18,10 @@ export const initialTurn = {
 
 function afterReply(state) {
   return state.draft.trim() ? 'composing' : 'idle'
+}
+
+function clearReveal(extra = {}) {
+  return { text: '', shown: 0, nextKey: 0, done: false, trace: null, requestId: null, ...extra }
 }
 
 export function turnReducer(state, action) {
@@ -38,7 +43,7 @@ export function turnReducer(state, action) {
     }
     case 'retry': {
       if (state.phase !== 'failed' || !state.sent) return state
-      return { ...state, phase: 'thinking', attempt: state.attempt + 1, error: null, text: '', shown: 0, done: false, trace: null, requestId: null }
+      return { ...state, phase: 'thinking', attempt: state.attempt + 1, error: null, ...clearReveal() }
     }
     case 'dismiss': {
       if (state.phase !== 'failed') return state
@@ -50,14 +55,28 @@ export function turnReducer(state, action) {
       return onEvent(state, action.event)
     case 'tick': {
       if (state.phase !== 'revealing') return state
-      const { shown, cps } = advance(state.shown, state.text.length, action.dt, state.cps)
-      if (state.done && shown >= state.text.length) return { ...state, shown, cps, phase: 'settled' }
-      return { ...state, shown, cps }
+      // Reduced motion: show everything received, no typist animation.
+      if (action.instant) {
+        const shown = state.text.length
+        if (state.done && shown >= state.text.length) return { ...state, shown, phase: 'settled' }
+        return { ...state, shown }
+      }
+      const cps = action.cps ?? DEFAULT_TYPE_CPS
+      const now = action.now ?? 0
+      const typed = typistTick(
+        { lit: state.shown, nextKey: state.nextKey, cps, rng: action.rng },
+        { received: state.text.length, text: state.text, now },
+      )
+      const shown = typed.lit
+      if (state.done && shown >= state.text.length) {
+        return { ...state, shown, nextKey: typed.nextKey, phase: 'settled' }
+      }
+      return { ...state, shown, nextKey: typed.nextKey }
     }
     case 'absorbed': {
       // The settled reply is now in the reloaded transcript.
       if (state.phase !== 'settled') return state
-      return { ...state, phase: afterReply(state), sent: null, text: '', shown: 0, done: false, trace: null, requestId: null }
+      return { ...state, phase: afterReply(state), sent: null, ...clearReveal() }
     }
     default:
       return state
@@ -74,11 +93,13 @@ function onEvent(state, event) {
       return { ...state, text, phase: 'revealing' }
     }
     case 'reset':
-      return { ...state, text: '', shown: 0 }
+      return { ...state, text: '', shown: 0, nextKey: 0 }
     case 'trace':
       return { ...state, trace: event.trace ?? null }
     case 'done':
-      if (state.phase === 'thinking' || state.shown >= state.text.length) return { ...state, done: true, shown: state.text.length, phase: 'settled' }
+      if (state.phase === 'thinking' || state.shown >= state.text.length) {
+        return { ...state, done: true, shown: state.text.length, phase: 'settled' }
+      }
       return { ...state, done: true }
     case 'stopped':
       return { ...state, done: true, shown: state.text.length, phase: 'settled' }

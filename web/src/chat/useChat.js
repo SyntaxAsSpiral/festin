@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { liveState, reloadLiveState } from '../backend.js'
+import { prefersReducedMotion } from '../useReducedMotion.js'
+import { readWritingSpeed } from './ink/speed.js'
 import { newChat, sendChat, stopChat } from './stream.js'
 import { initialTurn, turnReducer } from './turn.js'
 
@@ -55,14 +57,13 @@ export function useChat(context = null) {
 
   useEffect(() => saveDraft(turn.draft), [turn.draft])
 
-  // Reveal runs on animation frames only while there is text to show.
+  // Ghost typist runs on animation frames while there is text to show.
   const revealing = turn.phase === 'revealing'
   useEffect(() => {
     if (!revealing) return undefined
-    let last = performance.now()
     let frame = requestAnimationFrame(function tick(now) {
-      dispatch({ type: 'tick', dt: now - last })
-      last = now
+      const instant = prefersReducedMotion()
+      dispatch({ type: 'tick', now, cps: readWritingSpeed(), instant })
       frame = requestAnimationFrame(tick)
     })
     return () => cancelAnimationFrame(frame)
