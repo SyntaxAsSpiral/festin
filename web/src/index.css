@@ -272,20 +272,6 @@ kbd {
   background: repeating-conic-gradient(var(--bb-ink) 0% 25%, transparent 0% 50%) 0 0 / 2px 2px;
 }
 
-.chatslot {
-  grid-area: chat;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  min-height: 0;
-  border-left: 1px solid var(--bb-tone-2);
-  background: var(--bb-paper);
-  writing-mode: vertical-rl;
-  font-style: italic;
-  color: var(--bb-ink);
-}
-
 @media (min-width: 901px) and (max-width: 1100px) {
   .app { --frieze-open: 124px; --frieze: 124px; --chat: 48px; }
 }
@@ -314,13 +300,6 @@ kbd {
       "chat chat";
   }
   .main { border-right: 0; }
-  .chatslot {
-    writing-mode: horizontal-tb;
-    justify-content: flex-start;
-    padding: 0 14px;
-    border-left: 0;
-    border-top: 1px solid var(--bb-ink);
-  }
 }
 @media (max-width: 560px) {
   .app {

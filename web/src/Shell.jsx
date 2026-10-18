@@ -5,6 +5,14 @@ import { transition } from './motion.js'
 import { tabFromPath, TABS } from './tabs.js'
 import { Placeholder } from './Placeholder.jsx'
 import { useReducedMotion } from './useReducedMotion.js'
+import Surface, { SurfaceProvider, useSurface } from './chat/Surface.jsx'
+
+const LOOK = {
+  meals: "this week's meals",
+  recipes: 'the recipe box',
+  notes: 'your notes',
+  chats: 'your past chats',
+}
 
 function typingTarget(el) {
   if (!el || typeof el.closest !== 'function') return false
@@ -34,7 +42,33 @@ function FullscreenButton() {
   )
 }
 
+function Gear() {
+  const { tuck } = useSurface()
+  return (
+    <button
+      type="button"
+      className="ic"
+      id="gear"
+      aria-label="Settings"
+      title="Settings"
+      onClick={() => {
+        if (window.matchMedia('(max-width: 900px)').matches) tuck()
+      }}
+    >
+      ⚙
+    </button>
+  )
+}
+
 export function Shell({ boot }) {
+  return (
+    <SurfaceProvider>
+      <ShellFrame boot={boot} />
+    </SurfaceProvider>
+  )
+}
+
+function ShellFrame({ boot }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const tab = tabFromPath(pathname)
@@ -95,7 +129,7 @@ export function Shell({ boot }) {
             </svg>
           </button>
           <FullscreenButton />
-          <button type="button" className="ic" id="gear" aria-label="Settings" title="Settings">⚙</button>
+          <Gear />
         </header>
         <div className="stage">
           <Routes>
@@ -111,9 +145,9 @@ export function Shell({ boot }) {
           </Routes>
         </div>
       </div>
-      <aside className="chatslot" aria-label="Chat">
-        <p>Babette</p>
-      </aside>
+      <Surface peekLine="" lookingAt={LOOK[tab?.id] || 'the kitchen'} header={null}>
+        <div className="surface-hold" data-surface-hold="" />
+      </Surface>
     </div>
   )
 }
