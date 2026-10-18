@@ -5,7 +5,8 @@ import react from '@vitejs/plugin-react'
 // Both apps reject a write whose Origin is not their own host, so the proxy rewrites it.
 // More specific /api paths are registered first; connect matches in that order.
 const LIVE = 'http://127.0.0.1:8876'
-const FESTIN = 'http://127.0.0.1:8879'
+// FESTIN_PORT lets each worker point at its own dev kitchen (default 8879).
+const FESTIN = 'http://127.0.0.1:' + (process.env.FESTIN_PORT || '8879')
 
 function rewriteOrigin(target) {
   return (proxy) => proxy.on('proxyReq', (req) => req.getHeader('origin') && req.setHeader('origin', target))

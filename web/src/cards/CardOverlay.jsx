@@ -146,7 +146,7 @@ export function CardOverlay({ kind, id, onChanged }) {
   useEffect(() => {
     function onKey(event) {
       if (event.key !== 'Escape') return
-      if (event.target?.closest?.('.surface-panel')) return
+      if (event.target?.closest?.('.surface-panel, #sidebar')) return
       event.preventDefault()
       if (confirming) setConfirming(false)
       else if (phase === 'editing' && id !== 'new') setPhase('viewing')

@@ -26,9 +26,11 @@ export function useReducedMotion() {
     sync()
     mq.addEventListener('change', sync)
     window.addEventListener('storage', sync)
+    window.addEventListener('festin-motion', sync)
     return () => {
       mq.removeEventListener('change', sync)
       window.removeEventListener('storage', sync)
+      window.removeEventListener('festin-motion', sync)
     }
   }, [])
   return reduced
