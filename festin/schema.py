@@ -165,7 +165,21 @@ def _version_1(conn: sqlite3.Connection) -> None:
 
 
 def _version_2(conn: sqlite3.Connection) -> None:
-    """Reserved for the sessions bead. No-op on this branch."""
+    """One row per device. A live turn locks that row's chat, not the process."""
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS sessions (
+            id TEXT PRIMARY KEY,
+            chat_id TEXT,
+            turn_json TEXT,
+            pane TEXT,
+            surface TEXT CHECK (surface IS NULL OR surface IN ('tucked', 'peek', 'full')),
+            draft TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        """
+    )
 
 
 def _version_3(conn: sqlite3.Connection) -> None:
@@ -182,7 +196,6 @@ def _version_3(conn: sqlite3.Connection) -> None:
 
 
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
-# v2 is reserved for sessions; this branch keeps a no-op so weather lands at v3.
 MIGRATIONS = (_version_1, _version_2, _version_3)
 
 SCHEMA_VERSION = len(MIGRATIONS)

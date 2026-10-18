@@ -15,8 +15,12 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     assert SCHEMA_VERSION == 3
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
-    assert "sessions" not in tables
+    assert "sessions" in tables
     assert "plugin_settings" not in tables
+    session_columns = {row["name"] for row in conn.execute("PRAGMA table_info(sessions)")}
+    assert session_columns == {
+        "id", "chat_id", "turn_json", "pane", "surface", "draft", "created_at", "updated_at",
+    }
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(settings)")}
     assert columns == {
         "id",
