@@ -3,8 +3,8 @@
 Plans are nights on real dates, plus a week row for the slip. The week row's
 start_date is the plan file's own first day (live files are Saturdays). A
 later change to the configured start day regroups those dates; it does not
-move a dinner. Recipe ids are text with no numeric ceiling: live ids already
-pass CBK-9999, and the catalog counter is a plain integer.
+move a dinner. Recipe ids are text. The live parser accepts at most four
+digits; this counter is a plain integer, so CBK-10000 is a legal id.
 
 Sessions, plugin settings, and the weather cache are here so the other
 backend beads have a place to write. This module does not fill them.
