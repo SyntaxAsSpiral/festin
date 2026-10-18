@@ -135,11 +135,47 @@ def _table_name(family) -> str:
 def _import_settings(conn: sqlite3.Connection, settings: dict) -> None:
     if not isinstance(settings, dict):
         raise ValueError("settings must be an object")
-    dinner = " ".join(str(settings.get("dinner_hour") or "17:30").split())
+    dinner = " ".join(str(settings.get("dinner_hour") or "17:30").split()) or "17:30"
+    weather = settings.get("weather") if isinstance(settings.get("weather"), dict) else {}
+    location = " ".join(str(weather.get("location") or "").split())
+    if location:
+        label = " ".join(str(weather.get("label") or "").split()) or location
+        latitude = _optional_float(weather.get("latitude"))
+        longitude = _optional_float(weather.get("longitude"))
+        timezone_name = str(weather.get("timezone") or "").strip()
+    else:
+        label = ""
+        latitude = None
+        longitude = None
+        timezone_name = ""
     conn.execute(
-        "UPDATE settings SET table_name = ?, dinner_hour = ? WHERE id = 1",
-        (_table_name(settings.get("family")), dinner or "17:30"),
+        """
+        UPDATE settings SET
+            table_name = ?,
+            dinner_hour = ?,
+            weather_location = ?,
+            weather_label = ?,
+            weather_latitude = ?,
+            weather_longitude = ?,
+            weather_timezone = ?
+        WHERE id = 1
+        """,
+        (
+            _table_name(settings.get("family")),
+            dinner,
+            location,
+            label,
+            latitude,
+            longitude,
+            timezone_name,
+        ),
     )
+
+
+def _optional_float(value):
+    if value is None or value == "":
+        return None
+    return float(value)
 
 
 def _text(value):

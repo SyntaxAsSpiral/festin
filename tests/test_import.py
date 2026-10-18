@@ -176,6 +176,43 @@ def test_table_name_appends_table(tmp_path):
     conn.close()
 
 
+def test_import_carries_weather_and_dinner_hour(tmp_path):
+    settings = {
+        "family": "Babette's",
+        "dinner_hour": "18:45",
+        "weather": {
+            "location": "83835",
+            "label": "Hayden, Idaho, United States",
+            "latitude": 47.76602,
+            "longitude": -116.78658,
+            "timezone": "America/Los_Angeles",
+        },
+    }
+    root = write_copy(tmp_path / "live", settings=settings)
+    db = tmp_path / "store.sqlite"
+    import_directory(root, db)
+    conn = connect(db)
+    row = conn.execute(
+        """
+        SELECT table_name, dinner_hour, weather_location, weather_label,
+               weather_latitude, weather_longitude, weather_timezone
+        FROM settings WHERE id = 1
+        """
+    ).fetchone()
+    assert row["table_name"] == "Babette's Table"
+    assert row["dinner_hour"] == "18:45"
+    assert row["weather_location"] == "83835"
+    assert row["weather_label"] == "Hayden, Idaho, United States"
+    assert row["weather_latitude"] == 47.76602
+    assert row["weather_longitude"] == -116.78658
+    assert row["weather_timezone"] == "America/Los_Angeles"
+    first = dump(db)
+    conn.close()
+
+    import_directory(root, db)
+    assert dump(db) == first
+
+
 def test_template_plan_is_skipped(tmp_path):
     root = write_copy(tmp_path / "live", template=True)
     db = tmp_path / "store.sqlite"
@@ -279,10 +316,23 @@ def _assert_live_plans(conn):
             assert night["title"] == day["title"]
             assert night["recipe_id"] == (day["recipe"] or None)
 
-    stored = conn.execute("SELECT table_name, dinner_hour, week_start_day FROM settings").fetchone()
+    stored = conn.execute(
+        """
+        SELECT table_name, dinner_hour, week_start_day,
+               weather_location, weather_label, weather_latitude,
+               weather_longitude, weather_timezone
+        FROM settings
+        """
+    ).fetchone()
     assert stored["table_name"] == state["settings"]["family"] + " Table"
     assert stored["dinner_hour"] == state["settings"]["dinner_hour"]
     assert stored["week_start_day"] == "sat"
+    live_weather = state["settings"]["weather"]
+    assert stored["weather_location"] == live_weather["location"]
+    assert stored["weather_label"] == live_weather["label"]
+    assert stored["weather_latitude"] == live_weather["latitude"]
+    assert stored["weather_longitude"] == live_weather["longitude"]
+    assert stored["weather_timezone"] == live_weather["timezone"]
 
 
 def _assert_live_notes(conn):

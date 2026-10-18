@@ -164,8 +164,39 @@ def _version_1(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_2(conn: sqlite3.Connection) -> None:
+    """One row per device. A live turn locks that row's chat, not the process."""
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS sessions (
+            id TEXT PRIMARY KEY,
+            chat_id TEXT,
+            turn_json TEXT,
+            pane TEXT,
+            surface TEXT CHECK (surface IS NULL OR surface IN ('tucked', 'peek', 'full')),
+            draft TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        """
+    )
+
+
+def _version_3(conn: sqlite3.Connection) -> None:
+    """Core weather location fields. Geocode fills label/lat/lon/timezone on save."""
+    conn.executescript(
+        """
+        ALTER TABLE settings ADD COLUMN weather_location TEXT NOT NULL DEFAULT '';
+        ALTER TABLE settings ADD COLUMN weather_label TEXT NOT NULL DEFAULT '';
+        ALTER TABLE settings ADD COLUMN weather_latitude REAL;
+        ALTER TABLE settings ADD COLUMN weather_longitude REAL;
+        ALTER TABLE settings ADD COLUMN weather_timezone TEXT NOT NULL DEFAULT '';
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
-MIGRATIONS = (_version_1,)
+MIGRATIONS = (_version_1, _version_2, _version_3)
 
 SCHEMA_VERSION = len(MIGRATIONS)
 
