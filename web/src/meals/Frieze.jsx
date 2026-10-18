@@ -108,16 +108,20 @@ export function Frieze() {
       drag.current = e.clientY
       moved.current = false
       hover.current = true
-      try {
-        fr.setPointerCapture(e.pointerId)
-      } catch {
-        /* ignore */
-      }
     }
     const onMove = (e) => {
       if (drag.current == null) return
       const dy = drag.current - e.clientY
-      if (Math.abs(dy) > 2) moved.current = true
+      // Capture only once it is really a drag: capturing on press would send the
+      // release (and so the click) to the frieze instead of the dish tapped.
+      if (Math.abs(dy) > 2 && !moved.current) {
+        moved.current = true
+        try {
+          fr.setPointerCapture(e.pointerId)
+        } catch {
+          /* ignore */
+        }
+      }
       off.current += dy
       drag.current = e.clientY
     }
