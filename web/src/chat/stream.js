@@ -1,4 +1,5 @@
-// Chat transport. Talks to the live kitchen until the Festin backend serves chat.
+// Chat transport: this device's chat on the Festin backend.
+import { readJson } from '../backend.js'
 
 async function postJson(path, body, signal) {
   const res = await fetch(path, {
@@ -68,6 +69,29 @@ export function stopChat({ requestId, submissionId }) {
   return postJson('/api/stop', { request_id: requestId, submission_id: submissionId })
 }
 
-export function newChat(expectedChatId) {
-  return postJson('/api/new-chat', { expected_chat_id: expectedChatId })
+// A fresh chat for this device; the backend files the previous one into Chats.
+export function newChat() {
+  return postJson('/api/chats', {})
+}
+
+function hostOf(url) {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return ''
+  }
+}
+
+// What the chat needs: this device's chat (from its session), its messages, and
+// the model for the header. A device with no chat yet gets one on its first message.
+export async function loadKitchenChat() {
+  const [session, settings] = await Promise.all([readJson('/api/session'), readJson('/api/settings')])
+  const chatId = session?.chat_id || null
+  const chat = chatId ? await readJson('/api/chats/' + encodeURIComponent(chatId)).catch(() => null) : null
+  return {
+    chatId,
+    messages: chat?.messages || [],
+    model: settings?.model?.name || '',
+    host: hostOf(settings?.model?.baseUrl || ''),
+  }
 }

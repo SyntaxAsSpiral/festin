@@ -10,19 +10,11 @@ function targetFor(url) {
 }
 
 describe('dev proxy', () => {
-  it('keeps chat on the live kitchen and sends the card api to Festin', () => {
-    expect(targetFor('/api/chat')).toBe('http://127.0.0.1:8876')
-    expect(targetFor('/api/stop')).toBe('http://127.0.0.1:8876')
-    expect(targetFor('/api/new-chat')).toBe('http://127.0.0.1:8876')
-    expect(targetFor('/api/state')).toBe('http://127.0.0.1:8876')
+  it('sends every api call, chat included, to Festin; scans and photos still come from live', () => {
+    for (const url of ['/api/chat', '/api/stop', '/api/chats', '/api/chats/abc', '/api/recipes', '/api/notes/n', '/api/plans/2026-10-17', '/api/session', '/api/settings']) {
+      expect(targetFor(url)).toBe('http://127.0.0.1:8879')
+    }
     expect(targetFor('/cards/x.jpg')).toBe('http://127.0.0.1:8876')
     expect(targetFor('/photos/x.jpg')).toBe('http://127.0.0.1:8876')
-    expect(targetFor('/api/chats')).toBe('http://127.0.0.1:8879')
-    expect(targetFor('/api/chats/abc')).toBe('http://127.0.0.1:8879')
-    expect(targetFor('/api/recipes')).toBe('http://127.0.0.1:8879')
-    expect(targetFor('/api/notes/n')).toBe('http://127.0.0.1:8879')
-    expect(targetFor('/api/plans/2026-10-17')).toBe('http://127.0.0.1:8879')
-    expect(targetFor('/api/session')).toBe('http://127.0.0.1:8879')
-    expect(targetFor('/api/settings')).toBe('http://127.0.0.1:8879')
   })
 })

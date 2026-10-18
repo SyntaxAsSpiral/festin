@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import { liveState, reloadLiveState } from '../backend.js'
-import { newChat, sendChat, stopChat } from './stream.js'
+import { loadKitchenChat, newChat, sendChat, stopChat } from './stream.js'
 import { initialTurn, turnReducer } from './turn.js'
 
 const DRAFT_KEY = 'festin.draft'
@@ -27,15 +26,7 @@ function startTurn() {
   return { ...initialTurn, draft, phase: draft.trim() ? 'composing' : 'idle' }
 }
 
-function hostOf(url) {
-  try {
-    return new URL(url).hostname
-  } catch {
-    return ''
-  }
-}
-
-// The chat on the live kitchen: transcript, turn machine, and the actions on it.
+// This device's chat: transcript, turn machine, and the actions on it.
 export function useChat(context = null) {
   const [kitchen, setKitchen] = useState(null)
   const [turn, dispatch] = useReducer(turnReducer, undefined, startTurn)
@@ -46,7 +37,7 @@ export function useChat(context = null) {
 
   useEffect(() => {
     let gone = false
-    liveState().then((body) => !gone && setKitchen(body), () => {})
+    loadKitchenChat().then((next) => !gone && setKitchen(next), () => {})
     return () => {
       gone = true
       flight.current?.abort()
@@ -69,7 +60,7 @@ export function useChat(context = null) {
   }, [revealing])
 
   // A finished or failed turn reloads the transcript; a settled reply then hands over to it.
-  const reload = useCallback(() => reloadLiveState().then(setKitchen), [])
+  const reload = useCallback(() => loadKitchenChat().then(setKitchen), [])
   useEffect(() => {
     if (turn.phase === 'settled') reload().then(() => dispatch({ type: 'absorbed' }), () => dispatch({ type: 'absorbed' }))
     else if (turn.phase === 'failed') reload().catch(() => {})
@@ -77,16 +68,16 @@ export function useChat(context = null) {
 
   const run = useCallback(
     (sent) => {
-      const state = kitchen?.state
       const control = new AbortController()
       flight.current = control
+      // The backend picks the household's current week; a device with no chat
+      // yet gets one with its first message.
       const body = {
         text: sent.text,
-        week: kitchen?.thisWeek,
         photos: sent.photos,
         plan: null,
-        chat_id: state?.activeChatId,
-        expected_messages: state?.messages?.length,
+        chat_id: kitchen?.chatId || undefined,
+        expected_messages: kitchen?.chatId ? kitchen.messages.length : undefined,
         submission_id: sent.submissionId,
         context: looking.current,
       }
@@ -125,16 +116,15 @@ export function useChat(context = null) {
 
   const startNewChat = useCallback(async () => {
     if (turn.phase !== 'idle' && turn.phase !== 'composing') return
-    await newChat(kitchen?.state?.activeChatId)
+    await newChat()
     await reload()
-  }, [turn.phase, kitchen, reload])
+  }, [turn.phase, reload])
 
-  const settings = kitchen?.state?.settings
   return {
     ready: Boolean(kitchen),
-    messages: kitchen?.state?.messages || [],
-    model: settings?.model || '',
-    host: hostOf(settings?.base_url),
+    messages: kitchen?.messages || [],
+    model: kitchen?.model || '',
+    host: kitchen?.host || '',
     turn,
     type: (draft) => dispatch({ type: 'type', draft }),
     send,
