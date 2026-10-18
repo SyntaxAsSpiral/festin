@@ -1,6 +1,7 @@
 """Shared core settings: table name, weather location, dinner hour, week start.
 
-'today' and week bounds use the stored weather timezone, not the server's.
+'today' and week bounds use the stored weather timezone. With no location yet,
+or with 'auto' / an unknown zone, they fall back to the server's local zone.
 """
 
 from __future__ import annotations
@@ -151,11 +152,11 @@ def _local_instant(conn: sqlite3.Connection, now: datetime | None) -> datetime:
         instant = instant.replace(tzinfo=timezone.utc)
     zone_name = (get_settings(conn).get("weather") or {}).get("timezone") or ""
     if not zone_name or zone_name == "auto":
-        return instant.astimezone(timezone.utc)
+        return instant.astimezone()
     try:
         return instant.astimezone(ZoneInfo(zone_name))
     except ZoneInfoNotFoundError:
-        return instant.astimezone(timezone.utc)
+        return instant.astimezone()
 
 
 def _clean_table_name(value) -> str:

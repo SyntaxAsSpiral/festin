@@ -97,9 +97,9 @@ def test_today_follows_stored_timezone(conn):
     instant = datetime(2026, 10, 19, 1, 30, tzinfo=timezone.utc)
     assert core.today(conn, now=instant) == date(2026, 10, 18)
 
-    # Same instant with no timezone stored falls back to UTC.
+    # No stored zone: fall back to the server's local zone.
     core.update_settings(conn, weather_location="")
-    assert core.today(conn, now=instant) == date(2026, 10, 19)
+    assert core.today(conn, now=instant) == instant.astimezone().date()
 
 
 def test_week_bounds_from_configured_start(conn):
