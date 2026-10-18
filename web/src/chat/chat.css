@@ -86,3 +86,32 @@
   background: none;
   padding: 0 4px;
 }
+.markdown-body > :first-child { margin-top: 0; }
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol { margin: 0 0 8px; }
+.markdown-body ul,
+.markdown-body ol { padding-left: 1.3em; }
+.markdown-body code {
+  font-size: 0.9em;
+  background: color-mix(in srgb, var(--bb-tone-1) 50%, var(--bb-paper));
+  padding: 0 3px;
+}
+.chat-trace {
+  margin: 0 0 4px;
+  color: var(--bb-tone-4);
+  font-size: 0.9em;
+}
+.chat-trace summary { cursor: pointer; font-style: italic; }
+.trace-thinking,
+.trace-tool {
+  white-space: pre-wrap;
+  margin: 2px 0 6px 1em;
+  max-height: 12em;
+  overflow: auto;
+}
+.stopped {
+  display: block;
+  color: var(--bb-rose);
+  font-style: italic;
+}

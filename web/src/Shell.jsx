@@ -6,6 +6,8 @@ import { tabFromPath, TABS } from './tabs.js'
 import { Placeholder } from './Placeholder.jsx'
 import { useReducedMotion } from './useReducedMotion.js'
 import Surface, { SurfaceProvider, useSurface } from './chat/Surface.jsx'
+import { ChatPanel, chatHeader, peekLine } from './chat/ChatPanel.jsx'
+import { useChat } from './chat/useChat.js'
 
 const LOOK = {
   meals: "this week's meals",
@@ -72,6 +74,7 @@ function ShellFrame({ boot }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const tab = tabFromPath(pathname)
+  const chat = useChat()
   const trouble = boot.phase === 'trouble'
   const meals = tab?.id === 'meals'
   const reduced = useReducedMotion()
@@ -145,8 +148,8 @@ function ShellFrame({ boot }) {
           </Routes>
         </div>
       </div>
-      <Surface peekLine="" lookingAt={LOOK[tab?.id] || 'the kitchen'} header={null}>
-        <div className="surface-hold" data-surface-hold="" />
+      <Surface peekLine={peekLine(chat)} lookingAt={LOOK[tab?.id] || 'the kitchen'} header={chatHeader(chat)}>
+        <ChatPanel chat={chat} />
       </Surface>
     </div>
   )

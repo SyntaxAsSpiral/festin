@@ -122,3 +122,21 @@ describe('NDJSON reader', () => {
     expect(seen).toEqual(['start', 'delta', 'done'])
   })
 })
+
+describe('chat markdown', async () => {
+  const { renderChatMarkdown } = await import('./markdown.js')
+  it('renders lists and bold, drops raw HTML', () => {
+    const html = renderChatMarkdown('- **Leeks** first\n- then <b>x</b>')
+    expect(html).toContain('<strong>Leeks</strong>')
+    expect(html).toContain('<li>')
+    expect(html).not.toContain('<b>')
+  })
+  it('links recipe ids, but not inside code or links', () => {
+    expect(renderChatMarkdown('Try CBK-0012.')).toContain('data-recipe="CBK-0012"')
+    expect(renderChatMarkdown('`CBK-0012`')).not.toContain('data-recipe')
+    expect(renderChatMarkdown('[see CBK-0012](/x)')).not.toContain('data-recipe')
+  })
+  it('refuses unsafe links', () => {
+    expect(renderChatMarkdown('[x](javascript:alert(1))')).not.toContain('href="javascript')
+  })
+})
