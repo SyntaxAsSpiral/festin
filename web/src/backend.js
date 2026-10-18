@@ -1,8 +1,7 @@
 export const DEFAULT_TABLE_NAME = "Babette's Table"
 
-// Boot reader. 'live' is the kitchen on :8876. Switch to 'festin' when
-// this repo's backend serves GET /api/settings ({ tableName }).
-const KITCHEN = 'live'
+// Boot reader. 'festin' is this repo's kitchen (dev proxy → :8879).
+const KITCHEN = 'festin'
 
 let liveBody = null
 

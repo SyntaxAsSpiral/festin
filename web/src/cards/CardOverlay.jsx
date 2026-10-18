@@ -3,7 +3,7 @@ import { useAnimate } from 'motion/react'
 import { useLocation, useNavigate } from 'react-router'
 import { transition } from '../motion.js'
 import { useReducedMotion } from '../useReducedMotion.js'
-import { KINDS, loadItems, notYet } from './kinds.js'
+import { KINDS, loadItems, loadOne, notYet } from './kinds.js'
 import { useLookingAt } from './looking.js'
 import { forgetOrigin, originRect } from './origin.js'
 import { ChatPage, NotePage, RecipePage } from './pages.jsx'
@@ -59,7 +59,14 @@ export function CardOverlay({ kind, id }) {
   useEffect(() => {
     if (id === 'new') return setItem(null)
     let gone = false
-    loadItems(kind).then((items) => !gone && setItem(items.find((it) => it.id === id) || null), () => !gone && setItem(null))
+    loadOne(kind, id)
+      .then((one) => !gone && setItem(one))
+      .catch(() =>
+        loadItems(kind).then(
+          (items) => !gone && setItem(items.find((it) => it.id === id) || null),
+          () => !gone && setItem(null),
+        ),
+      )
     return () => {
       gone = true
     }

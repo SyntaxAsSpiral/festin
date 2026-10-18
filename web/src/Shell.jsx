@@ -10,6 +10,10 @@ import { useReducedMotion } from './useReducedMotion.js'
 import Surface, { SurfaceProvider, useSurface } from './chat/Surface.jsx'
 import { ChatPanel, chatHeader, peekLine } from './chat/ChatPanel.jsx'
 import { useChat } from './chat/useChat.js'
+import { Meals } from './meals/Meals.jsx'
+import { Frieze } from './meals/Frieze.jsx'
+import { fetchPlugins, printerIsOn } from './meals/plan.js'
+import './meals/meals.css'
 
 const LOOK = {
   meals: "this week's meals",
@@ -64,6 +68,46 @@ function Gear() {
   )
 }
 
+function PrintButton({ onMeals }) {
+  const [toast, setToast] = useState('')
+  useEffect(() => {
+    if (!toast) return undefined
+    const t = window.setTimeout(() => setToast(''), 3200)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  async function onPrint() {
+    if (!onMeals) {
+      setToast('Print the slip from Meals.')
+      return
+    }
+    const plugins = await fetchPlugins()
+    if (!printerIsOn(plugins)) {
+      setToast('The printer plugin is off.')
+      return
+    }
+    setToast('Sending the slip to the printer…')
+  }
+
+  return (
+    <>
+      <button type="button" className="ic" id="pr" aria-label="Print" title="Print" onClick={onPrint}>
+        <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+          <path d="M4 6V2h8v4" />
+          <rect x="1.5" y="6" width="13" height="6" rx="1" />
+          <path d="M4 10h8v4H4z" fill="var(--bb-paper)" />
+          <circle cx="12" cy="8" r=".6" fill="currentColor" stroke="none" />
+        </svg>
+      </button>
+      {toast ? (
+        <div className="print-toast" role="status">
+          {toast}
+        </div>
+      ) : null}
+    </>
+  )
+}
+
 export function Shell({ boot }) {
   return (
     <SurfaceProvider>
@@ -114,7 +158,7 @@ function ShellFrame({ boot }) {
           animate={{ x: meals ? '0%' : '-100%', opacity: meals ? 1 : 0.6 }}
           transition={transition(reduced, 'drawer')}
         >
-          <p className="slot-label">Frieze</p>
+          {meals ? <Frieze /> : <p className="slot-label">Frieze</p>}
         </motion.aside>
       </div>
       <div className="main">
@@ -127,14 +171,7 @@ function ShellFrame({ boot }) {
             ))}
           </nav>
           <span className="bar-gap" />
-          <button type="button" className="ic" id="pr" aria-label="Print" title="Print">
-            <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
-              <path d="M4 6V2h8v4" />
-              <rect x="1.5" y="6" width="13" height="6" rx="1" />
-              <path d="M4 10h8v4H4z" fill="var(--bb-paper)" />
-              <circle cx="12" cy="8" r=".6" fill="currentColor" stroke="none" />
-            </svg>
-          </button>
+          <PrintButton onMeals={meals} />
           <FullscreenButton />
           <Gear />
         </header>
@@ -142,7 +179,7 @@ function ShellFrame({ boot }) {
           <LookingContext.Provider value={setCard}>
           <Routes>
             <Route index element={<Navigate to="/meals" replace />} />
-            <Route path="meals" element={<Placeholder id="meals" />} />
+            <Route path="meals" element={<Meals />} />
             <Route path="recipes/*" element={<CardTab kind="recipes" />} />
             <Route path="notes/*" element={<CardTab kind="notes" />} />
             <Route path="chats/*" element={<CardTab kind="chats" />} />
