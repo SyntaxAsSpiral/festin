@@ -6,6 +6,8 @@ import json
 import sqlite3
 from datetime import date, datetime, timedelta, timezone
 
+from festin import log as kitchen_log
+from festin import settings as core_settings
 from festin.errors import StaleState
 from festin.schema import WEEKDAYS
 
@@ -100,6 +102,13 @@ def save_plan(conn: sqlite3.Connection, week_start: str, body: dict, *, now: dat
     else:
         raise ValueError("plates must be an object")
     stamp = _stamp(now)
+    # Snapshot the forecast known now. Imported weeks leave weather_json empty.
+    weather_json = None
+    if existing is not None and existing["weather_json"]:
+        weather_json = existing["weather_json"]
+    snapped = kitchen_log.snapshot_weather(core_settings.get_settings(conn))
+    if snapped:
+        weather_json = snapped
     # Replace the week and its nights.
     dates = [start + timedelta(days=i) for i in range(7)]
     iso_dates = [d.isoformat() for d in dates]
@@ -108,10 +117,10 @@ def save_plan(conn: sqlite3.Connection, week_start: str, body: dict, *, now: dat
     conn.execute("DELETE FROM weeks WHERE start_date = ?", (start.isoformat(),))
     conn.execute(
         """
-        INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at, weather_json)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (start.isoformat(), slip_title, notes, plates_json, stamp),
+        (start.isoformat(), slip_title, notes, plates_json, stamp, weather_json),
     )
     for slot in cleaned:
         conn.execute(

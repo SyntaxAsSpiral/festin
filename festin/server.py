@@ -18,6 +18,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 from festin import chats as chats_mod
+from festin import log as log_mod
 from festin import notes as notes_mod
 from festin import plans as plans_mod
 from festin import recipes as recipes_mod
@@ -120,6 +121,16 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/api/plans/"):
                 with self._db() as conn:
                     return self._send(200, plans_mod.get_plan(conn, _id_after(path, "/api/plans/")))
+            if path == "/api/log":
+                with self._db() as conn:
+                    return self._send(
+                        200,
+                        log_mod.list_log(
+                            conn,
+                            before=_q(query, "before") or None,
+                            limit=_limit(query),
+                        ),
+                    )
             return self._send(404, {"error": "Not found"})
         except (NotFound, KeyError) as exc:
             return self._send(404, {"error": str(exc) or "Not found"})
