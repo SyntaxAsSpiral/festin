@@ -1,7 +1,10 @@
-import { Fragment, useEffect, useRef } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { fetchPlugins } from '../meals/plan.js'
 import { useReducedMotion } from '../useReducedMotion.js'
 import { InkReply } from './InkReply.jsx'
+import { ListenControl } from './ListenControl.jsx'
+import { voiceIsOn } from './listen.js'
 import { renderChatMarkdown } from './markdown.js'
 import { traceLine } from './turn.js'
 
@@ -73,8 +76,10 @@ function Markdown({ text }) {
   return <div className="markdown-body" dangerouslySetInnerHTML={{ __html: renderChatMarkdown(text) }} />
 }
 
-export function Message({ message, live, body }) {
+export function Message({ message, live, body, voiceOn }) {
   const { role, content, photos, trace, stopped } = message
+  const showListen =
+    Boolean(voiceOn) && role === 'assistant' && !live && typeof content === 'string' && content.trim().length > 0
   return (
     <div className={'msg ' + (role === 'user' ? 'msg-you' : 'msg-babette') + (live ? ' msg-live' : '')}>
       {role === 'assistant' && stopped && <small className="stopped">Stopped</small>}
@@ -86,6 +91,7 @@ export function Message({ message, live, body }) {
           <Linked text={typeof content === 'string' ? content : ''} />
         </p>
       )}
+      {showListen ? <ListenControl text={content} /> : null}
       {(photos || []).map((src) => (
         <img key={src} className="msg-photo" src={src} alt="A dish shared in conversation" />
       ))}
@@ -97,10 +103,21 @@ export function Transcript({ messages, turn }) {
   const end = useRef(null)
   const navigate = useNavigate()
   const reduced = useReducedMotion()
+  const [voiceOn, setVoiceOn] = useState(false)
   const sentId = turn.sent?.submissionId
   const stored = sentId && messages.some((m) => m.submission_id === sentId)
   const live = turn.phase === 'thinking' || turn.phase === 'revealing' || turn.phase === 'settled' || turn.phase === 'failed'
   const shownCount = Math.floor(turn.shown)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchPlugins().then((plugins) => {
+      if (!cancelled) setVoiceOn(voiceIsOn(plugins))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [messages.length])
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' })
@@ -119,7 +136,7 @@ export function Transcript({ messages, turn }) {
       {messages
         .filter((m) => m.role === 'user' || m.role === 'assistant')
         .map((m, i) => (
-          <Message key={m.submission_id || i} message={m} />
+          <Message key={m.submission_id || i} message={m} voiceOn={voiceOn} />
         ))}
       {live && turn.sent && !stored && <Message message={{ role: 'user', content: turn.sent.text }} />}
       {/* One live reply from the first moment: trace steps seep in as they arrive
@@ -128,6 +145,7 @@ export function Transcript({ messages, turn }) {
         <Message
           message={{ role: 'assistant', content: '', trace: turn.trace }}
           live
+          voiceOn={voiceOn}
           body={
             turn.phase === 'thinking' ? (
               <p className="progress">{traceLine(turn.trace) || 'Babette is reading…'}</p>

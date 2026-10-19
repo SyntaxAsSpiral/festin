@@ -20,6 +20,35 @@
   text-align: right;
 }
 .msg-babette { color: var(--bb-sepia); }
+.listen-wrap {
+  margin: 6px 0 0;
+}
+.listen {
+  box-sizing: border-box;
+  height: var(--btn-h);
+  min-width: var(--btn-min-w);
+  padding: 0 var(--btn-px);
+  border: var(--btn-border);
+  border-radius: var(--btn-radius);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font: inherit;
+  font-size: 0.9em;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.listen:disabled { opacity: 0.45; cursor: default; }
+.listen:focus-visible { outline: 1px dashed var(--bb-rose); outline-offset: 2px; }
+.listen-icon { flex: none; }
+.listen-error {
+  margin: 4px 0 0;
+  color: var(--bb-rose);
+  font-size: 0.9em;
+}
 .msg-photo {
   display: block;
   max-width: 60%;
