@@ -100,25 +100,18 @@ function NightRow({ night, i, today, thisWeek, week, dinnerHour, recipesById, re
         aria-label={dayLabel(night.date) + ' recipe link'}
         autoComplete="off"
         spellCheck={false}
-        onChange={(e) => {
-          const raw = e.target.value
-          setEid(raw)
-          if (!raw.trim()) {
-            patchDays(i, { recipe: null })
-            return
-          }
-          const id = parseRecipeId(raw)
-          if (id) {
-            const hit = recipesById?.get(id)
-            patchDays(i, {
-              recipe: id,
-              title: night.title.trim() ? night.title : hit?.title || night.title,
-            })
-          }
+        // Type freely ("12", "cbk 12", "CBK-0012"); the link is made on leaving
+        // the field or Enter. Linking on every keystroke rewrote the field to
+        // CBK-#### before a number could be finished.
+        onChange={(e) => setEid(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur()
         }}
         onBlur={() => {
           const id = parseRecipeId(eid)
-          setEid(id || '')
+          // Not an ID: show the night's current link again rather than a blank
+          // field that no longer matches the slip.
+          setEid(id || (eid.trim() ? displayRecipeId(night.recipe) : ''))
           if (id) {
             const hit = recipesById?.get(id)
             patchDays(i, {

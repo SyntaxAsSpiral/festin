@@ -269,6 +269,9 @@
   color: var(--bb-tone-3);
   font-variant-numeric: tabular-nums;
 }
+.slip .row input.eid:focus {
+  color: var(--bb-ink);
+}
 .slip .row input.eid::placeholder {
   color: transparent;
 }
