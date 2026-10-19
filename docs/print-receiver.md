@@ -1,7 +1,8 @@
 # Print delivery
 
-Festin renders every slip as a 576-dot (80 mm) 1-bit PNG, then hands that file
-to your printer. Two delivery modes exist:
+Festin renders every slip as a 576-dot (80 mm) grayscale PNG, then hands that
+file to your printer. The gray stays in the file: the receiver or command
+dithers it to the printer's dots, so engravings and photos keep their tone. Two delivery modes exist:
 
 1. **Print receiver** — Festin POSTs the image to a small HTTP service; your
    receiver talks to the driver. Configured in Settings (URL + token).
@@ -60,7 +61,7 @@ Content-Type: application/json
 | `slip_id` | Same value as `job_id` today; kept for clarity. |
 | `source` | Always `festin` from this app. |
 | `sha256` | Hex digest of the decoded PNG. Reject the job if it does not match. |
-| `image` | Base64 PNG, 576 pixels wide, 1-bit (mode `1`) or grayscale (`L`). |
+| `image` | Base64 PNG, 576 pixels wide, grayscale (mode `L`). Dither it at the printer; do not threshold it. |
 
 `receiverUrl` in settings is the base only. Festin appends `/print`.
 
