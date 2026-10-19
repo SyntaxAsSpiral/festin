@@ -183,7 +183,10 @@ kbd {
   min-height: 0;
   border-right: 1px solid var(--bb-tone-2);
 }
+/* The bar stays above an open card, so the tabs and Print are always in reach. */
 .bar {
+  position: relative;
+  z-index: 31;
   display: flex;
   align-items: center;
   flex: none;

@@ -260,9 +260,11 @@
 
 /* The open card: a page laid over the tab */
 .card-layer {
+  /* Starts below the bar (tab height, its border, and the bar's padding and rule). */
+  --bar-h: calc(var(--tab-h) + 3px + 2 * var(--bar-py));
   position: fixed;
-  inset: 0;
-  z-index: 30; /* under the chat surface (36) */
+  inset: var(--bar-h) 0 0 0;
+  z-index: 30; /* under the bar (31) and the chat surface (36) */
   display: grid;
   place-items: center;
   --pad-top: 18px;
@@ -276,7 +278,7 @@
   display: flex;
   flex-direction: column;
   width: min(44rem, 100%);
-  max-height: calc(100dvh - var(--pad-top) - var(--pad-bottom));
+  max-height: calc(100dvh - var(--bar-h) - var(--pad-top) - var(--pad-bottom));
   background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
   background-blend-mode: multiply;
   border: 1px solid var(--bb-tone-2);
