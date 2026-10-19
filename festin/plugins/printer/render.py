@@ -203,7 +203,14 @@ def wrap(text, font, max_w):
     return lines or [""]
 
 
-def render(days, week_text, output, closing_quote="Pour les dames de la maison.", plates=None):
+def render(
+    days,
+    week_text,
+    output,
+    closing_quote="Pour les dames de la maison.",
+    plates=None,
+    slip_title="Le Festin",
+):
     chosen = plates or {}
     top = plate_veg(PLATES / chosen.get("top", "3.jpg"))
     bot = plate_veg(PLATES / chosen.get("bottom", "1.jpg"))
@@ -222,7 +229,8 @@ def render(days, week_text, output, closing_quote="Pour les dames de la maison."
     font_dish = ImageFont.truetype(serif(), 45)
     font_close = ImageFont.truetype(serif_italic(), 39)
     max_text = inner_w - 8
-    title_lines = wrap("LE FESTIN", font_title, max_text)
+    heading = " ".join(str(slip_title or "").split()) or "Le Festin"
+    title_lines = wrap(heading.upper(), font_title, max_text)
     week_lines = wrap(week_text, font_week, max_text)
     close_lines = wrap(closing_quote, font_close, max_text)
 

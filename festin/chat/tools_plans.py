@@ -74,8 +74,6 @@ def validate_plan(plan: dict, rows: list[dict] | None = None, conn=None) -> dict
     result = {"weekStart": week, "days": clean, "notes": str(plan.get("notes", ""))}
     if plan.get("slipTitle"):
         result["slipTitle"] = str(plan["slipTitle"])
-    elif plan.get("slipQuote"):
-        result["slipTitle"] = str(plan["slipQuote"])
     return result
 
 
@@ -95,9 +93,11 @@ def propose_dinners(args: dict, ctx: Any) -> dict:
             + " Tell zk this save did not happen."
         )
     slip_title = ""
+    slip_quote = ""
     plates_json = None
     if existing:
         slip_title = existing["slip_title"] or ""
+        slip_quote = existing["slip_quote"] or ""
         plates_json = existing["plates_json"]
     if "slipTitle" in plan:
         slip_title = plan["slipTitle"]
@@ -110,10 +110,10 @@ def propose_dinners(args: dict, ctx: Any) -> dict:
     conn.execute("DELETE FROM weeks WHERE start_date = ?", (start,))
     conn.execute(
         """
-        INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO weeks (start_date, slip_title, slip_quote, notes, plates_json, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (start, slip_title, notes, plates_json, stamp),
+        (start, slip_title, slip_quote, notes, plates_json, stamp),
     )
     for index, slot in enumerate(plan["days"]):
         when = iso_dates[index]

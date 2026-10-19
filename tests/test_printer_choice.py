@@ -203,3 +203,72 @@ def test_accept_plates_unit_and_existing_named_band_stays_valid():
     assert printing.fixed_band({"band": "scroll"}) == "scroll"
     assert printing.fixed_band({"band": "babette"}) is None
     assert printing.configured_default({"band": "babette"}) == "scroll"
+
+
+def test_prepare_slip_quote_stored_and_default_when_absent(tmp_path):
+    server = _kitchen(tmp_path)
+    try:
+        conn = connect(server.db_path)
+        _enable(conn, band="babette")
+        ensure_chat(conn, "chat-1")
+        plans.save_plan(
+            conn,
+            SAT,
+            {"weekStart": SAT, "days": _days(), "slipTitle": "Autumn table"},
+        )
+        public = plans.get_plan(conn, SAT)
+        assert public["slipTitle"] == "Autumn table"
+        assert "slipQuote" not in public
+
+        empty = prepare_slip(
+            conn,
+            {"kind": "plan", "week_start": SAT, "print_request_id": "quote-0"},
+            data_dir=server.data_dir,
+            chat_id="chat-1",
+        )
+        assert printing.DEFAULT_SLIP_QUOTE in empty["rendered_text"]
+        assert "Autumn table" in empty["rendered_text"]
+        assert printing.stored_week_quote(conn, SAT) == ""
+
+        motto = "Que la table rassemble."
+        with_quote = prepare_slip(
+            conn,
+            {
+                "kind": "plan",
+                "week_start": SAT,
+                "quote": motto,
+                "print_request_id": "quote-1",
+            },
+            data_dir=server.data_dir,
+            chat_id="chat-1",
+        )
+        assert motto in with_quote["rendered_text"]
+        assert printing.stored_week_quote(conn, SAT) == motto
+        assert "slipQuote" not in plans.get_plan(conn, SAT)
+
+        # Plans save keeps the quote; title stays on-screen only.
+        plans.save_plan(
+            conn,
+            SAT,
+            {
+                "weekStart": SAT,
+                "days": _days(),
+                "slipTitle": "Winter hearth",
+                "expected_updated_at": plans.get_plan(conn, SAT)["updatedAt"],
+            },
+        )
+        assert plans.get_plan(conn, SAT)["slipTitle"] == "Winter hearth"
+        assert printing.stored_week_quote(conn, SAT) == motto
+
+        again = prepare_slip(
+            conn,
+            {"kind": "plan", "week_start": SAT, "print_request_id": "quote-2"},
+            data_dir=server.data_dir,
+            chat_id="chat-1",
+        )
+        assert motto in again["rendered_text"]
+        assert "Winter hearth" in again["rendered_text"]
+        conn.close()
+    finally:
+        server.shutdown()
+        server.server_close()

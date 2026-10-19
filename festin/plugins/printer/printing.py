@@ -18,6 +18,7 @@ from PIL import Image, ImageDraw, ImageFont
 from festin.plugins.printer import render as feast
 
 DEFAULT_SLIP_QUOTE = "Pour les dames de la maison."
+DEFAULT_SLIP_TITLE = "Le Festin"
 SLOTS = ("top", "bottom", "header", "pantry")
 PLATES = feast.PLATES
 # Stride and offset differ so a new week does not slide every slot together.
@@ -216,7 +217,10 @@ def store_week_plates(conn: sqlite3.Connection, week: str, plates: dict, *, now=
     row = conn.execute("SELECT start_date FROM weeks WHERE start_date = ?", (week,)).fetchone()
     if row is None:
         conn.execute(
-            "INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at) VALUES (?, '', '', ?, ?)",
+            """
+            INSERT INTO weeks (start_date, slip_title, slip_quote, notes, plates_json, updated_at)
+            VALUES (?, '', '', '', ?, ?)
+            """,
             (week, payload, stamp),
         )
     else:
@@ -225,6 +229,34 @@ def store_week_plates(conn: sqlite3.Connection, week: str, plates: dict, *, now=
             (payload, stamp, week),
         )
     return plates
+
+
+def stored_week_quote(conn: sqlite3.Connection, week: str) -> str:
+    row = conn.execute("SELECT slip_quote FROM weeks WHERE start_date = ?", (week,)).fetchone()
+    if row is None or not row["slip_quote"]:
+        return ""
+    return str(row["slip_quote"])
+
+
+def store_week_quote(conn: sqlite3.Connection, week: str, quote: str, *, now=None) -> str:
+    """Persist the printed closing quote on the week (insert a blank week when missing)."""
+    cleaned = " ".join(str(quote or "").split())
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") if now is None else now
+    row = conn.execute("SELECT start_date FROM weeks WHERE start_date = ?", (week,)).fetchone()
+    if row is None:
+        conn.execute(
+            """
+            INSERT INTO weeks (start_date, slip_title, slip_quote, notes, plates_json, updated_at)
+            VALUES (?, '', ?, '', NULL, ?)
+            """,
+            (week, cleaned, stamp),
+        )
+    else:
+        conn.execute(
+            "UPDATE weeks SET slip_quote = ?, updated_at = ? WHERE start_date = ?",
+            (cleaned, stamp, week),
+        )
+    return cleaned
 
 
 def plate_tool_listing() -> str:
@@ -417,12 +449,14 @@ def dinner(plan, recipes, output):
     week_text = "the week of " + date.fromisoformat(plan["weekStart"]).strftime("%-d %B")
     plates = resolve_print_plates(plan.get("slipPlates"), plan["weekStart"])
     files = {slot: plate_file(slot, plates[slot]) for slot in SLOTS}
+    slip_title = " ".join(str(plan.get("slipTitle") or "").split()) or DEFAULT_SLIP_TITLE
     feast.render(
         days,
         week_text,
         output,
         plan.get("slipQuote") or DEFAULT_SLIP_QUOTE,
         files,
+        slip_title=slip_title,
     )
 
 

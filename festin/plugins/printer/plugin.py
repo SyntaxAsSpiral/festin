@@ -16,7 +16,9 @@ _PREPARE = (
     "Dinner slips keep their own weekly plates either way. For plans pass kind=plan and "
     "week_start; matching draft takes precedence over saved plan. When the week has no "
     "plates stored, pass plates {top,bottom,header,pantry} chosen for the season and "
-    "dinners. For notes pass kind=note with the title and the text to print; both are "
+    "dinners. Pass quote for a short French closing line on the dinner slip (printed "
+    "only; default Pour les dames de la maison.). For notes pass kind=note with the "
+    "title and the text to print; both are "
     "required. To print a saved note, read it and write a print-friendly title and text "
     "yourself. Saved notes are not written for reading and do not need to be. You may "
     "use **bold** sparingly. Pass note_id only to take that note’s band when you omit "
@@ -105,6 +107,14 @@ class PrinterPlugin:
                         "Note slips only. Omit to use a saved note’s band, or this week’s pantry plate."
                     ),
                     "plates": printing.plates_property(),
+                    "quote": {
+                        "type": "string",
+                        "description": (
+                            "Dinner-slip closing line for kind=plan. Short French motto "
+                            "or sign-off, printed only. Omit to keep a stored quote, or "
+                            "the default Pour les dames de la maison."
+                        ),
+                    },
                 },
             },
             _prepare,
