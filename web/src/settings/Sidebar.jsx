@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useSurface } from '../chat/Surface.jsx'
+import { DEFAULT_TYPE_CPS, TYPE_CPS_MAX, TYPE_CPS_MIN } from '../chat/ink/constants.js'
+import { readWritingSpeed, writeWritingSpeed } from '../chat/ink/speed.js'
 import { MOTION_KEY, prefersReducedMotion } from '../useReducedMotion.js'
 import {
   fetchContextLanes,
@@ -90,6 +92,7 @@ export function SettingsSidebar() {
   const [keyText, setKeyText] = useState('')
   const [busy, setBusy] = useState(false)
   const [motionOn, setMotionOn] = useState(() => !prefersReducedMotion())
+  const [writingSpeed, setWritingSpeed] = useState(() => readWritingSpeed())
 
   const setDraft = useCallback((next) => {
     const value = typeof next === 'function' ? next(draftRef.current) : next
@@ -137,6 +140,17 @@ export function SettingsSidebar() {
     window.addEventListener('storage', sync)
     return () => {
       window.removeEventListener('festin-motion', sync)
+      window.removeEventListener('storage', sync)
+    }
+  }, [])
+
+  useEffect(() => {
+    const sync = () => setWritingSpeed(readWritingSpeed())
+    sync()
+    window.addEventListener('festin-writing-speed', sync)
+    window.addEventListener('storage', sync)
+    return () => {
+      window.removeEventListener('festin-writing-speed', sync)
       window.removeEventListener('storage', sync)
     }
   }, [])
@@ -522,6 +536,25 @@ export function SettingsSidebar() {
             }}
           />{' '}
           Motion
+        </label>
+        <label className="sbf-speed" title="Babette's writing speed for live replies">
+          Writing speed
+          <input
+            type="range"
+            min={TYPE_CPS_MIN}
+            max={TYPE_CPS_MAX}
+            step={1}
+            value={writingSpeed}
+            aria-valuemin={TYPE_CPS_MIN}
+            aria-valuemax={TYPE_CPS_MAX}
+            aria-valuenow={writingSpeed}
+            aria-valuetext={writingSpeed + ' characters per second'}
+            onChange={(e) => {
+              const next = writeWritingSpeed(e.target.value)
+              setWritingSpeed(next)
+            }}
+          />
+          <span className="sbf-speed-val">{writingSpeed || DEFAULT_TYPE_CPS}</span>
         </label>
         <span className="sp" />
         <small>

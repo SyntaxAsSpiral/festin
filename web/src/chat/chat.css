@@ -19,7 +19,7 @@
   font-style: italic;
   text-align: right;
 }
-.msg-babette { color: var(--bb-ink); }
+.msg-babette { color: var(--bb-sepia); }
 .msg-photo {
   display: block;
   max-width: 60%;

@@ -6,9 +6,13 @@ import { initialTurn, traceLine, turnReducer } from './turn.js'
 const run = (state, ...actions) => actions.reduce(turnReducer, state)
 const ev = (event) => ({ type: 'event', event })
 const sending = () => run(initialTurn, { type: 'type', draft: 'hi' }, { type: 'send', text: 'hi', submissionId: 's1' })
-// Drain the reveal with 16 ms frames.
-function drain(state) {
-  for (let i = 0; i < 10000 && state.phase === 'revealing'; i++) state = turnReducer(state, { type: 'tick', dt: 16 })
+// Drain the ghost typist with 16 ms frames at a fixed writing speed.
+function drain(state, cps = 55) {
+  let now = 1
+  for (let i = 0; i < 100000 && state.phase === 'revealing'; i++) {
+    state = turnReducer(state, { type: 'tick', now, cps, rng: () => 0.5 })
+    now += 16
+  }
   return state
 }
 
@@ -64,8 +68,25 @@ describe('turn machine', () => {
     expect(Math.floor(s.shown)).toBe('Leek and gruyère.'.length)
   })
   it('reset clears what was received and shown', () => {
-    const s = run(sending(), ev({ type: 'delta', text: 'wrong' }), { type: 'tick', dt: 50 }, ev({ type: 'reset' }))
+    const s = run(sending(), ev({ type: 'delta', text: 'wrong' }), { type: 'tick', now: 20, cps: 55, rng: () => 0.5 }, ev({ type: 'reset' }))
     expect(s).toMatchObject({ text: '', shown: 0, phase: 'revealing' })
+  })
+
+  it('the ghost typist paces the reveal and settles when caught up', () => {
+    let s = run(sending(), ev({ type: 'delta', text: 'Hi.' }), ev({ type: 'done' }))
+    expect(s.phase).toBe('revealing')
+    s = turnReducer(s, { type: 'tick', now: 10, cps: 55, rng: () => 0.5 })
+    expect(s.shown).toBe(1)
+    s = drain(s)
+    expect(s.phase).toBe('settled')
+    expect(s.shown).toBe(3)
+  })
+
+  it('reduced motion shows the whole buffer at once', () => {
+    let s = run(sending(), ev({ type: 'delta', text: 'Plain.' }), ev({ type: 'done' }))
+    s = turnReducer(s, { type: 'tick', instant: true })
+    expect(s.phase).toBe('settled')
+    expect(s.shown).toBe(6)
   })
   it('stopped settles at once with what arrived', () => {
     const s = run(sending(), ev({ type: 'delta', text: 'half a reply' }), ev({ type: 'stopped' }))

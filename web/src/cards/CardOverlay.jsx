@@ -15,6 +15,7 @@ import {
   saveRecipe,
   toItem,
 } from './kinds.js'
+import { copyText } from '../secure.js'
 import { useLookingAt } from './looking.js'
 import { forgetOrigin, originRect } from './origin.js'
 import { ChatPage, NotePage, RecipeEditor, RecipePage } from './pages.jsx'
@@ -201,7 +202,7 @@ export function CardOverlay({ kind, id, onChanged }) {
         {(raw || creating) && (
           <div className="card-foot">
             {kind === 'recipes' && raw && !editingRecipe && (
-              <button type="button" className="card-id" title="Copy the ID" onClick={() => navigator.clipboard?.writeText(raw.id).then(() => setNote('Copied ' + raw.id), () => {})}>
+              <button type="button" className="card-id" title="Copy the ID" onClick={() => copyText(raw.id).then(() => setNote('Copied ' + raw.id), () => setNote('Select the ID to copy it: ' + raw.id))}>
                 {raw.id}
               </button>
             )}

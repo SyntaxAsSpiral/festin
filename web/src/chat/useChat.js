@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { prefersReducedMotion } from '../useReducedMotion.js'
+import { readWritingSpeed } from './ink/speed.js'
+import { newId } from '../secure.js'
 import { loadKitchenChat, newChat, sendChat, stopChat } from './stream.js'
 import { initialTurn, turnReducer } from './turn.js'
 
@@ -46,14 +49,13 @@ export function useChat(context = null) {
 
   useEffect(() => saveDraft(turn.draft), [turn.draft])
 
-  // Reveal runs on animation frames only while there is text to show.
+  // Ghost typist runs on animation frames while there is text to show.
   const revealing = turn.phase === 'revealing'
   useEffect(() => {
     if (!revealing) return undefined
-    let last = performance.now()
     let frame = requestAnimationFrame(function tick(now) {
-      dispatch({ type: 'tick', dt: now - last })
-      last = now
+      const instant = prefersReducedMotion()
+      dispatch({ type: 'tick', now, cps: readWritingSpeed(), instant })
       frame = requestAnimationFrame(tick)
     })
     return () => cancelAnimationFrame(frame)
@@ -105,7 +107,7 @@ export function useChat(context = null) {
     (photos = []) => {
       const text = turn.draft.trim()
       if (!text && !photos.length) return
-      dispatch({ type: 'send', text: text || 'Let’s talk about this dish.', photos, submissionId: crypto.randomUUID() })
+      dispatch({ type: 'send', text: text || 'Let’s talk about this dish.', photos, submissionId: newId() })
     },
     [turn.draft],
   )

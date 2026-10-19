@@ -254,6 +254,19 @@ html[data-motion='off'] #sidebar,
 #sidebar .sbf input[type='checkbox'] {
   accent-color: var(--bb-rose);
 }
+#sidebar .sbf-speed {
+  gap: 8px;
+}
+#sidebar .sbf-speed input[type='range'] {
+  width: 88px;
+  accent-color: var(--bb-rose);
+  vertical-align: middle;
+}
+#sidebar .sbf-speed-val {
+  min-width: 1.6em;
+  font-variant-numeric: tabular-nums;
+  color: var(--bb-tone-4);
+}
 
 #sidebar .phint {
   margin: 12px 0 0;
