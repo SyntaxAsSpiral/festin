@@ -5,13 +5,9 @@ import { CATEGORY_LABELS, plateFor } from '../cards/kinds.js'
 import { fetchLogPage } from './plan.js'
 import { formatLogWhen } from './logDate.js'
 
-const WEEK_TONE = [
-  ['#8b5365', '#8b5365'],
-  ['#a58a53', '#a58a53'],
-  ['#68634f', '#68634f'],
-  ['#7f805d', '#7f805d'],
-  ['#9f8b83', '#9f8b83'],
-]
+// Weeks are one entry type, so one accent: rosewater, unless the tattva plugin
+// colours the week (tokens in index.css).
+const WEEK_TONE = ['var(--acc-rosewater)', 'var(--acc-rosewater-glyph)']
 
 function formatRange(weekStart) {
   const a = new Date(weekStart + 'T12:00:00')
@@ -125,7 +121,7 @@ export function KitchenLog() {
       <ol className="tlo">
         {shown.map((entry, index) => {
           if (entry.kind === 'week') {
-            const tone = WEEK_TONE[index % WEEK_TONE.length]
+            const tone = WEEK_TONE
             const open = openWeek === entry.weekStart
             const dinners = (entry.nights || []).filter((n) => n.title || n.recipe).length
             const wx = weatherLine(entry.weather)

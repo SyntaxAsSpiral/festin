@@ -816,3 +816,27 @@ html[data-motion='off'] .kl .tcar {
     }
   }
 }
+
+/* Kitchen Log accents: one sepia-washed Frappé accent per entry type (tokens in
+   index.css). The dot takes the glyph tone, the small-caps kind the ink tone.
+   Tattva's five (red, yellow, blue, mauve, lavender) stay free for weeks. */
+.kl .tl-r { --ec-ink: var(--acc-peach-ink); --ec-glyph: var(--acc-peach-glyph); }
+.kl .tl-r.tl-a { --ec-ink: var(--acc-green-ink); --ec-glyph: var(--acc-green-glyph); }
+.kl .tl-c { --ec-ink: var(--acc-teal-ink); --ec-glyph: var(--acc-teal-glyph); }
+.kl .tl-chat { --ec-ink: var(--acc-pink-ink); --ec-glyph: var(--acc-pink-glyph); }
+.kl .tl-r > .tdot,
+.kl .tl-c > .tdot { border-color: var(--ec-glyph); }
+.kl .tl-a > .tdot { background: var(--ec-glyph); }
+.kl .tl-chat > .tdot {
+  border: 1.5px solid var(--ec-glyph);
+  border-radius: 50%;
+  width: 8px;
+  height: 8px;
+  left: -18.5px;
+}
+.kl .tn.tl-r small,
+.kl .tn.tl-c small,
+.kl .tn.tl-chat small,
+.kl .tl-r small,
+.kl .tl-c small,
+.kl .tl-chat small { color: var(--ec-ink); }
