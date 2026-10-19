@@ -619,7 +619,9 @@ button.danger {
 [data-color]:not([data-color='none']) { --note-tint: color-mix(in srgb, var(--note-swatch) 22%, transparent); }
 /* A note card's top edge wears a doily: a lace band in the note's accent with a
    scalloped hem and eyelets, a thin gilt line along it, laid over the card's top. */
-.nswatch[data-color]:not([data-color='none']) {
+/* An uncoloured note gets the same doily in light grey. */
+.nswatch[data-color='none'] { --note-swatch: var(--bb-tone-2); --note-gild: var(--bb-tone-3); }
+.nswatch[data-color] {
   --lace: 12px;
   height: 15px;
   /* Hung from the card's top edge, over its border, as if laid across it. */
