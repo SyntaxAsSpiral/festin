@@ -8,6 +8,7 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 .lsearch {
   flex: 1;
@@ -23,10 +24,129 @@
 .lsearch::placeholder { color: var(--bb-tone-3); font-style: italic; }
 .lsearch:focus { outline: none; border-bottom-color: var(--bb-rose); }
 .lnew { white-space: nowrap; }
+.lbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
 .llayout { display: flex; }
-.llayout button { padding: 2px 9px; }
+.llayout button,
+.lsort-btn {
+  padding: 2px 9px;
+  background: transparent;
+  border: 1px solid var(--bb-tone-2);
+  color: var(--bb-tone-4);
+}
 .llayout button + button { border-left: 0; }
-.llayout button[aria-pressed='true'] { background: var(--bb-tone-1); color: var(--bb-ink); }
+.llayout button[aria-pressed='true'],
+.lsort-btn[aria-pressed='true'],
+.lsort-btn[aria-expanded='true'] {
+  background: var(--bb-tone-1);
+  color: var(--bb-ink);
+}
+
+/* One sort-and-filter icon; panel opens under it. Summary sits quiet beside search. */
+.lsort { position: relative; flex: none; }
+.lsort-btn { min-width: 2em; }
+.lsort-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  width: min(240px, calc(100vw - 24px));
+  padding: 12px 14px 14px;
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
+  border: 1px solid var(--bb-tone-2);
+  box-shadow: 0 12px 28px -18px color-mix(in srgb, var(--bb-ink) 50%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.lsort-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lsort-field legend {
+  padding: 0;
+  margin: 0 0 4px;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bb-tone-4);
+}
+.lsort-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  color: var(--bb-ink);
+  cursor: pointer;
+}
+.lsort-opt input { accent-color: var(--bb-rose); }
+.lsort-cat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bb-tone-4);
+}
+.lsort-cat select {
+  font: inherit;
+  font-size: 14.5px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--bb-ink);
+  background: var(--bb-paper);
+  border: 1px solid var(--bb-tone-2);
+  padding: 5px 8px;
+}
+.lsort-sum {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: min(280px, 40%);
+  min-width: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--bb-tone-4);
+  white-space: nowrap;
+}
+.lsort-sum > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lsort-clear {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--bb-tone-3);
+  padding: 0 4px;
+  font-size: 16px;
+  line-height: 1;
+}
+.lsort-clear:hover { color: var(--bb-ink); }
+
+@media (max-width: 560px) {
+  /* Phone: search + tools on one row; summary on the next, full width. */
+  .lsort-sum {
+    order: 3;
+    flex: 1 1 100%;
+    max-width: none;
+    margin-top: -2px;
+    padding: 0 2px 2px;
+  }
+  .lsearch { flex: 1 1 0; min-width: 0; }
+  .lbar-tools { order: 2; }
+}
+
 .lstate {
   color: var(--bb-tone-4);
   font-style: italic;
