@@ -76,8 +76,21 @@ function Markdown({ text }) {
   return <div className="markdown-body" dangerouslySetInnerHTML={{ __html: renderChatMarkdown(text) }} />
 }
 
+function FileChip({ file }) {
+  const name = file?.name || 'document'
+  const href = file?.path
+  if (href) {
+    return (
+      <a className="msg-file" href={href} target="_blank" rel="noreferrer">
+        {name}
+      </a>
+    )
+  }
+  return <span className="msg-file">{name}</span>
+}
+
 export function Message({ message, live, body, voiceOn }) {
-  const { role, content, photos, trace, stopped } = message
+  const { role, content, photos, files, trace, stopped } = message
   const showListen =
     Boolean(voiceOn) && role === 'assistant' && !live && typeof content === 'string' && content.trim().length > 0
   return (
@@ -94,6 +107,9 @@ export function Message({ message, live, body, voiceOn }) {
       {showListen ? <ListenControl text={content} /> : null}
       {(photos || []).map((src) => (
         <img key={src} className="msg-photo" src={src} alt="A dish shared in conversation" />
+      ))}
+      {(files || []).map((file, i) => (
+        <FileChip key={(file && file.path) || i} file={file} />
       ))}
     </div>
   )
@@ -138,7 +154,16 @@ export function Transcript({ messages, turn }) {
         .map((m, i) => (
           <Message key={m.submission_id || i} message={m} voiceOn={voiceOn} />
         ))}
-      {live && turn.sent && !stored && <Message message={{ role: 'user', content: turn.sent.text }} />}
+      {live && turn.sent && !stored && (
+        <Message
+          message={{
+            role: 'user',
+            content: turn.sent.text,
+            photos: turn.sent.photos,
+            files: turn.sent.files,
+          }}
+        />
+      )}
       {/* One live reply from the first moment: trace steps seep in as they arrive
           while Babette thinks, then the text takes over the body. */}
       {(turn.phase === 'thinking' || turn.phase === 'revealing' || turn.phase === 'settled') && (

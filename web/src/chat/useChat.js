@@ -84,6 +84,7 @@ export function useChat(context = null) {
       const body = {
         text: sent.text,
         photos: sent.photos,
+        files: sent.files,
         plan: null,
         chat_id: kitchen?.chatId || undefined,
         expected_messages: kitchen?.chatId ? kitchen.messages.length : undefined,
@@ -111,10 +112,16 @@ export function useChat(context = null) {
   }, [turn.phase, turn.sent, turn.attempt, run])
 
   const send = useCallback(
-    (photos = []) => {
+    (photos = [], files = []) => {
       const text = turn.draft.trim()
-      if (!text && !photos.length) return
-      dispatch({ type: 'send', text: text || 'Let’s talk about this dish.', photos, submissionId: newId() })
+      if (!text && !photos.length && !files.length) return
+      dispatch({
+        type: 'send',
+        text: text || (files.length ? 'Please read the attached file.' : 'Let’s talk about this dish.'),
+        photos,
+        files,
+        submissionId: newId(),
+      })
     },
     [turn.draft],
   )

@@ -5,7 +5,7 @@ import { typistTick } from './ink/typist.js'
 export const initialTurn = {
   phase: 'idle', // idle | composing | thinking | revealing | settled | failed
   draft: '',
-  sent: null, // { text, photos, submissionId } of the message in flight, kept for retry
+  sent: null, // { text, photos, files, submissionId } of the message in flight, kept for retry
   requestId: null,
   text: '', // reply received so far
   shown: 0, // characters the ghost typist has struck (integer)
@@ -38,7 +38,12 @@ export function turnReducer(state, action) {
         phase: 'thinking',
         draft: '',
         attempt: state.attempt + 1,
-        sent: { text: action.text, photos: action.photos || [], submissionId: action.submissionId },
+        sent: {
+          text: action.text,
+          photos: action.photos || [],
+          files: action.files || [],
+          submissionId: action.submissionId,
+        },
       }
     }
     case 'retry': {

@@ -75,10 +75,11 @@ class KitchenServer(ThreadingHTTPServer):
     ):
         self.db_path = str(db_path)
         self.origins = tuple(origin.rstrip("/") for origin in (origins or ()) if origin)
-        # Kitchen files live beside the database: photos/ (chat and recipe photos) and
-        # cards/ (scans of the original recipe cards).
+        # Kitchen files live beside the database: photos/ (chat and recipe photos),
+        # files/ (chat text attachments), and cards/ (scans of the original recipe cards).
         self.data_dir = Path(db_path).resolve().parent
         self.photos_dir = Path(photos_dir) if photos_dir else self.data_dir / "photos"
+        self.files_dir = self.data_dir / "files"
         self.cards_dir = self.data_dir / "cards"
         self.now = lambda: datetime.now(timezone.utc)
         # Extra arguments for the chat engine (tests pass a fake model here).
@@ -173,6 +174,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path.startswith("/photos/"):
                 return self._send_file(self.server.photos_dir, path[len("/photos/"):])
+            if path.startswith("/files/"):
+                return self._send_file(self.server.files_dir, path[len("/files/"):])
             if path.startswith("/cards/"):
                 return self._send_file(self.server.cards_dir, path[len("/cards/"):])
             if path.startswith("/slips/"):
@@ -733,6 +736,7 @@ class Handler(BaseHTTPRequestHandler):
                     session_chat_id=chat_id,
                     data_dir=self.server.data_dir,
                     photos=body.get("photos") or [],
+                    files=body.get("files") or [],
                     retry=bool(body.get("retry")),
                     editor_plan=body.get("plan"),
                     expected_messages=body.get("expected_messages"),
@@ -797,8 +801,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def _read_body(self) -> dict:
         length = int(self.headers.get("Content-Length") or "0")
-        if length < 0 or length > BODY_LIMIT:
+        if length < 0:
             raise ValueError("Request too large or empty")
+        if length > BODY_LIMIT:
+            raise ValueError(
+                "Request too large. Keep the message under 57 MB "
+                "(documents plus up to four photos)."
+            )
         raw = self.rfile.read(length) if length else b""
         if not raw:
             raise ValueError("JSON object required")

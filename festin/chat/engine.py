@@ -26,6 +26,7 @@ from festin.chat.messages import (
     parse_week_start,
     resolve_looking_at,
 )
+from festin.chat.files import store_files
 from festin.chat.photos import store_photos
 from festin.chat.provider import complete as default_complete
 from festin.chat.provider import keep_for_model, reasoning_text, supports_images
@@ -45,6 +46,7 @@ def chat(
     session_chat_id,
     data_dir,
     photos=None,
+    files=None,
     retry=False,
     editor_plan=None,
     expected_messages=None,
@@ -121,6 +123,7 @@ def chat(
             "role": "user",
             "content": text,
             "photos": store_photos(photos or [], data_dir) if photos else [],
+            "files": store_files(files or [], data_dir) if files else [],
             "plan": editor_plan,
         }
         if submission_id:
