@@ -577,3 +577,21 @@ def test_looking_at_context_resolved_from_sqlite(db):
     looking = next(b for b in blocks if b.startswith("The cook is looking at:"))
     assert looking == "The cook is looking at:\n- tab: notes"
     assert "missing-note" not in looking
+
+
+def test_replayed_reply_carries_a_record_of_its_changes():
+    from festin.chat.messages import actions_record, model_message
+
+    trace = [
+        {"kind": "thinking", "text": "..."},
+        {"kind": "tool", "name": "search_cookbook", "args": {"query": "pho"}, "result": {"total": 1}},
+        {"kind": "tool", "name": "edit_recipe", "args": {"recipe_id": "CBK-0452"}, "result": {"status": "saved"}},
+        {"kind": "tool", "name": "keep_note", "args": {}, "result": {"error": "Too long."}},
+    ]
+    record = actions_record(trace)
+    assert "edit_recipe(recipe_id=CBK-0452) -> saved" in record
+    assert "keep_note() -> failed: Too long." in record
+    assert "search_cookbook" not in record
+    replayed = model_message({"role": "assistant", "content": "Done.", "trace": trace}, None, None)
+    assert replayed["content"].startswith("Done.") and "CBK-0452" in replayed["content"]
+    assert actions_record([{"kind": "tool", "name": "search_cookbook"}]) == ""

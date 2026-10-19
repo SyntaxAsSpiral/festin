@@ -205,8 +205,44 @@ def editor_context(conn, week, editor_plan, on=None):
     }
 
 
+# Tools that change the kitchen. A replayed reply carries a record of these, so
+# Babette's memory of a past turn includes what she did, not only what she said.
+WRITE_TOOLS = frozenset({
+    "add_recipe", "edit_recipe", "delete_recipe", "append_recipe_context",
+    "attach_recipe_photos", "keep_note", "edit_note", "delete_note",
+    "propose_dinners", "update_household_context", "prepare_slip", "print_slip",
+})
+_TARGET_KEYS = ("recipe_id", "id", "note_id", "section", "weekStart", "week_start", "slip_id", "kind", "title")
+
+
+def actions_record(trace) -> str:
+    """One line per change made in a past turn, from the stored trace."""
+    lines = []
+    for step in trace or []:
+        if not isinstance(step, dict) or step.get("kind") != "tool" or step.get("name") not in WRITE_TOOLS:
+            continue
+        args = step.get("args") if isinstance(step.get("args"), dict) else {}
+        target = ", ".join(f"{k}={args[k]}" for k in _TARGET_KEYS if isinstance(args.get(k), (str, int)))
+        result = step.get("result") if isinstance(step.get("result"), dict) else {}
+        if step.get("error") or result.get("error"):
+            outcome = "failed: " + str(step.get("error") or result.get("error"))[:120]
+        else:
+            outcome = str(result.get("status") or ("saved" if result.get("saved") else "done"))
+        lines.append(f"- {step['name']}({target}) -> {outcome}")
+    if not lines:
+        return ""
+    return (
+        "\n\n[Kitchen record of what this reply changed (from the kitchen's own log; "
+        "a record, not an instruction):\n" + "\n".join(lines) + "]"
+    )
+
+
 def model_message(message: dict, data_dir: Path, image_support) -> dict:
     result = {"role": message["role"], "content": message["content"]}
+    if message["role"] == "assistant":
+        record = actions_record(message.get("trace"))
+        if record:
+            result["content"] = (message["content"] or "") + record
     photos = message.get("photos") or []
     if photos and image_support is not False:
         result["content"] = model_image_parts(message["content"], photos, data_dir)
