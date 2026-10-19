@@ -144,8 +144,14 @@ export function printerFieldVisible(field, draft) {
   if (!field || typeof field !== 'object') return true
   const mode = draft?.deliveryMode ?? ''
   if (field.key === 'receiverUrl' || field.key === 'token') return mode === 'receiver'
-  if (field.key === 'printCommand') return mode === 'command'
   return true
+}
+
+/** True when the schema offers Print command (host set FESTIN_PRINT_COMMAND). */
+export function printCommandAvailable(schema) {
+  const field = Array.isArray(schema) ? schema.find((row) => row && row.key === 'deliveryMode') : null
+  const options = field && Array.isArray(field.enum) ? field.enum : []
+  return options.includes('command')
 }
 
 export function pluginIcon(plugin) {

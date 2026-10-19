@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import os
 import shlex
 import sqlite3
 import subprocess
@@ -519,19 +520,36 @@ def print_recipe(conn, body: dict, *, data_dir: Path) -> dict:
     return print_slip(conn, slip["slip_id"], data_dir=data_dir)
 
 
+PRINT_COMMAND_ENV = "FESTIN_PRINT_COMMAND"
+
 DELIVERY_OFF_MESSAGE = (
-    "Print delivery is not configured. Choose Print receiver or Print command "
-    "in Settings → Plugins."
+    "Print delivery is not configured. Choose Print receiver in Settings → Plugins "
+    "(or Print command when the host sets FESTIN_PRINT_COMMAND)."
 )
 
 
+def print_command_configured() -> bool:
+    return bool(os.environ.get(PRINT_COMMAND_ENV, "").strip())
+
+
+def resolve_delivery_mode(settings: dict | None) -> str:
+    """Effective delivery mode. Empty + receiverUrl keeps pre-deliveryMode kitchens printing."""
+    raw = settings or {}
+    mode = str(raw.get("deliveryMode") or "").strip()
+    if mode:
+        return mode
+    if str(raw.get("receiverUrl") or "").strip():
+        return "receiver"
+    return ""
+
+
 def deliver_print(path: Path, slip_id: str, digest: str, settings: dict) -> str:
-    """Send one PNG slip. Mode comes from settings; empty mode never attempts a print."""
-    mode = str((settings or {}).get("deliveryMode") or "").strip()
+    """Send one PNG slip. Mode comes from settings (with receiverUrl back-compat)."""
+    mode = resolve_delivery_mode(settings)
     if mode == "receiver":
         return _receiver_print(path, slip_id, digest, settings or {})
     if mode == "command":
-        return _command_print(path, settings or {})
+        return _command_print(path)
     raise ValueError(DELIVERY_OFF_MESSAGE)
 
 
@@ -574,18 +592,20 @@ def _receiver_print(path: Path, slip_id: str, digest: str, settings: dict) -> st
     )
 
 
-def _command_print(path: Path, settings: dict) -> str:
-    template = str(settings.get("printCommand") or "").strip()
+def _command_print(path: Path) -> str:
+    template = os.environ.get(PRINT_COMMAND_ENV, "").strip()
     if not template:
-        raise ValueError("Print command is not set.")
+        raise ValueError(
+            "Print command is not configured on the host (set FESTIN_PRINT_COMMAND)."
+        )
     if "{file}" not in template:
-        raise ValueError("Print command must include {file}.")
+        raise ValueError("FESTIN_PRINT_COMMAND must include {file}.")
     try:
         parts = shlex.split(template)
     except ValueError as exc:
-        raise ValueError("Print command could not be parsed.") from exc
+        raise ValueError("FESTIN_PRINT_COMMAND could not be parsed.") from exc
     if not parts or not any("{file}" in part for part in parts):
-        raise ValueError("Print command must include {file}.")
+        raise ValueError("FESTIN_PRINT_COMMAND must include {file}.")
     argv = [part.replace("{file}", str(path)) for part in parts]
     try:
         process = subprocess.run(

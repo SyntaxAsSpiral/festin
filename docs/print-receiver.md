@@ -1,18 +1,40 @@
-# Print receiver protocol
+# Print delivery
 
 Festin renders every slip as a 576-dot (80 mm) 1-bit PNG, then hands that file
-to your printer. One delivery mode is a small HTTP **print receiver**: Festin
-POSTs the image; your receiver talks to the driver.
+to your printer. Two delivery modes exist:
+
+1. **Print receiver** — Festin POSTs the image to a small HTTP service; your
+   receiver talks to the driver. Configured in Settings (URL + token).
+2. **Print command** — Festin runs a local argv template from the host
+   environment variable `FESTIN_PRINT_COMMAND`. The template is **not** editable
+   in Settings (anyone who can open Settings must not be able to pick a
+   program). Choose Print command in Settings only when that variable is set.
+
+An older kitchen that has a `receiverUrl` but no `deliveryMode` still prints
+through the receiver (empty mode + URL means receiver).
 
 This document is enough for anyone (or their coding agent) to write a receiver
 for their own printer. Festin never assumes a particular brand or host name.
 
-## When to use it
+## Print command (host env)
+
+Set on the machine that runs the kitchen (for example in a Nix service):
+
+```bash
+FESTIN_PRINT_COMMAND='lp -d thermal {file}'
+# or: FESTIN_PRINT_COMMAND='tm20-set print png {file}'
+```
+
+`{file}` is required and becomes the absolute PNG path. Festin splits the
+template with `shlex` and runs argv directly — no shell. When the variable is
+unset, Settings omits the Print command choice.
+
+## When to use a receiver
 
 Choose **Print receiver** in Settings → Plugins → Thermal printer when the
 kitchen app and the printer live on different machines, or when you want a
 single service that several apps can share. For a printer on the same box as
-Festin, **Print command** (a local `{file}` template) is often simpler.
+Festin, **Print command** via `FESTIN_PRINT_COMMAND` is often simpler.
 
 ## Request
 
@@ -93,6 +115,7 @@ import base64
 import hashlib
 import json
 import os
+import shlex
 import subprocess
 import tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -129,7 +152,7 @@ class Handler(BaseHTTPRequestHandler):
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
                 tmp.write(raw)
                 path = tmp.name
-            argv = [part.replace("{file}", path) for part in PRINT_CMD.split()]
+            argv = [part.replace("{file}", path) for part in shlex.split(PRINT_CMD)]
             code = subprocess.run(argv, timeout=120).returncode
             status = "printed" if code == 0 else "uncertain"
         except OSError:

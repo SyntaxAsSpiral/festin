@@ -80,17 +80,17 @@ def test_plugins_over_http_and_tools_follow_the_switch(blank_db):
         assert printer["enabled"] is False
         assert printer["settings"]["deliveryMode"] == ""
         assert printer["settings"]["receiverUrl"] == ""
-        assert printer["settings"]["printCommand"] == ""
+        assert "printCommand" not in printer["settings"]
         assert printer["settings"]["band"] == "babette"
         assert printer["settings"]["weeklyPick"] is False
         assert printer["name"] == "Thermal printer"
         mode_field = next(f for f in printer["schema"] if f["key"] == "deliveryMode")
-        assert mode_field["enum"] == ["", "receiver", "command"]
+        assert mode_field["enum"] == ["", "receiver"]
         assert mode_field["default"] == ""
         assert mode_field["choices"][1]["description"] == "Print receiver"
-        assert mode_field["choices"][2]["description"] == "Print command"
-        cmd_field = next(f for f in printer["schema"] if f["key"] == "printCommand")
-        assert "{file}" in (cmd_field.get("help") or "")
+        assert "command" not in mode_field["enum"]
+        assert all(f["key"] != "printCommand" for f in printer["schema"])
+        assert "FESTIN_PRINT_COMMAND" in (mode_field.get("help") or "")
         band_field = next(f for f in printer["schema"] if f["key"] == "band")
         assert band_field["default"] == "babette"
         assert band_field["enum"][0] == "babette"
@@ -142,10 +142,16 @@ def test_plugins_over_http_and_tools_follow_the_switch(blank_db):
         status, bad_cmd = client.request(
             "PUT",
             "/api/plugins/printer",
-            {"settings": {"printCommand": "lp -d thermal"}},
+            {"settings": {"printCommand": "lp -d thermal {file}"}},
         )
         assert status == 400
-        assert "file" in bad_cmd["error"].lower()
+        assert "unknown" in bad_cmd["error"].lower()
+        status, bad_mode = client.request(
+            "PUT",
+            "/api/plugins/printer",
+            {"settings": {"deliveryMode": "command"}},
+        )
+        assert status == 400
         status, bad_mode = client.request(
             "PUT",
             "/api/plugins/printer",
@@ -550,7 +556,7 @@ def test_print_dinner_and_test_slip_over_http_with_fake_receiver(blank_db, stub_
         receiver.server_close()
 
 
-def test_print_command_mode_runs_fake_command(blank_db, stub_slip_art, tmp_path):
+def test_print_command_mode_runs_fake_command(blank_db, stub_slip_art, tmp_path, monkeypatch):
     marker = tmp_path / "printed.txt"
     script = tmp_path / "fake-print.sh"
     script.write_text(
@@ -560,8 +566,19 @@ def test_print_command_mode_runs_fake_command(blank_db, stub_slip_art, tmp_path)
         "exit 0\n"
     )
     script.chmod(0o755)
+    monkeypatch.setenv("FESTIN_PRINT_COMMAND", str(script) + " {file}")
     server = _kitchen(blank_db)
+    client = Client(server.server_address[1])
     try:
+        status, body = client.request("GET", "/api/plugins")
+        assert status == 200
+        printer = _printer(body["plugins"])
+        mode_field = next(f for f in printer["schema"] if f["key"] == "deliveryMode")
+        assert mode_field["enum"] == ["", "receiver", "command"]
+        assert "configured on the host" in (mode_field.get("help") or "").lower() or "FESTIN_PRINT_COMMAND" in (
+            mode_field.get("help") or ""
+        )
+
         conn = connect(server.db_path)
         host.update_plugin(
             conn,
@@ -570,7 +587,6 @@ def test_print_command_mode_runs_fake_command(blank_db, stub_slip_art, tmp_path)
                 "enabled": True,
                 "settings": {
                     "deliveryMode": "command",
-                    "printCommand": str(script) + " {file}",
                     "band": "scroll",
                 },
             },
@@ -597,6 +613,57 @@ def test_print_command_mode_runs_fake_command(blank_db, stub_slip_art, tmp_path)
         server.server_close()
 
 
+def test_empty_delivery_mode_with_receiver_url_still_prints(blank_db, stub_slip_art):
+    """Pre-deliveryMode kitchens: URL set, mode empty → receiver."""
+    receiver = ThreadingHTTPServer(("127.0.0.1", 0), _Receiver)
+    receiver.posts = []
+    receiver.uncertain = set()
+    thread = threading.Thread(target=receiver.serve_forever, daemon=True)
+    thread.start()
+    server = _kitchen(blank_db)
+    client = Client(server.server_address[1])
+    try:
+        port = receiver.server_address[1]
+        url = f"http://127.0.0.1:{port}"
+        conn = connect(server.db_path)
+        conn.execute(
+            "INSERT INTO plugin_settings (plugin_id, enabled, settings_json, updated_at) VALUES (?, 1, ?, ?)",
+            (
+                "printer",
+                json.dumps(
+                    {"receiverUrl": url, "token": "test-token", "band": "scroll"},
+                    ensure_ascii=False,
+                ),
+                "2026-10-19T00:00:00.000000Z",
+            ),
+        )
+        conn.commit()
+
+        status, public = client.request("GET", "/api/plugins/printer")
+        assert status == 200
+        assert public["settings"]["deliveryMode"] == "receiver"
+        assert public["settings"]["receiverUrl"] == url
+
+        ensure_chat(conn, "chat-1")
+        registry = host.build_registry(conn)
+        ctx = Ctx(conn, server.data_dir)
+        slip = registry.dispatch(
+            "prepare_slip",
+            {"kind": "note", "title": "Legacy", "text": "URL without deliveryMode."},
+            ctx,
+        )
+        printed = registry.dispatch("print_slip", {"slip_id": slip["slip_id"]}, ctx)
+        assert printed["status"] == "printed"
+        assert len(receiver.posts) == 1
+        assert receiver.posts[0]["body"]["slip_id"] == slip["slip_id"]
+        conn.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        receiver.shutdown()
+        receiver.server_close()
+
+
 def test_print_refuses_when_delivery_mode_off(blank_db, stub_slip_art):
     server = _kitchen(blank_db)
     try:
@@ -608,7 +675,7 @@ def test_print_refuses_when_delivery_mode_off(blank_db, stub_slip_art):
                 "enabled": True,
                 "settings": {
                     "deliveryMode": "",
-                    "receiverUrl": "http://127.0.0.1:9",
+                    "receiverUrl": "",
                     "token": "test-token",
                     "band": "scroll",
                 },

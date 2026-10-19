@@ -7,6 +7,7 @@ import {
   pluginIcon,
   pluginSaveBody,
   pluginTestAction,
+  printCommandAvailable,
   printerFieldVisible,
 } from './plugins.js'
 
@@ -33,6 +34,7 @@ export function PluginPanel({ plugin, onUpdated }) {
 
   const fields = fieldsFromSchema(plugin.schema)
   const testAction = pluginTestAction(plugin)
+  const hostPrintCommand = plugin.id === 'printer' && printCommandAvailable(plugin.schema)
 
   async function save(partial) {
     const nextEnabled = partial.enabled ?? enabledRef.current
@@ -86,8 +88,9 @@ export function PluginPanel({ plugin, onUpdated }) {
           {plugin.id === 'printer' && (
             <p className="fine">
               Prints the weekly slip, recipe cards and notes on an 80&nbsp;mm receipt printer.
-              Choose a delivery mode below: a print receiver (HTTP) or a local print command
-              with <code>{'{file}'}</code>. Off never attempts a print.
+              Choose Print receiver below, or Print command when the host has set{' '}
+              <code>FESTIN_PRINT_COMMAND</code> (configured on the server, not here). Off never
+              attempts a print.
             </p>
           )}
         </div>
@@ -189,6 +192,9 @@ export function PluginPanel({ plugin, onUpdated }) {
               />
             )}
             {field.help ? <p className="fine">{field.help}</p> : null}
+            {field.key === 'deliveryMode' && hostPrintCommand ? (
+              <p className="fine">Print command is configured on the host via FESTIN_PRINT_COMMAND.</p>
+            ) : null}
           </div>
           )
         })}

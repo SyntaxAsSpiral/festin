@@ -6,6 +6,7 @@ import {
   isSecretField,
   pluginSaveBody,
   pluginTestAction,
+  printCommandAvailable,
   printerFieldVisible,
   readPluginSaveResult,
   secretIsSet,
@@ -27,7 +28,6 @@ const printerSchema = [
   },
   { key: 'receiverUrl', type: 'string', default: '', label: 'Print receiver URL' },
   { key: 'token', type: 'string', default: '', label: 'Print receiver token', secret: true },
-  { key: 'printCommand', type: 'string', default: '', label: 'Print command' },
   {
     key: 'band',
     type: 'string',
@@ -43,10 +43,25 @@ const printerSchema = [
   },
 ]
 
+const printerSchemaNoCommand = [
+  {
+    key: 'deliveryMode',
+    type: 'string',
+    default: '',
+    label: 'Delivery',
+    enum: ['', 'receiver'],
+    choices: [
+      { id: '', description: 'Off' },
+      { id: 'receiver', description: 'Print receiver' },
+    ],
+  },
+  { key: 'receiverUrl', type: 'string', default: '', label: 'Print receiver URL' },
+]
+
 describe('plugin schema mapping', () => {
   it('maps string, enum, and token fields', () => {
     const fields = fieldsFromSchema(printerSchema)
-    expect(fields).toHaveLength(5)
+    expect(fields).toHaveLength(4)
     expect(fields[0]).toMatchObject({
       key: 'deliveryMode',
       type: 'enum',
@@ -58,8 +73,7 @@ describe('plugin schema mapping', () => {
     })
     expect(fields[1]).toMatchObject({ key: 'receiverUrl', type: 'string', secret: false })
     expect(fields[2]).toMatchObject({ key: 'token', type: 'secret', secret: true })
-    expect(fields[3]).toMatchObject({ key: 'printCommand', type: 'string', secret: false })
-    expect(fields[4]).toMatchObject({
+    expect(fields[3]).toMatchObject({
       key: 'band',
       type: 'enum',
       help: "Dinner slips keep their own weekly plates either way.",
@@ -76,9 +90,13 @@ describe('plugin schema mapping', () => {
     expect(printerFieldVisible({ key: 'deliveryMode' }, { deliveryMode: '' })).toBe(true)
     expect(printerFieldVisible({ key: 'receiverUrl' }, { deliveryMode: '' })).toBe(false)
     expect(printerFieldVisible({ key: 'token' }, { deliveryMode: 'receiver' })).toBe(true)
-    expect(printerFieldVisible({ key: 'printCommand' }, { deliveryMode: 'receiver' })).toBe(false)
-    expect(printerFieldVisible({ key: 'printCommand' }, { deliveryMode: 'command' })).toBe(true)
     expect(printerFieldVisible({ key: 'band' }, { deliveryMode: 'command' })).toBe(true)
+  })
+
+  it('detects when the host exposes Print command in the schema', () => {
+    expect(printCommandAvailable(printerSchema)).toBe(true)
+    expect(printCommandAvailable(printerSchemaNoCommand)).toBe(false)
+    expect(printCommandAvailable([])).toBe(false)
   })
 
   it('treats boolean and number types when a later plugin uses them', () => {
@@ -102,7 +120,6 @@ describe('plugin schema mapping', () => {
         deliveryMode: 'receiver',
         receiverUrl: 'http://127.0.0.1:9',
         tokenSet: true,
-        printCommand: '',
         band: 'rose',
       },
       schema: printerSchema,
@@ -112,7 +129,6 @@ describe('plugin schema mapping', () => {
       deliveryMode: 'receiver',
       receiverUrl: 'http://127.0.0.1:9',
       token: '',
-      printCommand: '',
       band: 'rose',
     })
     expect(secrets).toEqual({ token: 'set' })
@@ -128,7 +144,6 @@ describe('plugin schema mapping', () => {
           deliveryMode: 'receiver',
           receiverUrl: 'http://127.0.0.1:9',
           token: '',
-          printCommand: '',
           band: 'scroll',
         },
         secrets: { token: 'set' },
@@ -139,7 +154,6 @@ describe('plugin schema mapping', () => {
       settings: {
         deliveryMode: 'receiver',
         receiverUrl: 'http://127.0.0.1:9',
-        printCommand: '',
         band: 'scroll',
       },
     })
@@ -149,7 +163,6 @@ describe('plugin schema mapping', () => {
           deliveryMode: 'receiver',
           receiverUrl: 'http://127.0.0.1:9',
           token: 'new-token',
-          printCommand: '',
           band: 'scroll',
         },
         secrets: { token: 'set' },
@@ -160,7 +173,6 @@ describe('plugin schema mapping', () => {
         deliveryMode: 'receiver',
         receiverUrl: 'http://127.0.0.1:9',
         token: 'new-token',
-        printCommand: '',
         band: 'scroll',
       },
     })

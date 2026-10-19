@@ -125,11 +125,19 @@ def _public(conn, plugin) -> dict:
 
 def _public_settings(plugin, settings: dict) -> dict:
     """Public settings never include secret values — only a <key>Set flag."""
+    from festin.plugins.printer import slips as printer_slips
+
     out = {}
     for field in plugin.settings_schema():
         key = field["key"]
         if field.get("secret"):
             out[key + "Set"] = bool(str(settings.get(key) or "").strip())
+            continue
+        if key == "deliveryMode" and plugin.id == "printer":
+            mode = printer_slips.resolve_delivery_mode(settings)
+            if mode == "command" and not printer_slips.print_command_configured():
+                mode = ""
+            out[key] = mode
             continue
         out[key] = settings.get(key, field.get("default"))
     return out
@@ -190,8 +198,6 @@ def _clean_setting(field: dict, value):
             raise ValueError(field["key"] + " must be text")
         if field["key"] == "receiverUrl":
             return _clean_url(value)
-        if field["key"] == "printCommand":
-            return _clean_print_command(value)
         if field.get("secret") or field["key"] == "token":
             if len(value) > 500:
                 raise ValueError(field["key"] + " is too long")
@@ -215,17 +221,6 @@ def _clean_url(value: str) -> str:
     parsed = urlparse(text)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise ValueError("Print receiver URL must be an http(s) URL.")
-    return text
-
-
-def _clean_print_command(value: str) -> str:
-    text = value.strip()
-    if not text:
-        return ""
-    if len(text) > 500:
-        raise ValueError("Print command is too long")
-    if "{file}" not in text:
-        raise ValueError("Print command must include {file}.")
     return text
 
 

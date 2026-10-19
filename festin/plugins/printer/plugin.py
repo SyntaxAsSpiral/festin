@@ -41,24 +41,37 @@ class PrinterPlugin:
 
     def settings_schema(self) -> list[dict]:
         bands = printing.band_catalog()["bands"]
+        command_on = slips.print_command_configured()
+        mode_enum = ["", "receiver"]
+        mode_choices = [
+            {"id": "", "description": "Off"},
+            {"id": "receiver", "description": "Print receiver"},
+        ]
+        mode_help = (
+            "How Festin hands a finished PNG slip to your printer. "
+            "Off never attempts a print. Print receiver POSTs the image to a "
+            "small HTTP service (see docs/print-receiver.md)."
+        )
+        if command_on:
+            mode_enum.append("command")
+            mode_choices.append({"id": "command", "description": "Print command"})
+            mode_help += (
+                " Print command runs the host's FESTIN_PRINT_COMMAND (set on the "
+                "server, not editable here), with {file} replaced by the PNG path."
+            )
+        else:
+            mode_help += (
+                " Print command appears here only when the host sets FESTIN_PRINT_COMMAND."
+            )
         return [
             {
                 "key": "deliveryMode",
                 "type": "string",
                 "default": "",
                 "label": "Delivery",
-                "help": (
-                    "How Festin hands a finished PNG slip to your printer. "
-                    "Off never attempts a print. Print receiver POSTs the image to a "
-                    "small HTTP service (see docs/print-receiver.md). Print command runs "
-                    "a local shell command with {file} replaced by the PNG path."
-                ),
-                "enum": ["", "receiver", "command"],
-                "choices": [
-                    {"id": "", "description": "Off"},
-                    {"id": "receiver", "description": "Print receiver"},
-                    {"id": "command", "description": "Print command"},
-                ],
+                "help": mode_help,
+                "enum": mode_enum,
+                "choices": mode_choices,
             },
             {
                 "key": "receiverUrl",
@@ -77,17 +90,6 @@ class PrinterPlugin:
                 "label": "Print receiver token",
                 "secret": True,
                 "help": "Bearer token the receiver expects. Used only in Print receiver mode.",
-            },
-            {
-                "key": "printCommand",
-                "type": "string",
-                "default": "",
-                "label": "Print command",
-                "help": (
-                    "Used when Delivery is Print command. Must include {file}, which "
-                    "becomes the absolute PNG path. Examples: lp -d thermal {file} · "
-                    "tm20-set print png {file}"
-                ),
             },
             {
                 "key": "band",
