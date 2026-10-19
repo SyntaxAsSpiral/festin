@@ -55,10 +55,10 @@ class Client:
         return status, json.loads(payload.decode() or "null")
 
 
-def _kitchen(tmp_path):
+def _kitchen(blank_db):
     server = KitchenServer(
         ("127.0.0.1", 0),
-        tmp_path / "store.sqlite",
+        blank_db,
         origins=("http://kitchen.example",),
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -70,8 +70,8 @@ def _printer(plugins):
     return next(item for item in plugins if item["id"] == "printer")
 
 
-def test_plugins_over_http_and_tools_follow_the_switch(tmp_path):
-    server = _kitchen(tmp_path)
+def test_plugins_over_http_and_tools_follow_the_switch(blank_db):
+    server = _kitchen(blank_db)
     client = Client(server.server_address[1])
     try:
         status, body = client.request("GET", "/api/plugins")
@@ -165,8 +165,8 @@ def test_plugins_over_http_and_tools_follow_the_switch(tmp_path):
         server.server_close()
 
 
-def test_printer_token_never_echoed_and_put_keeps_it(tmp_path):
-    server = _kitchen(tmp_path)
+def test_printer_token_never_echoed_and_put_keeps_it(blank_db):
+    server = _kitchen(blank_db)
     client = Client(server.server_address[1])
     secret = "print-token-never-echo-9f3a"
     try:
@@ -239,8 +239,8 @@ def _png(path: Path):
         assert im.height > 80
 
 
-def test_prepare_slip_renders_recipe_note_and_week(tmp_path):
-    server = _kitchen(tmp_path)
+def test_prepare_slip_renders_recipe_note_and_week(blank_db, stub_slip_art):
+    server = _kitchen(blank_db)
     try:
         conn = connect(server.db_path)
         _enable(conn, "http://127.0.0.1:9", "test-token")
@@ -323,13 +323,13 @@ class _Receiver(BaseHTTPRequestHandler):
         return
 
 
-def test_print_slip_posts_once_and_reports_uncertain(tmp_path):
+def test_print_slip_posts_once_and_reports_uncertain(blank_db, stub_slip_art):
     receiver = ThreadingHTTPServer(("127.0.0.1", 0), _Receiver)
     receiver.posts = []
     receiver.uncertain = set()
     thread = threading.Thread(target=receiver.serve_forever, daemon=True)
     thread.start()
-    server = _kitchen(tmp_path)
+    server = _kitchen(blank_db)
     try:
         conn = connect(server.db_path)
         port = receiver.server_address[1]
@@ -395,13 +395,13 @@ def _plan_days():
     ]
 
 
-def test_print_dinner_and_test_slip_over_http_with_fake_receiver(tmp_path):
+def test_print_dinner_and_test_slip_over_http_with_fake_receiver(blank_db, stub_slip_art):
     receiver = ThreadingHTTPServer(("127.0.0.1", 0), _Receiver)
     receiver.posts = []
     receiver.uncertain = set()
     thread = threading.Thread(target=receiver.serve_forever, daemon=True)
     thread.start()
-    server = _kitchen(tmp_path)
+    server = _kitchen(blank_db)
     client = Client(server.server_address[1])
     try:
         port = receiver.server_address[1]

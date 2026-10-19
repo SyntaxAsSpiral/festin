@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-import threading
+import shutil
 from datetime import date, timedelta
 from http.client import HTTPConnection
 from unittest.mock import patch
@@ -11,24 +11,32 @@ from unittest.mock import patch
 import pytest
 
 from festin.schema import connect
-from festin.server import COOKIE, KitchenServer
+from festin.server import COOKIE
+from tests.conftest import reset_db_file, start_kitchen, stop_kitchen
+
+
+@pytest.fixture(scope="module")
+def _log_server(migrated_template, tmp_path_factory):
+    root = tmp_path_factory.mktemp("log")
+    db = root / "store.sqlite"
+    photos = root / "cooking-photos"
+    shutil.copy2(migrated_template, db)
+    server = start_kitchen(
+        db,
+        origins=("http://kitchen.example",),
+        photos_dir=photos,
+    )
+    try:
+        yield server, db, migrated_template
+    finally:
+        stop_kitchen(server)
 
 
 @pytest.fixture
-def kitchen(tmp_path):
-    server = KitchenServer(
-        ("127.0.0.1", 0),
-        tmp_path / "store.sqlite",
-        origins=("http://kitchen.example",),
-        photos_dir=tmp_path / "cooking-photos",
-    )
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        yield server
-    finally:
-        server.shutdown()
-        server.server_close()
+def kitchen(_log_server):
+    server, db, template = _log_server
+    reset_db_file(db, template)
+    yield server
 
 
 class Client:

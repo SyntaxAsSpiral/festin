@@ -6,13 +6,12 @@ import pytest
 
 from festin.chat.schemas import TOOL_SPECS
 from festin.notes import OPEN_NOTE_CAP, create_note, toggle_note
-from festin.schema import apply, connect
+from festin.schema import connect
 
 
 @pytest.fixture
-def conn(tmp_path):
-    connection = connect(tmp_path / "store.sqlite")
-    apply(connection)
+def conn(blank_db):
+    connection = connect(blank_db)
     try:
         yield connection
     finally:

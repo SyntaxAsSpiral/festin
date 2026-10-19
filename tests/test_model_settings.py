@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 import stat
 import threading
@@ -15,27 +16,35 @@ import pytest
 from festin.chat.model_probe import BAD_KEY, NO_KEY, NO_TOOLS, NOT_FOUND, OK, UNREACHABLE
 from festin.server import KitchenServer
 from festin.settings import DEFAULT_MODEL_BASE_URL
+from tests.conftest import reset_db_file, start_kitchen, stop_kitchen
 
 SECRET = "sk-test-9f3a-do-not-echo"
 GOOD = "sk-provider-good-7c1e"
 
 
+@pytest.fixture(scope="module")
+def _model_server(migrated_template, tmp_path_factory):
+    root = tmp_path_factory.mktemp("model")
+    db = root / "store.sqlite"
+    shutil.copy2(migrated_template, db)
+    server = start_kitchen(db, origins=("http://kitchen.example",))
+    try:
+        yield server, db, migrated_template, root
+    finally:
+        stop_kitchen(server)
+
+
 @pytest.fixture
-def kitchen(tmp_path, monkeypatch):
+def kitchen(_model_server, monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("FESTIN_MODEL_KEY", raising=False)
-    server = KitchenServer(
-        ("127.0.0.1", 0),
-        tmp_path / "store.sqlite",
-        origins=("http://kitchen.example",),
-    )
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        yield server
-    finally:
-        server.shutdown()
-        server.server_close()
+    server, db, template, root = _model_server
+    reset_db_file(db, template)
+    # Drop any prior key file next to the module DB.
+    key_path = root / "model.key"
+    if key_path.exists():
+        key_path.unlink()
+    yield server
 
 
 class Client:

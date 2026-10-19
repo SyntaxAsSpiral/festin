@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import json
+import shutil
 import threading
 import time
 from http.client import HTTPConnection
 
 import pytest
 
+from festin.chat import flights as flights_mod
 from festin.chat.flights import clear_flights
 from festin.schema import connect
-from festin.server import COOKIE, KitchenServer
+from festin.server import COOKIE
 from festin.settings import update_settings
+from tests.conftest import reset_db_file, start_kitchen, stop_kitchen
 from tests.test_chat_engine import FakeCompleter
 
 
@@ -20,21 +23,50 @@ def reply(text):
     return {"message": {"role": "assistant", "content": text}}
 
 
+def _wait_turn_locked(submission_id, timeout=2.0):
+    """Wait until the in-flight turn has claimed its submission lock."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        with flights_mod.FLIGHT_LOCK:
+            if submission_id in flights_mod.FLIGHTS_BY_SUBMISSION:
+                return
+        time.sleep(0.01)
+    raise AssertionError(f"turn {submission_id} never locked")
+
+
+def _wait_completer(fake, n=1, timeout=2.0):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if fake.calls >= n:
+            return
+        time.sleep(0.01)
+    raise AssertionError(f"completer calls={fake.calls}, want >= {n}")
+
+
+@pytest.fixture(scope="module")
+def _chat_http_server(migrated_template, tmp_path_factory):
+    root = tmp_path_factory.mktemp("chat-http")
+    db = root / "store.sqlite"
+    shutil.copy2(migrated_template, db)
+    server = start_kitchen(db)
+    try:
+        yield server, db, migrated_template
+    finally:
+        stop_kitchen(server)
+
+
 @pytest.fixture
-def kitchen(tmp_path):
+def kitchen(_chat_http_server):
+    server, db, template = _chat_http_server
     clear_flights()
-    server = KitchenServer(("127.0.0.1", 0), tmp_path / "store.sqlite")
+    reset_db_file(db, template)
     conn = connect(server.db_path)
     update_settings(conn, model_name="test-model")
     conn.close()
     server.chat_options = {"model_key": "test-key"}
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
     try:
         yield server
     finally:
-        server.shutdown()
-        server.server_close()
         clear_flights()
 
 
@@ -126,13 +158,14 @@ def test_first_chat_message_sets_the_chat_title(kitchen):
 
 
 def test_two_devices_on_different_chats_answer_at_once(kitchen):
-    kitchen.chat_options["completer"] = FakeCompleter([{"wait_cancel": True}, reply("meanwhile")])
+    fake = FakeCompleter([{"wait_cancel": True}, reply("meanwhile")])
+    kitchen.chat_options["completer"] = fake
     slow, quick = Device(kitchen), Device(kitchen)
     slow.session()
     results = {}
     worker = threading.Thread(target=lambda: results.update(slow=slow.chat("long one", submission_id="slow-turn-1")))
     worker.start()
-    time.sleep(0.3)
+    _wait_completer(fake, 1)
     status, events = quick.chat("quick one")
     assert status == 200 and events[-1]["type"] == "done"
     slow.post("/api/stop", {"submission_id": "slow-turn-1"})
@@ -147,7 +180,7 @@ def test_a_second_device_on_the_same_chat_gets_409_until_the_turn_ends(kitchen):
     second.session(chat_id="shared-chat")
     worker = threading.Thread(target=lambda: first.chat("hold it", submission_id="hold-turn-1"))
     worker.start()
-    time.sleep(0.3)
+    _wait_turn_locked("hold-turn-1")
     status, body = second.chat("me too")
     assert status == 409
     assert body["error"] == "Babette is answering this chat on another device."
@@ -164,7 +197,7 @@ def test_a_refused_request_does_not_free_the_running_turn(kitchen):
     other.session(chat_id="c1")
     worker = threading.Thread(target=lambda: device.chat("hold", submission_id="hold-turn-2"))
     worker.start()
-    time.sleep(0.3)
+    _wait_turn_locked("hold-turn-2")
     assert device.chat("again")[0] == 409  # same device, mid-turn
     assert other.chat("still held")[0] == 409  # the lock survived the refusal
     device.post("/api/stop", {"submission_id": "hold-turn-2"})

@@ -25,10 +25,10 @@ class Ctx:
         self.chat_id = chat_id
 
 
-def _kitchen(tmp_path):
+def _kitchen(blank_db):
     server = KitchenServer(
         ("127.0.0.1", 0),
-        tmp_path / "store.sqlite",
+        blank_db,
         origins=("http://kitchen.example",),
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -63,8 +63,8 @@ def _days():
     ]
 
 
-def test_band_default_is_babette_and_fixed_overrides_recipe_and_note(tmp_path):
-    server = _kitchen(tmp_path)
+def test_band_default_is_babette_and_fixed_overrides_recipe_and_note(blank_db, stub_slip_art):
+    server = _kitchen(blank_db)
     try:
         conn = connect(server.db_path)
         _enable(conn, band="babette")
@@ -110,8 +110,8 @@ def test_band_default_is_babette_and_fixed_overrides_recipe_and_note(tmp_path):
         server.server_close()
 
 
-def test_prepare_slip_stores_plates_rejects_repeat_and_rotates_when_empty(tmp_path):
-    server = _kitchen(tmp_path)
+def test_prepare_slip_stores_plates_rejects_repeat_and_rotates_when_empty(blank_db, stub_slip_art):
+    server = _kitchen(blank_db)
     try:
         conn = connect(server.db_path)
         _enable(conn, band="babette")
@@ -236,8 +236,8 @@ def test_dinner_passes_week_slip_title_into_render(tmp_path, monkeypatch):
     assert seen["closing_quote"] == printing.DEFAULT_SLIP_QUOTE
 
 
-def test_prepare_slip_quote_stored_and_default_when_absent(tmp_path):
-    server = _kitchen(tmp_path)
+def test_prepare_slip_quote_stored_and_default_when_absent(blank_db, stub_slip_art):
+    server = _kitchen(blank_db)
     try:
         conn = connect(server.db_path)
         _enable(conn, band="babette")

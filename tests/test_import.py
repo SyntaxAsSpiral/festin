@@ -72,9 +72,9 @@ def write_copy(
     return root
 
 
-def test_nights_land_on_real_dates(tmp_path):
+def test_nights_land_on_real_dates(tmp_path, blank_db):
     root = write_copy(tmp_path / "live")
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     import_directory(root, db)
     conn = connect(db)
     start = date.fromisoformat("2026-10-17")
@@ -86,10 +86,10 @@ def test_nights_land_on_real_dates(tmp_path):
     conn.close()
 
 
-def test_slip_quote_lands_in_slip_quote(tmp_path):
+def test_slip_quote_lands_in_slip_quote(tmp_path, blank_db):
     quote = "Que la chaleur de la table console et rassemble."
     root = write_copy(tmp_path / "live", plan={"slipQuote": quote})
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     import_directory(root, db)
     conn = connect(db)
     row = conn.execute(
@@ -100,7 +100,7 @@ def test_slip_quote_lands_in_slip_quote(tmp_path):
     conn.close()
 
 
-def test_note_priority_null_when_absent_and_kept_when_set(tmp_path):
+def test_note_priority_null_when_absent_and_kept_when_set(tmp_path, blank_db):
     root = write_copy(
         tmp_path / "live",
         journal=[
@@ -108,7 +108,7 @@ def test_note_priority_null_when_absent_and_kept_when_set(tmp_path):
             {"id": "set", "type": "todo", "text": "has one", "open": True, "color": "peach", "priority": "low", "date": "2026-09-01"},
         ],
     )
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     import_directory(root, db)
     conn = connect(db)
     assert conn.execute("SELECT priority FROM notes WHERE id = 'bare'").fetchone()[0] is None
@@ -116,7 +116,7 @@ def test_note_priority_null_when_absent_and_kept_when_set(tmp_path):
     conn.close()
 
 
-def test_note_open_and_closed_are_kept(tmp_path):
+def test_note_open_and_closed_are_kept(tmp_path, blank_db):
     root = write_copy(
         tmp_path / "live",
         journal=[
@@ -124,7 +124,7 @@ def test_note_open_and_closed_are_kept(tmp_path):
             {"id": "shut-note", "type": "todo", "text": "done", "open": False, "color": "peach", "date": "2026-09-01"},
         ],
     )
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     import_directory(root, db)
     conn = connect(db)
     assert conn.execute("SELECT open FROM notes WHERE id = 'open-note'").fetchone()[0] == 1
@@ -132,7 +132,7 @@ def test_note_open_and_closed_are_kept(tmp_path):
     conn.close()
 
 
-def test_imported_chat_date_from_earliest_plan_week_start(tmp_path):
+def test_imported_chat_date_from_earliest_plan_week_start(tmp_path, blank_db):
     root = write_copy(
         tmp_path / "live",
         chats=[
@@ -163,7 +163,7 @@ def test_imported_chat_date_from_earliest_plan_week_start(tmp_path):
             },
         ],
     )
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     import_directory(root, db)
     conn = connect(db)
     dated = conn.execute(
@@ -179,7 +179,7 @@ def test_imported_chat_date_from_earliest_plan_week_start(tmp_path):
     conn.close()
 
 
-def test_imported_chat_future_plan_week_clamps_to_import_week(tmp_path):
+def test_imported_chat_future_plan_week_clamps_to_import_week(tmp_path, blank_db):
     """A chat that only plans next week is dated to this week's start, still approx."""
     root = write_copy(
         tmp_path / "live",
@@ -209,7 +209,7 @@ def test_imported_chat_future_plan_week_clamps_to_import_week(tmp_path):
             },
         ],
     )
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     # Sunday 2026-10-18 in America/Los_Angeles; week starts Saturday → 2026-10-17.
     import_at = datetime(2026, 10, 18, 22, 0, tzinfo=timezone.utc)
     import_directory(root, db, now=import_at)
@@ -225,7 +225,7 @@ def test_imported_chat_future_plan_week_clamps_to_import_week(tmp_path):
     conn.close()
 
 
-def test_preference_kind_is_kept(tmp_path):
+def test_preference_kind_is_kept(tmp_path, blank_db):
     root = write_copy(
         tmp_path / "live",
         journal=[
@@ -240,7 +240,7 @@ def test_preference_kind_is_kept(tmp_path):
             }
         ],
     )
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     import_directory(root, db)
     conn = connect(db)
     row = conn.execute("SELECT kind, open, priority FROM notes WHERE id = 'pref'").fetchone()
@@ -250,21 +250,21 @@ def test_preference_kind_is_kept(tmp_path):
     conn.close()
 
 
-def test_note_colour_is_kept(tmp_path):
+def test_note_colour_is_kept(tmp_path, blank_db):
     root = write_copy(
         tmp_path / "live",
         journal=[
             {"id": "tinted", "type": "dinner", "text": "yellow card", "open": True, "color": "flamingo", "date": "2026-09-01"}
         ],
     )
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     import_directory(root, db)
     conn = connect(db)
     assert conn.execute("SELECT color FROM notes WHERE id = 'tinted'").fetchone()[0] == "flamingo"
     conn.close()
 
 
-def test_recipe_id_cbk_10000_round_trips(tmp_path):
+def test_recipe_id_cbk_10000_round_trips(tmp_path, blank_db):
     root = write_copy(
         tmp_path / "live",
         recipes={
@@ -272,7 +272,7 @@ def test_recipe_id_cbk_10000_round_trips(tmp_path):
             "recipes": [{"id": "CBK-10000", "title": "Past the cap", "ingredients": ["salt"]}],
         },
     )
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     import_directory(root, db)
     conn = connect(db)
     row = conn.execute("SELECT id, title FROM recipes").fetchone()
@@ -282,16 +282,16 @@ def test_recipe_id_cbk_10000_round_trips(tmp_path):
     conn.close()
 
 
-def test_table_name_appends_table(tmp_path):
+def test_table_name_appends_table(tmp_path, blank_db):
     root = write_copy(tmp_path / "live", settings={"family": "Holliday", "dinner_hour": "17:30"})
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     import_directory(root, db)
     conn = connect(db)
     assert conn.execute("SELECT table_name FROM settings").fetchone()[0] == "Holliday Table"
     conn.close()
 
 
-def test_import_carries_weather_and_dinner_hour(tmp_path):
+def test_import_carries_weather_and_dinner_hour(tmp_path, blank_db):
     settings = {
         "family": "Babette's",
         "dinner_hour": "18:45",
@@ -304,7 +304,7 @@ def test_import_carries_weather_and_dinner_hour(tmp_path):
         },
     }
     root = write_copy(tmp_path / "live", settings=settings)
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     import_directory(root, db)
     conn = connect(db)
     row = conn.execute(
@@ -328,9 +328,9 @@ def test_import_carries_weather_and_dinner_hour(tmp_path):
     assert dump(db) == first
 
 
-def test_template_plan_is_skipped(tmp_path):
+def test_template_plan_is_skipped(tmp_path, blank_db):
     root = write_copy(tmp_path / "live", template=True)
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     import_directory(root, db)
     conn = connect(db)
     rows = conn.execute("SELECT start_date FROM weeks").fetchall()
@@ -338,7 +338,7 @@ def test_template_plan_is_skipped(tmp_path):
     conn.close()
 
 
-def test_reimport_updates_the_edited_recipe_only(tmp_path):
+def test_reimport_updates_the_edited_recipe_only(tmp_path, blank_db):
     recipes = {
         "meta": {"nextNumericId": 3},
         "recipes": [
@@ -347,7 +347,7 @@ def test_reimport_updates_the_edited_recipe_only(tmp_path):
         ],
     }
     root = write_copy(tmp_path / "live", recipes=recipes)
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     import_directory(root, db)
     conn = connect(db)
     before = dict(conn.execute("SELECT * FROM recipes WHERE id = 'CBK-0002'").fetchone())
@@ -362,11 +362,11 @@ def test_reimport_updates_the_edited_recipe_only(tmp_path):
     conn.close()
 
 
-def test_import_twice_matches_the_live_copy(tmp_path):
+def test_import_twice_matches_the_live_copy(tmp_path, blank_db):
     if not LIVE.is_dir():
         pytest.skip("set FESTIN_LIVE_COPY to a copy of a live data dir")
     before = _files(LIVE)
-    db = tmp_path / "store.sqlite"
+    db = blank_db
     import_directory(LIVE, db)
     first = dump(db)
     import_directory(LIVE, db)

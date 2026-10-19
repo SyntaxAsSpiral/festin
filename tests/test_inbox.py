@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import json
+import shutil
 import socket
-import threading
 from http.client import HTTPConnection
 
 import pytest
@@ -12,23 +12,33 @@ import pytest
 from festin import inbox as inbox_mod
 from festin.schema import connect
 from festin.server import KitchenServer
+from tests.conftest import reset_db_file, start_kitchen, stop_kitchen
 
 
-@pytest.fixture
-def kitchen(tmp_path):
-    server = KitchenServer(
-        ("127.0.0.1", 0),
-        tmp_path / "store.sqlite",
+@pytest.fixture(scope="module")
+def _inbox_server(migrated_template, tmp_path_factory):
+    root = tmp_path_factory.mktemp("inbox")
+    db = root / "store.sqlite"
+    shutil.copy2(migrated_template, db)
+    server = start_kitchen(
+        db,
         origins=("http://kitchen.example",),
         inbox_port=0,
     )
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
     try:
-        yield server
+        yield server, db, migrated_template
     finally:
-        server.shutdown()
-        server.server_close()
+        stop_kitchen(server)
+
+
+@pytest.fixture
+def kitchen(_inbox_server):
+    server, db, template = _inbox_server
+    reset_db_file(db, template)
+    # Inbox listener follows settings; ensure it is up after a blank reset.
+    if server.inbox_bound_port() is None:
+        server.start_inbox()
+    yield server
 
 
 class KitchenClient:
@@ -308,10 +318,10 @@ def test_hash_key_constant_compare():
     assert not inbox_mod.key_matches("", digest)
 
 
-def test_public_inbox_url_is_shown_to_settings_and_agents(tmp_path):
+def test_public_inbox_url_is_shown_to_settings_and_agents(blank_db):
     server = KitchenServer(
         ("127.0.0.1", 0),
-        tmp_path / "store.sqlite",
+        blank_db,
         inbox_port=0,
         inbox_url="https://kitchen.example.net:8443/",
     )
@@ -322,9 +332,9 @@ def test_public_inbox_url_is_shown_to_settings_and_agents(tmp_path):
         server.server_close()
 
 
-def test_plain_instructions_show_the_public_address(tmp_path):
+def test_plain_instructions_show_the_public_address(blank_db):
     server = KitchenServer(
-        ("127.0.0.1", 0), tmp_path / "store.sqlite", inbox_port=0, inbox_url="https://kitchen.example.net:8443"
+        ("127.0.0.1", 0), blank_db, inbox_port=0, inbox_url="https://kitchen.example.net:8443"
     )
     try:
         conn = HTTPConnection("127.0.0.1", server.inbox_bound_port(), timeout=5)
