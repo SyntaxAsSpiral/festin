@@ -7,12 +7,13 @@ import {
   pluginSaveBody,
   pluginTestAction,
   readPluginSaveResult,
+  secretIsSet,
   secretState,
 } from './plugins.js'
 
 const printerSchema = [
   { key: 'receiverUrl', type: 'string', default: '', label: 'Print receiver URL' },
-  { key: 'token', type: 'string', default: '', label: 'Print receiver token' },
+  { key: 'token', type: 'string', default: '', label: 'Print receiver token', secret: true },
   {
     key: 'band',
     type: 'string',
@@ -59,12 +60,14 @@ describe('plugin schema mapping', () => {
     const { enabled, draft, secrets } = draftFromPlugin({
       id: 'printer',
       enabled: true,
-      settings: { receiverUrl: 'http://127.0.0.1:9', token: 'sekret', band: 'rose' },
+      settings: { receiverUrl: 'http://127.0.0.1:9', tokenSet: true, band: 'rose' },
       schema: printerSchema,
     })
     expect(enabled).toBe(true)
     expect(draft).toEqual({ receiverUrl: 'http://127.0.0.1:9', token: '', band: 'rose' })
     expect(secrets).toEqual({ token: 'set' })
+    expect(secretIsSet({ tokenSet: true }, 'token')).toBe(true)
+    expect(secretIsSet({ tokenSet: false }, 'token')).toBe(false)
   })
 
   it('omits untouched secrets from the PUT body', () => {
@@ -106,8 +109,8 @@ describe('plugin save result', () => {
     expect(readPluginSaveResult(200, { id: 'printer', enabled: true })).toMatchObject({ ok: true })
   })
 
-  it('knows the printer has no test action on the host', () => {
-    expect(pluginTestAction({ id: 'printer', name: 'Thermal printer' })).toBe(null)
+  it('wires the printer test-slip action for the Settings button', () => {
+    expect(pluginTestAction({ id: 'printer', name: 'Thermal printer' })).toBe('test-slip')
     expect(pluginTestAction({ id: 'hue' })).toBe(null)
   })
 })

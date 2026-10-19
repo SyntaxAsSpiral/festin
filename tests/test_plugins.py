@@ -105,7 +105,10 @@ def test_plugins_over_http_and_tools_follow_the_switch(tmp_path):
         assert saved["enabled"] is True
         assert saved["settings"]["receiverUrl"] == "http://127.0.0.1:9"
         assert saved["settings"]["band"] == "rose"
-        assert saved["settings"]["token"] == ""
+        assert "token" not in saved["settings"]
+        assert saved["settings"]["tokenSet"] is False
+        token_field = next(f for f in saved["schema"] if f["key"] == "token")
+        assert token_field.get("secret") is True
 
         status, bad = client.request(
             "PUT", "/api/plugins/printer", {"settings": {"receiverUrl": "192.168.1.50"}}
@@ -130,6 +133,7 @@ def test_plugins_over_http_and_tools_follow_the_switch(tmp_path):
 
         status, dinner = client.request("POST", "/api/plugins/printer/print-dinner", {})
         assert status == 400
+        assert "weekStart" in dinner["error"]
         status, recipe_print = client.request(
             "POST", "/api/plugins/printer/print-recipe", {"recipe_id": "CBK-missing"}
         )
@@ -143,9 +147,68 @@ def test_plugins_over_http_and_tools_follow_the_switch(tmp_path):
         assert status == 200
         assert off["enabled"] is False
         assert off["settings"]["receiverUrl"] == "http://127.0.0.1:9"
+        assert "token" not in off["settings"]
         assert "prepare_slip" not in host.build_registry(conn).names()
         status, blocked = client.request("POST", "/api/plugins/printer/print", {"slip_id": "nope"})
         assert status == 404
+        conn.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_printer_token_never_echoed_and_put_keeps_it(tmp_path):
+    server = _kitchen(tmp_path)
+    client = Client(server.server_address[1])
+    secret = "print-token-never-echo-9f3a"
+    try:
+        status, saved = client.request(
+            "PUT",
+            "/api/plugins/printer",
+            {
+                "enabled": True,
+                "settings": {
+                    "receiverUrl": "http://127.0.0.1:9",
+                    "token": secret,
+                    "band": "scroll",
+                },
+            },
+        )
+        assert status == 200
+        assert saved["settings"]["tokenSet"] is True
+        assert "token" not in saved["settings"]
+        assert secret not in json.dumps(saved)
+
+        status, listed = client.request("GET", "/api/plugins")
+        assert status == 200
+        printer = _printer(listed["plugins"])
+        assert printer["settings"]["tokenSet"] is True
+        assert "token" not in printer["settings"]
+        assert secret not in json.dumps(listed)
+
+        status, one = client.request("GET", "/api/plugins/printer")
+        assert status == 200
+        assert one["settings"]["tokenSet"] is True
+        assert "token" not in one["settings"]
+        assert secret not in json.dumps(one)
+
+        status, kept = client.request(
+            "PUT",
+            "/api/plugins/printer",
+            {"settings": {"receiverUrl": "http://127.0.0.1:9", "band": "rose", "token": ""}},
+        )
+        assert status == 200
+        assert kept["settings"]["band"] == "rose"
+        assert kept["settings"]["tokenSet"] is True
+        assert "token" not in kept["settings"]
+
+        conn = connect(server.db_path)
+        stored = json.loads(
+            conn.execute(
+                "SELECT settings_json FROM plugin_settings WHERE plugin_id = 'printer'"
+            ).fetchone()["settings_json"]
+        )
+        assert stored["token"] == secret
         conn.close()
     finally:
         server.shutdown()
@@ -305,6 +368,102 @@ def test_print_slip_posts_once_and_reports_uncertain(tmp_path):
         digest = by_slip[first["slip_id"]][0]["sha256"]
         assert digest == first["sha256"]
         conn.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        receiver.shutdown()
+        receiver.server_close()
+
+
+def _plan_days():
+    return [
+        {
+            "day": day,
+            "recipe": None,
+            "title": "Lentil soup" if day == "sat" else "",
+            "ingredients": ["lentils"] if day == "sat" else [],
+        }
+        for day in WEEKDAYS
+    ]
+
+
+def test_print_dinner_and_test_slip_over_http_with_fake_receiver(tmp_path):
+    receiver = ThreadingHTTPServer(("127.0.0.1", 0), _Receiver)
+    receiver.posts = []
+    receiver.uncertain = set()
+    thread = threading.Thread(target=receiver.serve_forever, daemon=True)
+    thread.start()
+    server = _kitchen(tmp_path)
+    client = Client(server.server_address[1])
+    try:
+        port = receiver.server_address[1]
+        url = f"http://127.0.0.1:{port}"
+        status, enabled = client.request(
+            "PUT",
+            "/api/plugins/printer",
+            {"enabled": True, "settings": {"receiverUrl": url, "token": "test-token", "band": "scroll"}},
+        )
+        assert status == 200
+        assert enabled["settings"]["tokenSet"] is True
+        assert "token" not in enabled["settings"]
+
+        conn = connect(server.db_path)
+        plans.save_plan(conn, SAT, {"weekStart": SAT, "days": _plan_days()})
+        conn.close()
+
+        status, first = client.request(
+            "POST",
+            "/api/plugins/printer/print-dinner",
+            {"weekStart": SAT},
+        )
+        assert status == 200
+        assert first["status"] == "printed"
+        assert first["message"] == "Print command completed."
+        assert len(receiver.posts) == 1
+
+        status, again = client.request(
+            "POST",
+            "/api/plugins/printer/print-dinner",
+            {"weekStart": SAT},
+        )
+        assert status == 200
+        assert again["status"] == "printed"
+        assert again["message"] == "No additional print sent."
+        assert again["slip_id"] == first["slip_id"]
+        assert len(receiver.posts) == 1
+
+        status, test = client.request("POST", "/api/plugins/printer/test-slip", {})
+        assert status == 200
+        assert test["status"] == "printed"
+        assert len(receiver.posts) == 2
+        assert "Babette" in json.dumps(test) or test["status"] == "printed"
+
+        status, bare = client.request(
+            "PUT",
+            "/api/plugins/printer",
+            {"settings": {"receiverUrl": url, "token": ""}},
+        )
+        assert status == 200
+        assert bare["settings"]["tokenSet"] is True
+
+        # Empty token on PUT keeps the stored value; clear in the DB for the error path.
+        conn = connect(server.db_path)
+        conn.execute(
+            "UPDATE plugin_settings SET settings_json = ? WHERE plugin_id = 'printer'",
+            (
+                json.dumps(
+                    {"receiverUrl": url, "token": "", "band": "scroll"},
+                    ensure_ascii=False,
+                ),
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+        status, missing = client.request("POST", "/api/plugins/printer/test-slip", {})
+        assert status == 400
+        assert "not set" in missing["error"].lower()
+        assert len(receiver.posts) == 2
     finally:
         server.shutdown()
         server.server_close()

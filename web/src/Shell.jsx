@@ -13,7 +13,10 @@ import { useChat } from './chat/useChat.js'
 import { SettingsSidebar, useOpenSettings, useSettingsOpen } from './settings/Sidebar.jsx'
 import { Meals } from './meals/Meals.jsx'
 import { Frieze } from './meals/Frieze.jsx'
+import { getActiveMealsPlan } from './meals/activePlan.js'
 import { fetchPlugins, printerIsOn } from './meals/plan.js'
+import { printGateMessage, toastForPrintResult } from './meals/printToast.js'
+import { callPluginAction } from './settings/api.js'
 import './meals/meals.css'
 
 const LOOK = {
@@ -88,16 +91,23 @@ function PrintButton({ onMeals }) {
   }, [toast])
 
   async function onPrint() {
-    if (!onMeals) {
-      setToast('Print the slip from Meals.')
-      return
-    }
-    const plugins = await fetchPlugins()
-    if (!printerIsOn(plugins)) {
-      setToast('The printer plugin is off.')
+    const plan = getActiveMealsPlan()
+    const plugins = onMeals ? await fetchPlugins() : null
+    const gate = printGateMessage({
+      onMeals,
+      printerOn: printerIsOn(plugins),
+      plan,
+    })
+    if (gate) {
+      setToast(gate)
       return
     }
     setToast('Sending the slip to the printer…')
+    const result = await callPluginAction('printer', 'print-dinner', {
+      weekStart: plan.weekStart,
+      plan,
+    })
+    setToast(toastForPrintResult(result))
   }
 
   return (

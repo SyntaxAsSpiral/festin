@@ -48,6 +48,7 @@ class PrinterPlugin:
                 "type": "string",
                 "default": "",
                 "label": "Print receiver token",
+                "secret": True,
             },
             {
                 "key": "band",
@@ -107,6 +108,7 @@ class PrinterPlugin:
             "print": slips.action_print,
             "print-dinner": slips.action_print_dinner,
             "print-recipe": slips.action_print_recipe,
+            "test-slip": slips.action_test_slip,
         }
 
     def feed(self) -> dict:
