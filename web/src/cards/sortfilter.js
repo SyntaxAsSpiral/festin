@@ -5,10 +5,14 @@ export const STORAGE_KEY = 'festin.sortfilter.'
 
 export const SORT_IDS = ['name', 'id-newest', 'id-oldest']
 
-export const DEFAULT_CHOICE = Object.freeze({ sort: 'name', category: '' })
+export const DEFAULT_CHOICE = Object.freeze({ sort: 'name', category: '', favouritesOnly: false })
 
 export function isDefaultChoice(choice) {
-  return (!choice || !choice.category) && (!choice || !choice.sort || choice.sort === 'name')
+  return (
+    (!choice || !choice.category) &&
+    (!choice || !choice.sort || choice.sort === 'name') &&
+    (!choice || !choice.favouritesOnly)
+  )
 }
 
 export function cbkNumber(id) {
@@ -33,6 +37,11 @@ export function filterByCategory(items, category) {
   return items.filter((it) => it.raw && it.raw.category === category)
 }
 
+export function filterFavourites(items, favouritesOnly) {
+  if (!favouritesOnly) return items
+  return items.filter((it) => it.raw && it.raw.favourite)
+}
+
 export function sortItems(items, sort) {
   const out = items.slice()
   if (sort === 'id-newest') out.sort(byIdDesc)
@@ -44,12 +53,14 @@ export function sortItems(items, sort) {
 export function applySortFilter(items, choice) {
   const sort = choice && SORT_IDS.includes(choice.sort) ? choice.sort : 'name'
   const category = choice && CATEGORY_LABELS[choice.category] ? choice.category : ''
-  return sortItems(filterByCategory(items, category), sort)
+  const favouritesOnly = Boolean(choice && choice.favouritesOnly)
+  return sortItems(filterFavourites(filterByCategory(items, category), favouritesOnly), sort)
 }
 
 export function summarizeChoice(choice) {
   if (isDefaultChoice(choice)) return ''
   const parts = []
+  if (choice.favouritesOnly) parts.push('Favourites only')
   if (choice.category && CATEGORY_LABELS[choice.category]) parts.push(CATEGORY_LABELS[choice.category])
   if (choice.sort === 'id-newest') parts.push('by ID, newest first')
   else if (choice.sort === 'id-oldest') parts.push('by ID, oldest first')
@@ -60,12 +71,17 @@ function normalizeChoice(raw) {
   if (!raw || typeof raw !== 'object') return { ...DEFAULT_CHOICE }
   const sort = SORT_IDS.includes(raw.sort) ? raw.sort : 'name'
   const category = CATEGORY_LABELS[raw.category] ? raw.category : ''
-  // Unknown sort with a bad category → treat as default when both bad.
-  if (!SORT_IDS.includes(raw.sort) && raw.category && !CATEGORY_LABELS[raw.category]) return { ...DEFAULT_CHOICE }
-  if (!SORT_IDS.includes(raw.sort) && !raw.category) return { ...DEFAULT_CHOICE }
-  // If sort was bogus but category ok, keep category with default sort.
-  if (!SORT_IDS.includes(raw.sort) && category) return { sort: 'name', category }
-  return { sort, category }
+  const favouritesOnly = Boolean(raw.favouritesOnly)
+  // Unknown sort with a bad category → treat as default when both bad and no favourites filter.
+  if (!SORT_IDS.includes(raw.sort) && raw.category && !CATEGORY_LABELS[raw.category] && !favouritesOnly) {
+    return { ...DEFAULT_CHOICE }
+  }
+  if (!SORT_IDS.includes(raw.sort) && !raw.category && !favouritesOnly) return { ...DEFAULT_CHOICE }
+  // If sort was bogus but category or favourites ok, keep those with default sort.
+  if (!SORT_IDS.includes(raw.sort) && (category || favouritesOnly)) {
+    return { sort: 'name', category, favouritesOnly }
+  }
+  return { sort, category, favouritesOnly }
 }
 
 export function readStoredChoice(kind) {

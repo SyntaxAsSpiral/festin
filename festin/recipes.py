@@ -34,6 +34,7 @@ _STRING_FIELDS = {
 _BOOL_FIELDS = {
     "stub": "stub",
     "needsPracticeReview": "needs_practice_review",
+    "favourite": "favourite",
 }
 _LIST_FIELDS = {
     "ingredients": "ingredients_json",
@@ -128,6 +129,7 @@ def create_recipe(conn: sqlite3.Connection, body: dict, *, now: datetime | None 
         "status": fields.get("status") or "draft",
         "stub": int(fields.get("stub") or 0),
         "needs_practice_review": int(fields.get("needs_practice_review") or 0),
+        "favourite": int(fields.get("favourite") or 0),
         "search_description": fields.get("search_description") or "",
         "method": fields.get("method") or "",
         "notes": fields.get("notes") or "",
@@ -405,6 +407,7 @@ def _public(row) -> dict:
         "status": row["status"],
         "stub": bool(row["stub"]),
         "needsPracticeReview": bool(row["needs_practice_review"]),
+        "favourite": bool(row["favourite"]),
         "searchDescription": row["search_description"],
         "method": row["method"],
         "notes": row["notes"],
@@ -448,6 +451,7 @@ def _card(item: dict) -> dict:
         "notes": item["notes"],
         "stub": item["stub"],
         "needsPracticeReview": item["needsPracticeReview"],
+        "favourite": item["favourite"],
         "updatedAt": item["updatedAt"],
     }
 

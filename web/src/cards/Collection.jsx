@@ -181,6 +181,10 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
     setChoice((c) => ({ ...c, category }))
   }
 
+  function setFavouritesOnly(favouritesOnly) {
+    setChoice((c) => ({ ...c, favouritesOnly }))
+  }
+
   function clearChoice() {
     setChoice({ ...DEFAULT_CHOICE })
     setSortOpen(false)
@@ -263,6 +267,14 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                       ))}
                     </select>
                   </label>
+                  <label className="lsort-opt">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(choice.favouritesOnly)}
+                      onChange={(event) => setFavouritesOnly(event.target.checked)}
+                    />
+                    Favourites only
+                  </label>
                 </div>
               )}
             </div>
@@ -280,7 +292,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
       {failed && <p className="lstate">The kitchen did not answer. Try again in a moment.</p>}
       {!failed && !items && <p className="lstate">Opening the box…</p>}
       {items && !results.length && query.trim() && <p className="lstate">Nothing by that name. Ask Babette.</p>}
-      {items && !results.length && !query.trim() && items.length > 0 && summary && <p className="lstate">Nothing in that category.</p>}
+      {items && !results.length && !query.trim() && items.length > 0 && summary && <p className="lstate">Nothing matches that filter.</p>}
       {items && !items.length && !query.trim() && <p className="lstate">{spec.empty}</p>}
       <div ref={list} className={'nlist nlist-' + layout}>
         {/* Cards are dealt round-robin into columns, so they read left to right and
@@ -296,7 +308,14 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                     {layout === 'cards' && kind === 'recipes' && <img className="nplate" src={plateFor(item.raw.category)} alt="" loading="lazy" />}
                     {layout === 'cards' && kind === 'notes' && <span className="nswatch" data-color={item.raw.color || 'none'} />}
                     <span className="nhead">
-                      <span className="ntitle">{face.title}</span>
+                      <span className="ntitle">
+                        {kind === 'recipes' && item.raw?.favourite ? (
+                          <span className="nheart" aria-label="Favourite" title="Favourite">
+                            ♥
+                          </span>
+                        ) : null}
+                        {face.title}
+                      </span>
                       {kind === 'recipes' && <span className="nid">{item.id}</span>}
                     </span>
                     <span className="nline">{face.line}</span>

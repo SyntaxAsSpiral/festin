@@ -58,6 +58,7 @@ def recipe_public(row) -> dict:
         "status": row["status"],
         "stub": bool(row["stub"]),
         "needsPracticeReview": bool(row["needs_practice_review"]),
+        "favourite": bool(row["favourite"]),
         "searchDescription": row["search_description"],
         "method": row["method"],
         "notes": row["notes"],
@@ -143,6 +144,8 @@ def catalog_filters(args: dict) -> dict:
                 folded.append(text)
         if folded:
             filters[key] = folded
+    if "favourite" in args and args.get("favourite") is not None:
+        filters["favourite"] = flag(args.get("favourite"), "favourite")
     return filters
 
 
@@ -162,6 +165,8 @@ def row_in_scope(recipe: dict, filters: dict) -> bool:
         have = {normalize_search(item) for item in recipe.get("tattva") or [] if isinstance(item, str)}
         if not have & set(filters["tattva"]):
             return False
+    if "favourite" in filters and bool(recipe.get("favourite")) != filters["favourite"]:
+        return False
     return True
 
 
@@ -200,6 +205,7 @@ def compact_card(recipe: dict) -> dict:
         "voice": voice if isinstance(voice, str) else "",
         "tattva": stored_tattva(recipe),
         "searchDescription": description if isinstance(description, str) else "",
+        "favourite": bool(recipe.get("favourite")),
     }
 
 
@@ -539,6 +545,7 @@ def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
         public.get("status"),
         1 if public.get("stub") else 0,
         1 if public.get("needsPracticeReview") else 0,
+        1 if public.get("favourite") else 0,
         public.get("searchDescription") or "",
         public.get("method") or "",
         public.get("notes") or "",
@@ -556,9 +563,9 @@ def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
             """
             INSERT INTO recipes (
                 id, title, kind, category, voice, source, provenance, status, stub,
-                needs_practice_review, search_description, method, notes, context, ocr_text,
+                needs_practice_review, favourite, search_description, method, notes, context, ocr_text,
                 ingredients_json, tattva_json, photos_json, created_at, updated_at, extra_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             columns,
         )
@@ -567,9 +574,9 @@ def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
             """
             UPDATE recipes SET
                 title = ?, kind = ?, category = ?, voice = ?, source = ?, provenance = ?,
-                status = ?, stub = ?, needs_practice_review = ?, search_description = ?,
-                method = ?, notes = ?, context = ?, ocr_text = ?, ingredients_json = ?,
-                tattva_json = ?, photos_json = ?, updated_at = ?
+                status = ?, stub = ?, needs_practice_review = ?, favourite = ?,
+                search_description = ?, method = ?, notes = ?, context = ?, ocr_text = ?,
+                ingredients_json = ?, tattva_json = ?, photos_json = ?, updated_at = ?
             WHERE id = ?
             """,
             (
@@ -590,6 +597,7 @@ def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
                 columns[15],
                 columns[16],
                 columns[17],
+                columns[18],
                 stamp,
                 public["id"],
             ),
@@ -618,6 +626,7 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
             "tattva": [],
             "stub": False,
             "needsPracticeReview": False,
+            "favourite": False,
         }
     else:
         db_row = _recipe_row(conn, args.get("recipe_id"))

@@ -12,15 +12,15 @@ import {
   writeStoredChoice,
 } from './sortfilter.js'
 
-function item(id, title, category) {
-  return { id, title, raw: { id, title, category }, search: title.toLowerCase() }
+function item(id, title, category, favourite = false) {
+  return { id, title, raw: { id, title, category, favourite }, search: title.toLowerCase() }
 }
 
 const SAMPLE = [
   item('CBK-0003', 'Zebra Cake', 'cakes'),
-  item('CBK-0010', 'Apple Pie', 'pies-tarts'),
+  item('CBK-0010', 'Apple Pie', 'pies-tarts', true),
   item('CBK-0001', 'Banana Bread', 'breads'),
-  item('CBK-0007', 'Carrot Cake', 'cakes'),
+  item('CBK-0007', 'Carrot Cake', 'cakes', true),
 ]
 
 describe('applySortFilter', () => {
@@ -49,6 +49,16 @@ describe('applySortFilter', () => {
     applySortFilter(SAMPLE, { sort: 'id-newest', category: 'cakes' })
     expect(SAMPLE.map((r) => r.id)).toEqual(before)
   })
+
+  it('filters to favourites only', () => {
+    const titles = applySortFilter(SAMPLE, { sort: 'name', category: '', favouritesOnly: true }).map((r) => r.title)
+    expect(titles).toEqual(['Apple Pie', 'Carrot Cake'])
+  })
+
+  it('combines favourites with a category', () => {
+    const titles = applySortFilter(SAMPLE, { sort: 'name', category: 'cakes', favouritesOnly: true }).map((r) => r.title)
+    expect(titles).toEqual(['Carrot Cake'])
+  })
 })
 
 describe('summarizeChoice', () => {
@@ -61,6 +71,10 @@ describe('summarizeChoice', () => {
     expect(summarizeChoice({ sort: 'name', category: 'cakes' })).toBe('Cakes')
   })
 
+  it('names favourites only', () => {
+    expect(summarizeChoice({ sort: 'name', category: '', favouritesOnly: true })).toBe('Favourites only')
+  })
+
   it('names ID order with direction', () => {
     expect(summarizeChoice({ sort: 'id-newest', category: '' })).toBe('by ID, newest first')
     expect(summarizeChoice({ sort: 'id-oldest', category: '' })).toBe('by ID, oldest first')
@@ -68,6 +82,12 @@ describe('summarizeChoice', () => {
 
   it('joins category and ID order', () => {
     expect(summarizeChoice({ sort: 'id-newest', category: 'cakes' })).toBe('Cakes, by ID, newest first')
+  })
+
+  it('joins favourites with category and ID order', () => {
+    expect(summarizeChoice({ sort: 'id-newest', category: 'cakes', favouritesOnly: true })).toBe(
+      'Favourites only, Cakes, by ID, newest first',
+    )
   })
 })
 
@@ -80,10 +100,15 @@ describe('stored choice', () => {
   })
 
   it('remembers a choice per kind', () => {
-    writeStoredChoice('recipes', { sort: 'id-newest', category: 'cakes' })
+    writeStoredChoice('recipes', { sort: 'id-newest', category: 'cakes', favouritesOnly: true })
     expect(localStorage.getItem(STORAGE_KEY + 'recipes')).toBeTruthy()
-    expect(readStoredChoice('recipes')).toEqual({ sort: 'id-newest', category: 'cakes' })
+    expect(readStoredChoice('recipes')).toEqual({ sort: 'id-newest', category: 'cakes', favouritesOnly: true })
     expect(readStoredChoice('notes')).toEqual(DEFAULT_CHOICE)
+  })
+
+  it('fills favouritesOnly false for older stored choices', () => {
+    localStorage.setItem(STORAGE_KEY + 'recipes', JSON.stringify({ sort: 'name', category: 'cakes' }))
+    expect(readStoredChoice('recipes')).toEqual({ sort: 'name', category: 'cakes', favouritesOnly: false })
   })
 
   it('ignores a corrupt payload', () => {

@@ -80,6 +80,13 @@ RECIPE_FIELDS = {
             "not after a photo pass."
         ),
     },
+    "favourite": {
+        "type": "boolean",
+        "description": (
+            "Shared household heart on a recipe. Set true when someone loved the dish "
+            "(for example Mom loved the venison stroganoff). Clear only when asked."
+        ),
+    },
     "tattva": {"type": "array", "items": {"type": "string"}},
     "category": {
         "type": "string",
@@ -131,6 +138,10 @@ CATALOG_FILTER_PROPERTIES = {
     "status": {
         **string_array(),
         "description": "Whole status field, such as draft or confirmed.",
+    },
+    "favourite": {
+        "type": "boolean",
+        "description": "When true, only favourited recipes. When false, only unmarked ones.",
     },
 }
 
@@ -228,9 +239,10 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
             "explicitly when expansion is complete. Preserve source attribution. Set "
             "needsPracticeReview false in the same turn the household says the dish "
             "was made, or just after attach_recipe_photos of the cooked dish, without "
-            "waiting to be asked again. If more than one card could be meant, ask "
-            "which one. Never change provenance away from ocr-draft, and never change "
-            "status. A cook is only needsPracticeReview false."
+            "waiting to be asked again. Set favourite true when someone loved the dish "
+            "(a shared household heart). Clear favourite only when asked. If more than "
+            "one card could be meant, ask which one. Never change provenance away from "
+            "ocr-draft, and never change status. A cook is only needsPracticeReview false."
         ),
         {
             "type": "object",
@@ -326,8 +338,9 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
             "and status match the whole field. tattva matches one name on the card. "
             "The query may be empty when a filter is set. Returns total, limit, and "
             "offset. The page defaults to 40 compact cards: id, title, category, kind, "
-            "voice, tattva, searchDescription. Set full true only to read a whole card. "
-            "When you name a card, write its id beside the title as CBK-####."
+            "voice, tattva, searchDescription, favourite. Set full true only to read a "
+            "whole card. favourite=true limits to hearts. When you name a card, write "
+            "its id beside the title as CBK-####."
         ),
         SEARCH_COOKBOOK_SCHEMA,
     ),

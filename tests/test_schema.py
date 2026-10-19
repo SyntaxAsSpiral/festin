@@ -12,13 +12,15 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert SCHEMA_VERSION == 7
+    assert SCHEMA_VERSION == 8
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "sessions" in tables
     assert "kitchen_log_events" in tables
     assert "plugin_settings" in tables
     assert "slips" in tables
+    recipe_columns = {row["name"] for row in conn.execute("PRAGMA table_info(recipes)")}
+    assert "favourite" in recipe_columns
     week_columns = {row["name"] for row in conn.execute("PRAGMA table_info(weeks)")}
     assert "weather_json" in week_columns
     plugin_columns = {row["name"] for row in conn.execute("PRAGMA table_info(plugin_settings)")}
@@ -73,11 +75,34 @@ def test_v5_database_gains_plugin_tables_at_v7(tmp_path):
     conn.execute("PRAGMA user_version = 5")
     conn.commit()
     apply(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 7
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "kitchen_log_events" in tables
     assert "plugin_settings" in tables
     assert "slips" in tables
+    conn.close()
+
+
+def test_v7_database_gains_favourite_at_v8(tmp_path):
+    conn = connect(tmp_path / "store.sqlite")
+    for step in MIGRATIONS[:7]:
+        step(conn)
+    conn.execute("PRAGMA user_version = 7")
+    conn.execute(
+        """
+        INSERT INTO recipes (
+            id, title, kind, voice, source, provenance, status, stub,
+            needs_practice_review, ingredients_json, updated_at
+        ) VALUES ('CBK-0001', 'Soup', 'recipe', 'zk', 'unknown', 'documented', 'draft', 0, 0, '[]', '2026-01-01T00:00:00Z')
+        """
+    )
+    conn.commit()
+    assert "favourite" not in {row["name"] for row in conn.execute("PRAGMA table_info(recipes)")}
+
+    apply(conn)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 8
+    row = conn.execute("SELECT favourite FROM recipes WHERE id = 'CBK-0001'").fetchone()
+    assert row["favourite"] == 0
     conn.close()
 
 

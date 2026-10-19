@@ -13,6 +13,7 @@ import {
   removeItem,
   saveNote,
   saveRecipe,
+  setRecipeFavourite,
   toItem,
 } from './kinds.js'
 import { copyText } from '../secure.js'
@@ -250,6 +251,22 @@ export function CardOverlay({ kind, id, onChanged }) {
                 ))}
               {kind === 'recipes' && raw && !editingRecipe && (
                 <>
+                  <button
+                    type="button"
+                    className={'card-fav' + (raw.favourite ? ' on' : '')}
+                    aria-pressed={Boolean(raw.favourite)}
+                    title={raw.favourite ? 'Favourited' : 'Favourite'}
+                    onClick={() =>
+                      act(() =>
+                        setRecipeFavourite(raw, !raw.favourite).then((saved) => {
+                          applySaved(saved)
+                          setNote(saved.favourite ? 'Favourited.' : 'Favourite cleared.')
+                        }),
+                      )
+                    }
+                  >
+                    {raw.favourite ? '♥' : '♡'} Favourite
+                  </button>
                   <button type="button" onClick={() => (setRecipeDraft(draftFrom(raw)), setPhase('editing'))}>
                     Edit
                   </button>
