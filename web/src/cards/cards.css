@@ -494,3 +494,8 @@ button.danger { color: var(--bb-rose); }
 [data-color='lavender'] { --note-swatch: #7287fd; }
 [data-color]:not([data-color='none']) { --note-tint: color-mix(in srgb, var(--note-swatch) 9%, var(--bb-paper)); }
 .nswatch[data-color]:not([data-color='none']) { background: color-mix(in srgb, var(--note-swatch) 45%, var(--bb-paper)); }
+/* The box scans: references, a quiet strip at the foot of the recipe. */
+.scans .scan-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+.scans .scan-strip button { padding: 0; border: 1px solid var(--bb-tone-2); background: none; cursor: zoom-in; }
+.scans .scan-strip img { display: block; height: 140px; width: auto; }
+.cooked-photos button { padding: 0; border: 0; background: none; cursor: zoom-in; }

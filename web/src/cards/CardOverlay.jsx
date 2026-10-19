@@ -282,7 +282,17 @@ export function CardOverlay({ kind, id, onChanged }) {
                   <button type="button" onClick={() => (setRecipeDraft(draftFrom(raw)), setPhase('editing'))}>
                     Edit
                   </button>
-                  <button type="button" onClick={() => act(() => cookTonight(raw).then(() => setNote('Cooked tonight.')))}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      act(() =>
+                        cookTonight(raw).then((saved) => {
+                          if (saved) applySaved(saved)
+                          setNote(saved ? 'Cooked tonight, and no longer waiting for review.' : 'Cooked tonight.')
+                        }),
+                      )
+                    }
+                  >
                     Cooked tonight
                   </button>
                 </>

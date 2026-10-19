@@ -26,8 +26,8 @@ function Paragraphs({ text, className }) {
 }
 
 export function RecipePage({ recipe }) {
-  const [scanOpen, setScanOpen] = useState(false)
-  const scan = served((recipe.ocrPhotos || [])[0])
+  const [openImage, setOpenImage] = useState(null)
+  const scans = (recipe.ocrPhotos || []).map(served)
   const photos = (recipe.photos || []).map(served)
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : []
   return (
@@ -40,12 +40,13 @@ export function RecipePage({ recipe }) {
       </header>
       {recipe.searchDescription && <p className="standfirst">{recipe.searchDescription}</p>}
       <div className="recipe-body">
-        {scan && (
+        {/* Cooked photos are the recipe's pictures; the box scan is a reference, kept below. */}
+        {photos[0] && (
           <figure className="from-box">
-            <button type="button" onClick={() => setScanOpen(true)} aria-label="Open the original card">
-              <img src={scan} alt={'The original card for ' + recipe.title} loading="lazy" />
+            <button type="button" onClick={() => setOpenImage(photos[0])} aria-label="Open the photo">
+              <img src={photos[0]} alt={'Cooked: ' + recipe.title} loading="lazy" />
             </button>
-            <figcaption>From the box</figcaption>
+            <figcaption>From our kitchen</figcaption>
           </figure>
         )}
         {ingredients.length > 0 && (
@@ -66,10 +67,12 @@ export function RecipePage({ recipe }) {
         )}
         {!ingredients.length && !recipe.method && <p className="quiet">This card has no ingredients or method yet.</p>}
       </div>
-      {photos.length > 0 && (
+      {photos.length > 1 && (
         <div className="cooked-photos">
-          {photos.map((src) => (
-            <img key={src} src={src} alt={'Cooked: ' + recipe.title} loading="lazy" />
+          {photos.slice(1).map((src) => (
+            <button key={src} type="button" onClick={() => setOpenImage(src)} aria-label="Open the photo">
+              <img src={src} alt={'Cooked: ' + recipe.title} loading="lazy" />
+            </button>
           ))}
         </div>
       )}
@@ -90,9 +93,23 @@ export function RecipePage({ recipe }) {
           <Paragraphs text={recipe.context} />
         </section>
       )}
-      {scanOpen && (
-        <button type="button" className="scan-full" onClick={() => setScanOpen(false)} aria-label="Close the original card">
-          <img src={scan} alt={'The original card for ' + recipe.title} />
+      {scans.length > 0 && (
+        <section className="kitchen babble scans">
+          <h2>
+            From the box <small>original {scans.length > 1 ? 'cards' : 'card'}</small>
+          </h2>
+          <div className="scan-strip">
+            {scans.map((src) => (
+              <button key={src} type="button" onClick={() => setOpenImage(src)} aria-label="Open the original card">
+                <img src={src} alt={'The original card for ' + recipe.title} loading="lazy" />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      {openImage && (
+        <button type="button" className="scan-full" onClick={() => setOpenImage(null)} aria-label="Close">
+          <img src={openImage} alt={recipe.title} />
         </button>
       )}
     </article>

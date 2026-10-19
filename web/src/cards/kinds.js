@@ -318,13 +318,20 @@ export async function cookTonight(recipe) {
     return { ...day, recipe: recipe.id, title: day.title || recipe.title || '', cooked: true }
   })
   if (!found) throw new Error("Tonight is not on this week's plan.")
-  return send('POST', '/api/plans/' + encodeURIComponent(start), {
+  await send('POST', '/api/plans/' + encodeURIComponent(start), {
     weekStart: start,
     slipTitle: plan.slipTitle || '',
     notes: plan.notes || '',
     ...(plan.plates ? { plates: plan.plates } : {}),
     expected_updated_at: plan.updatedAt,
     days,
+  })
+  // Cooking it is the practice review: a card waiting on one is cleared (and the
+  // Log records its first cook). Returns the saved card when it changed.
+  if (!recipe.needsPracticeReview) return null
+  return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id), {
+    expected_updated_at: recipe.updatedAt,
+    needsPracticeReview: false,
   })
 }
 
