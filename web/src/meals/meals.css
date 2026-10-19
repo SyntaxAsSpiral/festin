@@ -30,7 +30,9 @@
 .slip {
   container: slip / inline-size;
   position: relative;
-  padding: 20px 30px 22px;
+  /* The banner sits as far below the top edge as in from the sides. */
+  --slip-px: 30px;
+  padding: var(--slip-px) var(--slip-px) 22px;
   border: 1px solid var(--bb-tone-2);
   background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
   background-blend-mode: multiply;
@@ -841,8 +843,15 @@ html[data-motion='off'] .kl .tcar {
     }
     .meals > .slipw .slip {
       --pin-room: 58px;
-      padding-top: 10px;
+      --slip-px: 24px;
       padding-bottom: 10px;
+    }
+    /* The room for that top margin comes from slightly smaller text. */
+    .meals > .slipw .slip .row .n {
+      font-size: clamp(15px, 4.6cqi, 19px);
+    }
+    .meals > .slipw .slip .row .d {
+      font-size: clamp(12px, 3.7cqi, 15px);
     }
     .meals > .slipw .slip .vig {
       margin-bottom: 8px;
