@@ -46,76 +46,49 @@ export function PullRefresh({ root, reduced = false, reload = defaultReload }) {
       setReady(false)
     }
 
-    function onDown(event) {
-      if (event.pointerType !== 'touch') return
+    // Touch events, not pointer events: the stage pans vertically, so the browser
+    // claims a downward drag and sends pointercancel before the pull can arm. Only
+    // a non-passive touchmove may preventDefault and keep the gesture ours.
+    function onStart(event) {
+      if (event.touches.length !== 1) return
       if (!window.matchMedia(NARROW_QUERY).matches) return
-      if (
-        !shouldBeginPull({
-          pointerType: event.pointerType,
-          narrow: true,
-          target: event.target,
-          root,
-        })
-      ) {
-        return
-      }
+      if (!shouldBeginPull({ pointerType: 'touch', narrow: true, target: event.target, root })) return
       clearSpring()
-      gesture.current = {
-        id: event.pointerId,
-        y0: event.clientY,
-        dy: 0,
-        tracking: false,
-      }
+      const t = event.touches[0]
+      gesture.current = { id: t.identifier, y0: t.clientY, dy: 0, tracking: false }
     }
 
     function onMove(event) {
       const g = gesture.current
-      if (!g || event.pointerId !== g.id) return
-      const dy = event.clientY - g.y0
+      if (!g) return
+      const t = Array.from(event.touches).find((touch) => touch.identifier === g.id)
+      if (!t) return
+      const dy = t.clientY - g.y0
       if (!g.tracking) {
-        if (dy < ARM_PX) return
-        // Re-check: a nested scroller may have moved, or the finger slid onto chat.
-        if (
-          !shouldBeginPull({
-            pointerType: event.pointerType,
-            narrow: window.matchMedia(NARROW_QUERY).matches,
-            target: event.target,
-            root,
-          })
-        ) {
+        if (dy < 0) {
+          // An upward drag is an ordinary scroll.
           gesture.current = null
           return
         }
-        g.tracking = true
-        try {
-          root.setPointerCapture(event.pointerId)
-        } catch {
-          /* capture is best-effort */
+        if (dy < ARM_PX) {
+          if (event.cancelable) event.preventDefault()
+          return
         }
-      }
-      if (dy <= 0) {
-        g.dy = 0
-        setVisual(0)
-        setReady(false)
-        return
+        g.tracking = true
       }
       if (event.cancelable) event.preventDefault()
-      g.dy = dy
-      setVisual(resistPull(dy))
-      setReady(pastThreshold(dy))
+      g.dy = Math.max(0, dy)
+      setVisual(resistPull(g.dy))
+      setReady(pastThreshold(g.dy))
     }
 
-    function onUp(event) {
+    function onEnd(event) {
       const g = gesture.current
-      if (!g || event.pointerId !== g.id) return
+      if (!g) return
+      if (Array.from(event.touches).some((touch) => touch.identifier === g.id)) return
       gesture.current = null
-      try {
-        if (root.hasPointerCapture?.(event.pointerId)) root.releasePointerCapture(event.pointerId)
-      } catch {
-        /* ignore */
-      }
-      if (!g.tracking) {
-        resetVisual(false)
+      if (!g.tracking || event.type === 'touchcancel') {
+        resetVisual(g.tracking)
         return
       }
       if (releaseAction(g.dy) === 'reload') {
@@ -127,16 +100,16 @@ export function PullRefresh({ root, reduced = false, reload = defaultReload }) {
       resetVisual(true)
     }
 
-    root.addEventListener('pointerdown', onDown)
-    root.addEventListener('pointermove', onMove, { passive: false })
-    root.addEventListener('pointerup', onUp)
-    root.addEventListener('pointercancel', onUp)
+    root.addEventListener('touchstart', onStart, { passive: true })
+    root.addEventListener('touchmove', onMove, { passive: false })
+    root.addEventListener('touchend', onEnd)
+    root.addEventListener('touchcancel', onEnd)
     return () => {
       clearSpring()
-      root.removeEventListener('pointerdown', onDown)
-      root.removeEventListener('pointermove', onMove)
-      root.removeEventListener('pointerup', onUp)
-      root.removeEventListener('pointercancel', onUp)
+      root.removeEventListener('touchstart', onStart)
+      root.removeEventListener('touchmove', onMove)
+      root.removeEventListener('touchend', onEnd)
+      root.removeEventListener('touchcancel', onEnd)
     }
   }, [root, reduced, reload])
 

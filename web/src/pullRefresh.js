@@ -19,9 +19,12 @@ export function releaseAction(fingerDy) {
   return pastThreshold(fingerDy) ? 'reload' : 'cancel'
 }
 
-export function isTypingTarget(el) {
+/** A field being typed in. The slip's nights are inputs; a drag that starts on
+ * one unfocused is a pull, not editing. */
+export function isTypingTarget(el, active = typeof document !== 'undefined' ? document.activeElement : null) {
   if (!el || typeof el.closest !== 'function') return false
-  return Boolean(el.closest('input, textarea, select, [contenteditable="true"]'))
+  const field = el.closest('input, textarea, select, [contenteditable="true"]')
+  return Boolean(field && field === active)
 }
 
 /** Chat drawer, open card, or settings — never steal their gestures. */
@@ -69,13 +72,13 @@ export function isNarrowLayout(matchMedia = typeof window !== 'undefined' ? wind
 
 /**
  * Whether a pointerdown may start a pull gesture.
- * Only touch on the narrow layout; never over chat/card/settings/inputs;
+ * Only touch on the narrow layout; never over chat/card/settings or a focused field;
  * only when every scroll parent under the finger is already at its top.
  */
-export function shouldBeginPull({ pointerType, narrow, target, root }) {
+export function shouldBeginPull({ pointerType, narrow, target, root, active }) {
   if (pointerType !== 'touch') return false
   if (!narrow) return false
-  if (isTypingTarget(target)) return false
+  if (active === undefined ? isTypingTarget(target) : isTypingTarget(target, active)) return false
   if (isBlockedRegion(target)) return false
   const scroller = scrollParentUnder(target, root)
   if (scroller && !atTop(scroller)) return false

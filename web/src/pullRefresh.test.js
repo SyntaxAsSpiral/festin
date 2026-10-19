@@ -46,18 +46,20 @@ describe('pull-to-refresh gates', () => {
     expect(shouldBeginPull({ pointerType: 'touch', narrow: true, target: null, root: null })).toBe(true)
   })
 
-  it('skips text inputs and blocked regions', () => {
+  it('skips a focused field and blocked regions; an unfocused field may pull', () => {
     const input = { closest: (sel) => (sel.includes('input') ? input : null) }
     const chat = { closest: (sel) => (String(sel).includes('surface') ? chat : null) }
     const card = { closest: (sel) => (String(sel).includes('card') ? card : null) }
     const ok = { closest: () => null }
 
-    expect(isTypingTarget(input)).toBe(true)
+    expect(isTypingTarget(input, input)).toBe(true)
+    expect(isTypingTarget(input, null)).toBe(false)
     expect(isBlockedRegion(chat)).toBe(true)
     expect(isBlockedRegion(card)).toBe(true)
     expect(isBlockedRegion(ok)).toBe(false)
 
-    expect(shouldBeginPull({ pointerType: 'touch', narrow: true, target: input, root: null })).toBe(false)
+    expect(shouldBeginPull({ pointerType: 'touch', narrow: true, target: input, root: null, active: input })).toBe(false)
+    expect(shouldBeginPull({ pointerType: 'touch', narrow: true, target: input, root: null, active: null })).toBe(true)
     expect(shouldBeginPull({ pointerType: 'touch', narrow: true, target: chat, root: null })).toBe(false)
     expect(shouldBeginPull({ pointerType: 'touch', narrow: true, target: card, root: null })).toBe(false)
     expect(shouldBeginPull({ pointerType: 'touch', narrow: true, target: ok, root: null })).toBe(true)
