@@ -782,9 +782,10 @@
     align-self: start;
   }
   /* Pinned beside the Log, the slip always fits the window (as in the mock), so
-     nothing of it is ever out of reach. The banner gives up height first,
-     cropping rather than squashing, down to a strip; everything else keeps its
-     size. --pin-room is the bar, the stage's top padding and a small bottom margin. */
+     nothing of it is ever out of reach. The banner keeps its shape (2.9 : 1) at
+     every size; on short windows the room comes from the spacing around and
+     inside the slip instead. --pin-room is the bar, the stage's top padding and
+     a small bottom margin. */
   .meals > .slipw .slip {
     --pin-room: 72px;
     display: flex;
@@ -795,8 +796,7 @@
     flex-shrink: 0;
   }
   .meals > .slipw .slip > .vig {
-    flex-shrink: 1;
-    min-height: 84px;
+    flex-shrink: 0;
   }
   .meals > .kl {
     grid-column: 2;
@@ -833,9 +833,16 @@ html[data-motion='off'] .kl .tcar {
 /* Short desktop windows (a laptop): the pinned slip's nights sit a little closer. */
 @container main (min-width: 780px) {
   @media (max-height: 820px) {
-    /* Matched to the mock on a 1366x768 laptop: so the banner keeps its height. */
+    /* A laptop: tighter spacing around and inside the slip, so the banner keeps
+       its full 2.9 : 1 shape and the week still fits without scrolling. */
+    .stage:has(.meals) {
+      --stage-pt: 10px;
+      --stage-pb: 10px;
+    }
     .meals > .slipw .slip {
-      padding-top: 12px;
+      --pin-room: 58px;
+      padding-top: 10px;
+      padding-bottom: 10px;
     }
     .meals > .slipw .slip .vig {
       margin-bottom: 8px;
