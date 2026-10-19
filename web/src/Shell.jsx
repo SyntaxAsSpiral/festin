@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { transition } from './motion.js'
@@ -8,6 +8,7 @@ import { CardTab } from './cards/CardTab.jsx'
 import { LookingContext } from './cards/looking.js'
 import { useReducedMotion } from './useReducedMotion.js'
 import { PullRefresh } from './PullRefresh.jsx'
+import { defaultReload } from './pullRefresh.js'
 import Surface, { SurfaceProvider } from './chat/Surface.jsx'
 import { ChatPanel, chatHeader, peekLine } from './chat/ChatPanel.jsx'
 import { useChat } from './chat/useChat.js'
@@ -158,6 +159,13 @@ function ShellFrame({ boot }) {
   const tab = tabFromPath(pathname)
   const [card, setCard] = useState(null)
   const [stageEl, setStageEl] = useState(null)
+  // Pull-to-refresh. A page reload ends full screen, and only a tap may re-enter
+  // it, so in full screen the panes remount and fetch again instead.
+  const [fresh, setFresh] = useState(0)
+  const refresh = useCallback(() => {
+    if (document.fullscreenElement) setFresh((n) => n + 1)
+    else defaultReload()
+  }, [])
   // Each message carries what the cook is looking at: the tab plus a pointer to the open card.
   const chat = useChat({ tab: tab?.id || null, card: card?.id ? { kind: card.kind, id: card.id } : null })
   const trouble = boot.phase === 'trouble'
@@ -195,7 +203,7 @@ function ShellFrame({ boot }) {
           animate={{ x: meals ? '0%' : '-100%', opacity: meals ? 1 : 0.6 }}
           transition={transition(reduced, 'drawer')}
         >
-          {meals ? <Frieze /> : <p className="slot-label">Frieze</p>}
+          {meals ? <Frieze key={fresh} /> : <p className="slot-label">Frieze</p>}
         </motion.aside>
       </div>
       <div className="main">
@@ -212,10 +220,10 @@ function ShellFrame({ boot }) {
           <FullscreenButton />
           <Gear />
         </header>
-        <PullRefresh root={stageEl} reduced={reduced} />
+        <PullRefresh root={stageEl} reduced={reduced} reload={refresh} />
         <div className="stage" ref={setStageEl}>
           <LookingContext.Provider value={setCard}>
-          <Routes>
+          <Routes key={fresh}>
             <Route index element={<Navigate to="/meals" replace />} />
             <Route path="meals" element={<Meals />} />
             <Route path="recipes/*" element={<CardTab kind="recipes" />} />
