@@ -176,7 +176,7 @@ function ShellFrame({ boot }) {
         <header className="bar">
           <nav className="views" aria-label="Sections">
             {TABS.map((item) => (
-              <NavLink key={item.id} to={item.path} className={({ isActive }) => (isActive ? 'on' : undefined)}>
+              <NavLink key={item.id} to={item.path} data-tab={item.id} className={({ isActive }) => (isActive ? 'on' : undefined)}>
                 {item.label} <kbd>{item.key}</kbd>
               </NavLink>
             ))}

@@ -216,9 +216,16 @@ kbd {
   position: relative;
 }
 .views a:last-child { border-right: 0; }
-.views a:hover { background: color-mix(in srgb, var(--bb-tone-1) 70%, var(--bb-paper)); }
+/* Each tab carries its section's accent, very faintly (same accents as the
+   Kitchen Log): Meals rosewater, Recipes peach, Notes teal, Chats pink. */
+.views a[data-tab='meals'] { --tab-acc: var(--acc-rosewater); --tab-glyph: var(--acc-rosewater-glyph); }
+.views a[data-tab='recipes'] { --tab-acc: var(--acc-peach); --tab-glyph: var(--acc-peach-glyph); }
+.views a[data-tab='notes'] { --tab-acc: var(--acc-teal); --tab-glyph: var(--acc-teal-glyph); }
+.views a[data-tab='chats'] { --tab-acc: var(--acc-pink); --tab-glyph: var(--acc-pink-glyph); }
+.views a { background: color-mix(in srgb, var(--tab-acc, transparent) 6%, transparent); }
+.views a:hover { background: color-mix(in srgb, var(--tab-acc, var(--bb-tone-1)) 16%, var(--bb-paper)); }
 .views a.on {
-  background: color-mix(in srgb, var(--bb-rose) 9%, var(--bb-paper));
+  background: color-mix(in srgb, var(--tab-acc, var(--bb-rose)) 18%, var(--bb-paper));
   color: var(--bb-ink);
 }
 .views a.on::after {
@@ -228,7 +235,7 @@ kbd {
   right: 8px;
   bottom: 3px;
   height: 1.5px;
-  background: var(--bb-rose);
+  background: var(--tab-glyph, var(--bb-rose));
 }
 .bar .ic {
   flex: none;
