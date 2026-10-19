@@ -105,6 +105,14 @@ function SurfaceView({ peekLine, lookingAt, header, children }) {
   // Ultrawide: Meals sits left, so the overlay may be pulled far into the free space.
   const maxW = window.innerWidth >= 1800 ? Math.min(1600, window.innerWidth - 900) : Math.min(720, window.innerWidth - 160)
 
+  // On desktop the open panel takes the right of the window; an open card moves
+  // over into the space left of it (--chat-cover) instead of being covered.
+  const cover = !narrow && state !== 'tucked' ? clamp(shownW, 340, maxW) : 0
+  useEffect(() => {
+    document.documentElement.style.setProperty('--chat-cover', cover + 'px')
+  }, [cover])
+  useEffect(() => () => document.documentElement.style.removeProperty('--chat-cover'), [])
+
   useEffect(() => {
     function onKey(event) {
       if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return

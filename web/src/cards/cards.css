@@ -274,8 +274,10 @@
   /* Starts below the bar (tab height, its border, and the bar's padding and rule). */
   --bar-h: calc(var(--tab-h) + 3px + 2 * var(--bar-py));
   position: fixed;
-  inset: var(--bar-h) 0 0 0;
+  /* Desktop: stops at Babette's open panel, so the card recentres beside it. */
+  inset: var(--bar-h) var(--chat-cover, 0px) 0 0;
   z-index: 30; /* under the bar (31) and the chat surface (36) */
+  transition: right 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   display: grid;
   place-items: center;
   --pad-top: 18px;
@@ -630,3 +632,8 @@ button.danger {
 .scans .scan-strip button { padding: 0; border: 1px solid var(--bb-tone-2); background: none; cursor: zoom-in; }
 .scans .scan-strip img { display: block; height: 140px; width: auto; }
 
+
+@media (prefers-reduced-motion: reduce) {
+  .card-layer { transition: none; }
+}
+html[data-motion='off'] .card-layer { transition: none; }
