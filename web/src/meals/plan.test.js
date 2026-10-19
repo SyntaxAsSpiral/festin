@@ -114,3 +114,11 @@ describe('409 conflict path', () => {
     )
   })
 })
+
+describe('frieze courses', async () => {
+  const { courseOrder } = await import('./Frieze.jsx')
+  it('deals each meal as soup, salad, main, side, dessert', () => {
+    const order = courseOrder([['s1', 's2'], ['a1', 'a2'], ['m1', 'm2'], ['x1', 'x2'], ['d1', 'd2', 'd3']])
+    expect(order).toEqual(['s1', 'a1', 'm1', 'x1', 'd1', 's2', 'a2', 'm2', 'x2', 'd2'])
+  })
+})

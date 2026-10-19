@@ -28,3 +28,10 @@ def test_a_sample_is_not_the_alphabetical_first_page(tmp_path):
     # Twenty random draws of 10 from 60 all matching the first page is effectively impossible.
     draws = [[r["id"] for r in recipes_mod.list_recipes(conn, limit=10, sample=True)["recipes"]] for _ in range(20)]
     assert any(d != first for d in draws)
+
+
+def test_a_sample_can_come_from_some_categories_only(tmp_path):
+    conn = _kitchen(tmp_path, 10)
+    recipes_mod.create_recipe(conn, {"title": "Leek soup", "category": "soups-stews"})
+    page = recipes_mod.list_recipes(conn, limit=5, sample=True, categories=["soups-stews"])
+    assert [r["title"] for r in page["recipes"]] == ["Leek soup"]

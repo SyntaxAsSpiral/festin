@@ -111,6 +111,7 @@ class Handler(BaseHTTPRequestHandler):
                             cursor=_q(query, "cursor") or None,
                             limit=_limit(query),
                             sample=_q(query, "sample") in ("1", "true"),
+                            categories=[c for c in _q(query, "category").split(",") if c] or None,
                         ),
                     )
             if path.startswith("/api/recipes/"):

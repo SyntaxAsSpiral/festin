@@ -14,6 +14,26 @@ const MOTIFS = [
   '/art/frieze/motif-acanthus.png',
 ]
 
+// The frieze is a meal in five courses; each group of five, between ornaments,
+// runs soup, salad, main, a snack or side, then dessert. Each course is its own
+// random draw, so every visit is a new spread.
+const COURSES = [
+  ['soups-stews'],
+  ['salads-sides'],
+  ['casseroles', 'chicken', 'meats', 'fish-seafood', 'pasta', 'eggs-breakfast'],
+  ['snacks-sandwiches', 'pantry-party', 'breads', 'pickles-preserves', 'sauces-dressings', 'seasonings', 'drinks', 'misc'],
+  ['sweets', 'cakes', 'cookies', 'pies-tarts'],
+]
+const MEALS = 16
+
+// Deal course draws into meals: soup, salad, main, side, dessert, then the next meal.
+export function courseOrder(draws) {
+  const meals = Math.min(...draws.map((d) => d.length))
+  const out = []
+  for (let m = 0; m < meals; m++) draws.forEach((d) => out.push(d[m]))
+  return out
+}
+
 function buildItems(recipes) {
   const items = []
   recipes.forEach((r, i) => {
@@ -49,8 +69,8 @@ export function Frieze() {
 
   useEffect(() => {
     let gone = false
-    fetchRecipeSample(80)
-      .then((list) => !gone && setRecipes(list))
+    Promise.all(COURSES.map((cats) => fetchRecipeSample(MEALS, cats)))
+      .then((draws) => !gone && setRecipes(courseOrder(draws)))
       .catch(() => !gone && setRecipes([]))
     return () => {
       gone = true

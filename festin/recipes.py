@@ -48,11 +48,20 @@ def list_recipes(
     cursor: str | None = None,
     limit: int = PAGE_SIZE,
     sample: bool = False,
+    categories: list[str] | None = None,
 ) -> dict:
     limit = _page_limit(limit)
     if sample:
-        # A random handful (the Meals frieze): one page, no cursor.
-        rows = conn.execute("SELECT * FROM recipes ORDER BY random() LIMIT ?", (limit,)).fetchall()
+        # A random handful (the Meals frieze): one page, no cursor, optionally from
+        # some categories only ('misc' also takes recipes with no category).
+        sql, args = "SELECT * FROM recipes", []
+        if categories:
+            marks = ",".join("?" * len(categories))
+            sql += f" WHERE category IN ({marks})"
+            if "misc" in categories:
+                sql += " OR category IS NULL OR category = ''"
+            args.extend(categories)
+        rows = conn.execute(sql + " ORDER BY random() LIMIT ?", (*args, limit)).fetchall()
         return {"recipes": [_card(_public(row)) for row in rows], "nextCursor": None}
     params: list = []
     where = []
