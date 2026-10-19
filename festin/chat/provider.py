@@ -56,10 +56,10 @@ def merge_detail(current, item):
     for key, value in item.items():
         previous = merged.get(key)
         if key in ("text", "summary") and isinstance(value, str) and isinstance(previous, str):
-            if value.startswith(previous):
-                merged[key] = value
-            elif value and value not in previous and not previous.endswith(value):
-                merged[key] = previous + value
+            # Streamed text arrives as deltas: append every one. Skipping a delta that
+            # happens to occur earlier ("it" after "it's") corrupts the thinking that is
+            # replayed to the model.
+            merged[key] = previous + value
         else:
             merged[key] = value
     return merged
@@ -301,16 +301,19 @@ def complete(
 
 
 def reasoning_text(msg) -> str:
+    """The thinking to show. Providers may send the same thinking twice, as plain
+    reasoning and as reasoning_details; the details win, the plain fields fill in."""
     chunks = []
-    for value in (msg.get("reasoning"), msg.get("reasoning_content")):
-        if isinstance(value, str) and value.strip():
-            chunks.append(value.strip())
     for item in msg.get("reasoning_details") or []:
         if not isinstance(item, dict):
             continue
         value = item.get("text") or item.get("summary")
-        if isinstance(value, str) and value.strip() and value.strip() not in chunks:
+        if isinstance(value, str) and value.strip():
             chunks.append(value.strip())
+    if not chunks:
+        for value in (msg.get("reasoning"), msg.get("reasoning_content")):
+            if isinstance(value, str) and value.strip():
+                chunks.append(value.strip())
     return "\n\n".join(chunks)[:8000]
 
 
