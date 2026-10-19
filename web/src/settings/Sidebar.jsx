@@ -8,6 +8,7 @@ import {
   fetchContextLanes,
   fetchPlugins,
   fetchSettings,
+  rotateInboxKey,
   saveContextLane,
   saveModelKey,
   saveSettings,
@@ -20,6 +21,7 @@ import {
   WEEK_STARTS,
   baseUrlForProvider,
   draftFromSettings,
+  inboxKeyBlock,
   keySourceMessage,
   lanePreview,
   parseSettingsTab,
@@ -36,6 +38,7 @@ function calmStatus(status) {
     status === 'Saved.' ||
     status === 'Key stored.' ||
     status === 'Key cleared.' ||
+    status === 'Inbox key minted.' ||
     status.startsWith('Connected.')
   )
 }
@@ -91,6 +94,7 @@ export function SettingsSidebar() {
   const [plugins, setPlugins] = useState({ status: 'loading', plugins: [] })
   const [status, setStatus] = useState('')
   const [keyText, setKeyText] = useState('')
+  const [inboxSecret, setInboxSecret] = useState('')
   const [busy, setBusy] = useState(false)
   const [motionOn, setMotionOn] = useState(() => !prefersReducedMotion())
   const [writingSpeed, setWritingSpeed] = useState(() => readWritingSpeed())
@@ -230,6 +234,20 @@ export function SettingsSidebar() {
     setBusy(false)
     const message = (result.body && result.body.message) || result.error || 'The model test failed.'
     setStatus(message)
+  }
+
+  async function mintInboxKey() {
+    setBusy(true)
+    setInboxSecret('')
+    const result = await rotateInboxKey()
+    setBusy(false)
+    if (!result.ok) {
+      setStatus(result.error)
+      return
+    }
+    setDraft(draftFromSettings(result.body))
+    setInboxSecret(inboxKeyBlock(result.body?.inboxKey))
+    setStatus('Inbox key minted.')
   }
 
   function patch(partial) {
@@ -388,6 +406,66 @@ export function SettingsSidebar() {
                 <button type="button" onClick={runTest} disabled={busy}>
                   Test
                 </button>
+              </div>
+            </section>
+            <section className={'sg plug' + (draft.inboxEnabled ? ' on' : '')} aria-labelledby="sh-inbox">
+              <div className="plh">
+                <div className="plt">
+                  <h3 id="sh-inbox">Incoming recipes</h3>
+                  <p className="fine">
+                    Outside agents post recipes to a second listener. The only kitchen switch is on or off; the
+                    sender needs the address and key.
+                  </p>
+                </div>
+                <label className="pltg">
+                  <input
+                    type="checkbox"
+                    checked={draft.inboxEnabled !== false}
+                    disabled={busy}
+                    onChange={(event) => {
+                      setInboxSecret('')
+                      patch({ inboxEnabled: event.target.checked })
+                    }}
+                  />{' '}
+                  <span className="pls">{draft.inboxEnabled !== false ? 'On' : 'Off'}</span>
+                </label>
+              </div>
+              <div className="plb">
+                <div className="sf">
+                  <label htmlFor="s-inbox-addr">Listener address</label>
+                  <input
+                    id="s-inbox-addr"
+                    value={draft.inboxAddress || ''}
+                    readOnly
+                    spellCheck={false}
+                    autoCapitalize="none"
+                    autoComplete="off"
+                  />
+                  <p className="fine">
+                    Binds with the kitchen host. Nothing is public until the host exposes this port. See
+                    docs/incoming-recipes.md.
+                  </p>
+                </div>
+                <p className="fine">
+                  <button type="button" onClick={mintInboxKey} disabled={busy}>
+                    New key
+                  </button>
+                  {draft.inboxKeySet ? ' A key is set; only its hash is stored.' : ' No key yet — mint one for agents.'}
+                </p>
+                {inboxSecret ? (
+                  <div className="sf">
+                    <label htmlFor="s-inbox-secret">Agent copy block (shown once)</label>
+                    <textarea
+                      id="s-inbox-secret"
+                      value={inboxSecret}
+                      readOnly
+                      rows={10}
+                      spellCheck={false}
+                      autoCapitalize="none"
+                      autoComplete="off"
+                    />
+                  </div>
+                ) : null}
               </div>
             </section>
           </div>

@@ -3,6 +3,7 @@ import {
   OPENROUTER_BASE,
   baseUrlForProvider,
   draftFromSettings,
+  inboxKeyBlock,
   keySourceMessage,
   lanePreview,
   parseSettingsTab,
@@ -92,9 +93,28 @@ describe('settings form mapping', () => {
       weatherLocation: '83835',
       modelName: 'tool-model',
       modelBaseUrl: OPENROUTER_BASE,
+      inboxEnabled: true,
       expectedUpdatedAt: 'stamp-1',
       expected_updated_at: 'stamp-1',
     })
+  })
+
+  it('reads inbox settings and builds the one-time agent copy block', () => {
+    const draft = draftFromSettings({
+      inbox: { enabled: true, address: 'http://127.0.0.1:8896', keySet: true },
+    })
+    expect(draft.inboxEnabled).toBe(true)
+    expect(draft.inboxAddress).toBe('http://127.0.0.1:8896')
+    expect(draft.inboxKeySet).toBe(true)
+    expect(settingsSaveBody({ ...draft, inboxEnabled: false }).inboxEnabled).toBe(false)
+    const block = inboxKeyBlock({
+      key: 'secret-once',
+      address: 'http://127.0.0.1:8896',
+      exampleCurl: 'curl example',
+    })
+    expect(block).toContain('URL: http://127.0.0.1:8896')
+    expect(block).toContain('Key: secret-once')
+    expect(block).toContain('curl example')
   })
 
   it('switches the base URL when the connection provider changes', () => {

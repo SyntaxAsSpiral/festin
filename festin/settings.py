@@ -37,7 +37,8 @@ def get_settings(conn: sqlite3.Connection) -> dict:
         SELECT table_name, week_start_day, dinner_hour, updated_at,
                weather_location, weather_label, weather_latitude,
                weather_longitude, weather_timezone,
-               model_base_url, model_name
+               model_base_url, model_name,
+               inbox_enabled, inbox_key_hash
         FROM settings WHERE id = 1
         """
     ).fetchone()
@@ -63,6 +64,8 @@ def get_settings(conn: sqlite3.Connection) -> dict:
         "model": row["model_name"] or "",
         "model_base_url": row["model_base_url"] or DEFAULT_MODEL_BASE_URL,
         "model_name": row["model_name"] or "",
+        "inbox_enabled": bool(row["inbox_enabled"]),
+        "inbox_key_hash": row["inbox_key_hash"] or "",
     }
 
 
@@ -75,6 +78,8 @@ def update_settings(
     weather_location: str | None = None,
     model_base_url: str | None = None,
     model_name: str | None = None,
+    inbox_enabled: bool | None = None,
+    inbox_key_hash: str | None = None,
     now: datetime | None = None,
 ) -> dict:
     """Write core fields. Geocode when the weather location string changes."""
@@ -92,6 +97,12 @@ def update_settings(
         else _clean_model_base_url(model_base_url)
     )
     next_model = current["model_name"] if model_name is None else _clean_model_name(model_name)
+    next_inbox = (
+        current["inbox_enabled"] if inbox_enabled is None else _clean_inbox_enabled(inbox_enabled)
+    )
+    next_hash = (
+        current["inbox_key_hash"] if inbox_key_hash is None else _clean_inbox_key_hash(inbox_key_hash)
+    )
 
     weather = dict(current["weather"])
     if weather_location is not None:
@@ -115,6 +126,8 @@ def update_settings(
             weather_timezone = ?,
             model_base_url = ?,
             model_name = ?,
+            inbox_enabled = ?,
+            inbox_key_hash = ?,
             updated_at = ?
         WHERE id = 1
         """,
@@ -129,6 +142,8 @@ def update_settings(
             weather.get("timezone") or "",
             next_base,
             next_model,
+            1 if next_inbox else 0,
+            next_hash,
             stamp,
         ),
     )
@@ -224,3 +239,16 @@ def _clean_model_name(value) -> str:
     if len(name) > 200:
         raise ValueError("Use a model name under 200 characters.")
     return name
+
+
+def _clean_inbox_enabled(value) -> bool:
+    if type(value) is not bool:
+        raise ValueError("inboxEnabled must be true or false.")
+    return value
+
+
+def _clean_inbox_key_hash(value) -> str:
+    text = str(value or "").strip().lower()
+    if text and (len(text) != 64 or any(c not in "0123456789abcdef" for c in text)):
+        raise ValueError("inbox key hash must be a sha256 hex digest.")
+    return text

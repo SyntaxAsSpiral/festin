@@ -40,6 +40,17 @@ export async function testModel() {
   return readSaveResult(res.status, body)
 }
 
+/** Mint a new inbox bearer key. The plaintext is in body.inboxKey once. */
+export async function rotateInboxKey() {
+  const res = await fetch('/api/settings/inbox-key', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  })
+  const body = await readJson(res)
+  return readSaveResult(res.status, body)
+}
+
 export async function saveSettings(draft, expectedUpdatedAt) {
   const res = await fetch('/api/settings', {
     method: 'POST',

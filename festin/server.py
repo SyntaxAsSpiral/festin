@@ -21,6 +21,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 from festin import chats as chats_mod
+from festin import inbox as inbox_mod
 from festin import log as log_mod
 from festin import notes as notes_mod
 from festin import plans as plans_mod
@@ -34,6 +35,8 @@ from festin.chat.model_probe import probe_model
 from festin.errors import NotFound, StaleState
 from festin.plugins import host as plugins_host
 from festin.schema import apply, connect
+
+DEFAULT_INBOX_PORT = 8889
 
 COOKIE = "festin_session"
 SURFACES = frozenset({"tucked", "peek", "full"})
@@ -57,7 +60,15 @@ class ChatHeld(Exception):
 
 
 class KitchenServer(ThreadingHTTPServer):
-    def __init__(self, server_address, db_path, *, origins=None, photos_dir=None):
+    def __init__(
+        self,
+        server_address,
+        db_path,
+        *,
+        origins=None,
+        photos_dir=None,
+        inbox_port=None,
+    ):
         self.db_path = str(db_path)
         self.origins = tuple(origin.rstrip("/") for origin in (origins or ()) if origin)
         # Kitchen files live beside the database: photos/ (chat and recipe photos) and
@@ -68,12 +79,76 @@ class KitchenServer(ThreadingHTTPServer):
         self.now = lambda: datetime.now(timezone.utc)
         # Extra arguments for the chat engine (tests pass a fake model here).
         self.chat_options = {}
+        self.inbox_port = inbox_port
+        self._inbox_httpd = None
+        self._inbox_thread = None
+        self._inbox_lock = threading.Lock()
         conn = connect(db_path)
         try:
             apply(conn)
+            inbox_mod.ensure_inbox_key(conn)
+            inbox_on = core_settings.get_settings(conn)["inbox_enabled"]
         finally:
             conn.close()
         super().__init__(server_address, Handler)
+        if self.inbox_port is not None and inbox_on:
+            self.start_inbox()
+
+    def inbox_address(self) -> str:
+        host = self.server_address[0]
+        if host in ("0.0.0.0", "::", ""):
+            host = "127.0.0.1"
+        port = self.inbox_bound_port()
+        if port is None:
+            port = self.inbox_port if self.inbox_port not in (None, 0) else DEFAULT_INBOX_PORT
+        return f"http://{host}:{port}"
+
+    def inbox_bound_port(self) -> int | None:
+        with self._inbox_lock:
+            if self._inbox_httpd is None:
+                return None
+            return self._inbox_httpd.server_address[1]
+
+    def start_inbox(self) -> None:
+        with self._inbox_lock:
+            if self.inbox_port is None or self._inbox_httpd is not None:
+                return
+            host = self.server_address[0]
+            httpd = inbox_mod.InboxServer(
+                (host, self.inbox_port),
+                self.db_path,
+                public_address=self._inbox_public_address(host, self.inbox_port),
+            )
+            # Port 0 picks an ephemeral port; refresh the public address.
+            bound = httpd.server_address[1]
+            httpd.public_address = self._inbox_public_address(host, bound).rstrip("/")
+            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+            thread.start()
+            self._inbox_httpd = httpd
+            self._inbox_thread = thread
+
+    def stop_inbox(self) -> None:
+        with self._inbox_lock:
+            httpd = self._inbox_httpd
+            self._inbox_httpd = None
+            self._inbox_thread = None
+        if httpd is not None:
+            httpd.shutdown()
+            httpd.server_close()
+
+    def set_inbox_enabled(self, enabled: bool) -> None:
+        if enabled:
+            self.start_inbox()
+        else:
+            self.stop_inbox()
+
+    def server_close(self):
+        self.stop_inbox()
+        super().server_close()
+
+    def _inbox_public_address(self, host: str, port: int) -> str:
+        shown = "127.0.0.1" if host in ("0.0.0.0", "::", "") else host
+        return f"http://{shown}:{port}"
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -180,6 +255,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, self._save_model_key(body))
             if path == "/api/settings/model-test":
                 return self._send(200, self._test_model())
+            if path == "/api/settings/inbox-key":
+                return self._send(200, self._rotate_inbox_key())
             with self._db() as conn:
                 if path == "/api/plugins" or path.startswith("/api/plugins/"):
                     return self._plugins_post(conn, path, body)
@@ -391,6 +468,7 @@ class Handler(BaseHTTPRequestHandler):
         expected = body.get("expected_updated_at", body.get("expectedUpdatedAt"))
         if expected is not None and expected != current["updated_at"]:
             raise StaleState("Settings changed. Refresh before saving.")
+        inbox_enabled = _inbox_enabled(body)
         core_settings.update_settings(
             conn,
             table_name=_pick(body, "tableName", "table_name"),
@@ -399,8 +477,11 @@ class Handler(BaseHTTPRequestHandler):
             weather_location=_weather_location(body),
             model_base_url=_pick(body, "modelBaseUrl", "model_base_url"),
             model_name=_pick(body, "modelName", "model_name"),
+            inbox_enabled=inbox_enabled,
             now=self.server.now(),
         )
+        if inbox_enabled is not None:
+            self.server.set_inbox_enabled(inbox_enabled)
         return self._settings_body(conn)
 
     def _settings_body(self, conn) -> dict:
@@ -409,6 +490,7 @@ class Handler(BaseHTTPRequestHandler):
             raw,
             model_key_is_set(self.server.data_dir),
             model_key_source(self.server.data_dir, raw["model_base_url"]),
+            inbox_address=self.server.inbox_address() if self.server.inbox_port is not None else "",
         )
 
     def _save_model_key(self, body: dict) -> dict:
@@ -417,6 +499,20 @@ class Handler(BaseHTTPRequestHandler):
         write_model_key(self.server.data_dir, body.get("key"))
         with self._db() as conn:
             return self._settings_body(conn)
+
+    def _rotate_inbox_key(self) -> dict:
+        with self._db() as conn:
+            key = inbox_mod.rotate_inbox_key(conn)
+            settings = self._settings_body(conn)
+        address = settings["inbox"]["address"]
+        return {
+            **settings,
+            "inboxKey": {
+                "key": key,
+                "address": address,
+                "exampleCurl": inbox_mod.example_curl(address, key),
+            },
+        }
 
     def _test_model(self) -> dict:
         with self._db() as conn:
@@ -647,7 +743,13 @@ class _closing:
         self.conn.close()
         return False
 
-def _public_settings(raw: dict, key_set: bool, key_source: str = "none") -> dict:
+def _public_settings(
+    raw: dict,
+    key_set: bool,
+    key_source: str = "none",
+    *,
+    inbox_address: str = "",
+) -> dict:
     return {
         "tableName": raw["table_name"],
         "dinnerHour": raw["dinner_hour"],
@@ -659,6 +761,11 @@ def _public_settings(raw: dict, key_set: bool, key_source: str = "none") -> dict
             "name": raw["model_name"],
             "keySet": bool(key_set),
             "keySource": key_source if key_source in ("file", "env", "none") else "none",
+        },
+        "inbox": {
+            "enabled": bool(raw.get("inbox_enabled", True)),
+            "address": inbox_address,
+            "keySet": bool(raw.get("inbox_key_hash")),
         },
     }
 
@@ -679,6 +786,17 @@ def _weather_location(body: dict):
     weather = body.get("weather")
     if isinstance(weather, dict) and "location" in weather:
         return weather["location"]
+    return None
+
+
+def _inbox_enabled(body: dict):
+    if "inboxEnabled" in body:
+        return body["inboxEnabled"]
+    if "inbox_enabled" in body:
+        return body["inbox_enabled"]
+    inbox = body.get("inbox")
+    if isinstance(inbox, dict) and "enabled" in inbox:
+        return inbox["enabled"]
     return None
 
 
@@ -903,14 +1021,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument(
+        "--inbox-port",
+        type=int,
+        default=DEFAULT_INBOX_PORT,
+        help=f"Incoming-recipes listener port (default {DEFAULT_INBOX_PORT}).",
+    )
+    parser.add_argument(
         "--origin",
         action="append",
         default=[],
         help="Allowed Origin for writes (repeatable). Same-host Origin is always allowed.",
     )
     args = parser.parse_args(argv)
-    server = KitchenServer((args.host, args.port), args.db_path, origins=args.origin)
+    server = KitchenServer(
+        (args.host, args.port),
+        args.db_path,
+        origins=args.origin,
+        inbox_port=args.inbox_port,
+    )
     print(f"listening on http://{args.host}:{args.port}", flush=True)
+    if server.inbox_bound_port() is not None:
+        print(f"inbox on {server.inbox_address()}", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
