@@ -601,23 +601,41 @@ button.danger {
 .chat-read { padding-top: 14px; }
 
 /* Note colours (Catppuccin Latte, softened into the paper) */
-[data-color='rosewater'] { --note-swatch: var(--acc-rosewater); }
-[data-color='flamingo'] { --note-swatch: var(--acc-flamingo); }
-[data-color='pink'] { --note-swatch: var(--acc-pink); }
-[data-color='mauve'] { --note-swatch: var(--acc-mauve); }
-[data-color='red'] { --note-swatch: var(--acc-red); }
-[data-color='maroon'] { --note-swatch: var(--acc-maroon); }
-[data-color='peach'] { --note-swatch: var(--acc-peach); }
-[data-color='yellow'] { --note-swatch: var(--acc-yellow); }
-[data-color='green'] { --note-swatch: var(--acc-green); }
-[data-color='teal'] { --note-swatch: var(--acc-teal); }
-[data-color='sky'] { --note-swatch: var(--acc-sky); }
-[data-color='sapphire'] { --note-swatch: var(--acc-sapphire); }
-[data-color='blue'] { --note-swatch: var(--acc-blue); }
-[data-color='lavender'] { --note-swatch: var(--acc-lavender); }
+[data-color='rosewater'] { --note-swatch: var(--acc-rosewater); --note-gild: var(--acc-rosewater-glyph); }
+[data-color='flamingo'] { --note-swatch: var(--acc-flamingo); --note-gild: var(--acc-flamingo-glyph); }
+[data-color='pink'] { --note-swatch: var(--acc-pink); --note-gild: var(--acc-pink-glyph); }
+[data-color='mauve'] { --note-swatch: var(--acc-mauve); --note-gild: var(--acc-mauve-glyph); }
+[data-color='red'] { --note-swatch: var(--acc-red); --note-gild: var(--acc-red-glyph); }
+[data-color='maroon'] { --note-swatch: var(--acc-maroon); --note-gild: var(--acc-maroon-glyph); }
+[data-color='peach'] { --note-swatch: var(--acc-peach); --note-gild: var(--acc-peach-glyph); }
+[data-color='yellow'] { --note-swatch: var(--acc-yellow); --note-gild: var(--acc-yellow-glyph); }
+[data-color='green'] { --note-swatch: var(--acc-green); --note-gild: var(--acc-green-glyph); }
+[data-color='teal'] { --note-swatch: var(--acc-teal); --note-gild: var(--acc-teal-glyph); }
+[data-color='sky'] { --note-swatch: var(--acc-sky); --note-gild: var(--acc-sky-glyph); }
+[data-color='sapphire'] { --note-swatch: var(--acc-sapphire); --note-gild: var(--acc-sapphire-glyph); }
+[data-color='blue'] { --note-swatch: var(--acc-blue); --note-gild: var(--acc-blue-glyph); }
+[data-color='lavender'] { --note-swatch: var(--acc-lavender); --note-gild: var(--acc-lavender-glyph); }
 /* Note colours are the sepia-washed accents, laid thin so the paper shows through. */
 [data-color]:not([data-color='none']) { --note-tint: color-mix(in srgb, var(--note-swatch) 22%, transparent); }
-.nswatch[data-color]:not([data-color='none']) { background: color-mix(in srgb, var(--note-swatch) 60%, transparent); }
+/* A note card's top edge wears a doily: a lace band in the note's accent with a
+   scalloped hem and eyelets, a thin gilt line along it, laid over the card's top. */
+.nswatch[data-color]:not([data-color='none']) {
+  --lace: 12px;
+  height: 15px;
+  /* Hung from the card's top edge, over its border, as if laid across it. */
+  margin: -13px -13px 6px;
+  background:
+    radial-gradient(circle at calc(var(--lace) / 2) 8px, var(--bb-card) 1.7px, transparent 2.2px) 0 0 / var(--lace) 15px repeat-x,
+    radial-gradient(circle at 3px 3.5px, var(--bb-card) 0.9px, transparent 1.3px) 0 0 / 6px 15px repeat-x,
+    color-mix(in srgb, var(--note-swatch) 70%, transparent);
+  -webkit-mask:
+    linear-gradient(#000, #000) top / 100% 8px no-repeat,
+    radial-gradient(circle at calc(var(--lace) / 2) 8px, #000 6px, transparent 6.5px) 0 0 / var(--lace) 15px repeat-x;
+  mask:
+    linear-gradient(#000, #000) top / 100% 8px no-repeat,
+    radial-gradient(circle at calc(var(--lace) / 2) 8px, #000 6px, transparent 6.5px) 0 0 / var(--lace) 15px repeat-x;
+  filter: drop-shadow(0 0.5px 0 var(--note-gild, var(--note-swatch)));
+}
 /* The box scans: references, a quiet strip at the foot of the recipe. */
 .scans .scan-strip { display: flex; flex-wrap: wrap; gap: 8px; }
 .scans .scan-strip button { padding: 0; border: 1px solid var(--bb-tone-2); background: none; cursor: zoom-in; }
