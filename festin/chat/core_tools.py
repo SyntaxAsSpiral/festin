@@ -21,7 +21,7 @@ _HANDLERS = {
     "edit_note": tools_notes.edit_note,
     "delete_note": tools_notes.delete_note,
     "keep_note": tools_notes.keep_note,
-    "search_chat_history": tools_history.search_chat_history,
+    "search_history": tools_history.search_history,
     "read_chat_history": tools_history.read_chat_history,
 }
 

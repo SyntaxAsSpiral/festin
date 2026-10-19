@@ -1,10 +1,11 @@
-"""Search and read chat history from chats + chat_messages."""
+"""Search chats and the Kitchen Log; read chat history from chats + chat_messages."""
 
 from __future__ import annotations
 
 import json
 from typing import Any
 
+from festin import log as kitchen_log
 from festin.chat.tools_recipes import ctx_get
 
 
@@ -17,13 +18,25 @@ def _message_photos(extra_json: str) -> list:
     return photos if isinstance(photos, list) else []
 
 
-def search_chat_history(args: dict, ctx: Any) -> dict:
-    query = str(args["query"]).strip().casefold()
-    if not query or len(query) > 300:
+def search_history(args: dict, ctx: Any) -> dict:
+    query = str(args.get("query") or "").strip().casefold()
+    days = args.get("days")
+    days = min(365, max(1, int(days))) if days is not None else None
+    if len(query) > 300:
         raise ValueError("Use a search phrase under 300 characters.")
+    if not query and not days:
+        raise ValueError("Give search words, a number of days, or both.")
     limit = min(30, max(1, int(args.get("limit", 12))))
     words = query.split()
     conn = ctx_get(ctx, "conn")
+    log = kitchen_log.search_events(conn, words=words, days=days, limit=limit)
+    if not words:
+        return {"matches": [], "log": log, "limit_reached": False}
+    found = _search_messages(conn, words, limit)
+    return {**found, "log": log}
+
+
+def _search_messages(conn, words: list[str], limit: int) -> dict:
     chats = conn.execute(
         """
         SELECT id, title, ordinal

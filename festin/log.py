@@ -100,6 +100,55 @@ def list_log(
     return {"entries": [_public(item) for item in page], "nextCursor": next_cursor}
 
 
+# Words Babette may search a Log event by, beyond its title, ID and category.
+EVENT_WORDS = {
+    "recipe_added": "recipe added new",
+    "recipe_edited": "recipe updated edited",
+    "recipe_cooked": "recipe first cooked made",
+    "recipe_favourited": "recipe favourited favourite favorite loved",
+    "photo_added": "recipe photo added picture",
+    "note_created": "note created written",
+    "note_archived": "note archived closed",
+}
+
+
+def search_events(
+    conn: sqlite3.Connection,
+    *,
+    words: list[str] | None = None,
+    days: int | None = None,
+    limit: int = 12,
+) -> list[dict]:
+    """Recipe and note events, newest first, for Babette's history search.
+
+    Weeks are left to the dinner history and chats to the message search.
+    Every word must match; days keeps events within that many days of today.
+    """
+    since = None
+    if days:
+        since = (household_today(conn) - timedelta(days=days)).isoformat()
+    found = []
+    for item in _collect(conn):
+        if item["kind"] not in EVENT_WORDS:
+            continue
+        if since and _as_at(item["at"])[:10] < since:
+            continue
+        if words:
+            extra = item.get("extra") or {}
+            text = " ".join(
+                str(part or "")
+                for part in (
+                    item["title"], item["refId"], item["detail"],
+                    extra.get("category"), extra.get("type"), EVENT_WORDS[item["kind"]],
+                )
+            ).casefold()
+            if not all(word in text for word in words):
+                continue
+        found.append(item)
+    found.sort(key=_sort_key, reverse=True)
+    return [_public(item) for item in found[:limit]]
+
+
 def _collect(conn: sqlite3.Connection) -> list[dict]:
     items: list[dict] = []
     items.extend(_week_entries(conn))

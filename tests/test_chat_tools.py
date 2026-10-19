@@ -243,7 +243,7 @@ def test_chat_history_tools(kit):
     append_message(conn, "old-chat", {"role": "user", "content": "We made pho last winter"})
     append_message(conn, "old-chat", {"role": "assistant", "content": "Oui, the broth."})
     found = registry.dispatch(
-        "search_chat_history", {"query": "pho winter"}, ctx
+        "search_history", {"query": "pho winter"}, ctx
     )
     assert found["matches"]
     assert found["matches"][0]["chat_id"] == "old-chat"
@@ -254,3 +254,40 @@ def test_chat_history_tools(kit):
     )
     assert read["total_messages"] == 2
     assert "pho" in read["messages"][0]["content"]
+
+
+def test_search_history_finds_log_events(kit):
+    conn, registry, ctx = kit
+    from festin import log as kitchen_log
+
+    kitchen_log.record_event(
+        conn, "recipe_favourited", ref_id="CBK-0933", at="2026-10-19T01:55:00.000000Z",
+        title="Venison Stroganoff", extra={"category": "meats"},
+    )
+    kitchen_log.record_event(
+        conn, "note_archived", ref_id="note-elk", at="2026-10-19T02:15:00.000000Z",
+        title="1.5 lbs elk stew meat", detail="note", extra={"type": "note"},
+    )
+    conn.commit()
+    found = registry.dispatch("search_history", {"query": "stroganoff favourited"}, ctx)
+    assert [e["id"] for e in found["log"]] == ["CBK-0933"]
+    assert found["log"][0]["kind"] == "recipe_favourited"
+    archived = registry.dispatch("search_history", {"query": "elk archived"}, ctx)
+    assert [e["kind"] for e in archived["log"]] == ["note_archived"]
+
+
+def test_search_history_lists_recent_days_without_words(kit):
+    conn, registry, ctx = kit
+    from unittest.mock import patch
+    from datetime import date
+    from festin import log as kitchen_log
+
+    kitchen_log.record_event(conn, "recipe_cooked", ref_id="CBK-0001", at="2026-10-18T19:00:00.000000Z", title="Soup")
+    kitchen_log.record_event(conn, "recipe_added", ref_id="CBK-0002", at="2026-08-01T19:00:00.000000Z", title="Old")
+    conn.commit()
+    with patch("festin.log.household_today", return_value=date(2026, 10, 19)):
+        recent = registry.dispatch("search_history", {"days": 7}, ctx)
+    assert [e["id"] for e in recent["log"]] == ["CBK-0001"]
+    assert recent["matches"] == []
+    with pytest.raises(ValueError):
+        registry.dispatch("search_history", {}, ctx)

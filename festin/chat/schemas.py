@@ -307,19 +307,22 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
         },
     ),
     (
-        "search_chat_history",
+        "search_history",
         (
-            "Search all saved chats, including older messages in this chat, for past "
-            "cooking discussions and observations. All search words must match. Returns "
-            "chat IDs and message positions; use read_chat_history for context."
+            "Search the household's past: saved chats (including older messages in "
+            "this chat) and the Kitchen Log of recipe and note events (added, updated, "
+            "first cooked, favourited, photo added, note created, note archived). All "
+            "words must match. Pass days alone to list recent Log events. Returns chat "
+            "IDs and message positions (read_chat_history for context) and dated Log "
+            "events with their recipe or note IDs. Past dinners come from analyze_cookbook."
         ),
         {
             "type": "object",
             "properties": {
                 "query": {"type": "string"},
+                "days": {"type": "integer", "minimum": 1, "maximum": 365},
                 "limit": {"type": "integer"},
             },
-            "required": ["query"],
         },
     ),
     (
@@ -508,7 +511,7 @@ TOOL_LABELS = {
     "delete_recipe": "Deleted a cookbook card",
     "search_cookbook": "Looked in the cookbook",
     "analyze_cookbook": "Reviewed the catalog",
-    "search_chat_history": "Searched earlier chats",
+    "search_history": "Searched the kitchen history",
     "read_chat_history": "Read an earlier chat",
     "keep_note": "Kept a note",
     "read_notes": "Read the notes",
