@@ -292,6 +292,17 @@
   min-height: 1.2em;
   margin-top: 8px;
 }
+/* The status sits in the slip's bottom margin on the main slip, so it never
+   takes height from the week. */
+#slip > .close {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 3px;
+  margin: 0;
+  min-height: 0;
+  line-height: 1.2;
+}
 .slip .close[data-state='conflict'] {
   color: var(--bb-rose);
 }
@@ -709,7 +720,11 @@
 @container main (min-width: 780px) {
   .stage:has(.meals) {
     display: grid !important;
-    grid-template-columns: minmax(460px, 600px) minmax(300px, 520px);
+    /* The slip's width follows the window height too, so a pinned slip keeps
+       the mock's proportions and fits: wide on tall screens, mock-sized on a
+       short laptop. */
+    --slip-w: clamp(420px, calc((100dvh - 72px) * 0.72), 600px);
+    grid-template-columns: var(--slip-w) minmax(300px, 520px);
     grid-template-rows: auto 1fr;
     column-gap: 26px;
     row-gap: 0;
@@ -729,6 +744,23 @@
     top: 0;
     align-self: start;
   }
+  /* Pinned beside the Log, the slip always fits the window (as in the mock), so
+     nothing of it is ever out of reach. The banner gives up height first,
+     cropping rather than squashing, down to a strip; everything else keeps its
+     size. --pin-room is the bar, the stage's top padding and a small bottom margin. */
+  .meals > .slipw .slip {
+    --pin-room: 72px;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - var(--pin-room));
+  }
+  .meals > .slipw .slip > * {
+    flex-shrink: 0;
+  }
+  .meals > .slipw .slip > .vig {
+    flex-shrink: 1;
+    min-height: 84px;
+  }
   .meals > .kl {
     grid-column: 2;
     grid-row: 1 / span 2;
@@ -739,7 +771,8 @@
 
 @container main (min-width: 1340px) {
   .stage:has(.meals) {
-    grid-template-columns: minmax(520px, 680px) minmax(380px, 640px) !important;
+    --slip-w: clamp(420px, calc((100dvh - 72px) * 0.72), 680px);
+    grid-template-columns: var(--slip-w) minmax(380px, 640px) !important;
     column-gap: 32px !important;
   }
 }
@@ -758,4 +791,25 @@
 }
 html[data-motion='off'] .kl .tcar {
   transition: none;
+}
+
+/* Short desktop windows (a laptop): the pinned slip's nights sit a little closer. */
+@container main (min-width: 780px) {
+  @media (max-height: 820px) {
+    /* Matched to the mock on a 1366x768 laptop: so the banner keeps its height. */
+    .meals > .slipw .slip {
+      padding-top: 12px;
+    }
+    .meals > .slipw .slip .vig {
+      margin-bottom: 8px;
+    }
+    .meals > .slipw .slip .row {
+      min-height: 0;
+      padding-top: 3px;
+      padding-bottom: 3px;
+    }
+    .meals > .slipw .slip .orn {
+      margin: 5px 0 3px;
+    }
+  }
 }
