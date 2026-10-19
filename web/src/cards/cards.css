@@ -261,19 +261,6 @@
 }
 .nlist-cards .ntip { white-space: pre-line; }
 .nlist-cards .nitem { position: relative; isolation: isolate; overflow: hidden; }
-/* The category plate is a watermark: faint, behind the text, taking no space. */
-.nplate {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 70% 50%;
-  opacity: 0.16;
-  mix-blend-mode: multiply;
-  pointer-events: none;
-}
 .nlist-cards .nitem { padding-top: 12px; }
 .nswatch {
   display: block;

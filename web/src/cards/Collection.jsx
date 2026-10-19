@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { CATEGORY_LABELS, KINDS, loadItems, matches, plateFor, setRecipeFavourite } from './kinds.js'
+import { CATEGORY_LABELS, KINDS, loadItems, matches, setRecipeFavourite } from './kinds.js'
 import { rememberOrigin } from './origin.js'
 import {
   defaultChoice,
@@ -364,7 +364,6 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                     data-cursor={i === cursor || undefined}
                     onClick={(event) => open(item, event.currentTarget)}
                   >
-                    {layout === 'cards' && kind === 'recipes' && <img className="nplate" src={plateFor(item.raw.category)} alt="" loading="lazy" />}
                     {layout === 'cards' && kind === 'notes' && <span className="nswatch" data-color={item.raw.color || 'none'} />}
                     <span className="nhead">
                       <span className="ntitle">
