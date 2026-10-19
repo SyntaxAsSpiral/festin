@@ -30,11 +30,12 @@ function useColumns(ref, active) {
   return columns
 }
 
+// Card view unless this device chose the list.
 function storedLayout(kind) {
   try {
-    return localStorage.getItem('festin.layout.' + kind) === 'cards' ? 'cards' : 'list'
+    return localStorage.getItem('festin.layout.' + kind) === 'list' ? 'list' : 'cards'
   } catch {
-    return 'list'
+    return 'cards'
   }
 }
 
