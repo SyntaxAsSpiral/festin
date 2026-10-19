@@ -107,6 +107,7 @@ def _enable_pick(conn, *, on=True, model="test-model"):
         {
             "enabled": True,
             "settings": {
+                "deliveryMode": "receiver",
                 "receiverUrl": "http://127.0.0.1:9",
                 "weeklyPick": on,
             },

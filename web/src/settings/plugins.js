@@ -139,6 +139,15 @@ export function pluginTestAction(plugin) {
   return 'test-slip'
 }
 
+/** Hide delivery fields that do not apply to the current printer mode. */
+export function printerFieldVisible(field, draft) {
+  if (!field || typeof field !== 'object') return true
+  const mode = draft?.deliveryMode ?? ''
+  if (field.key === 'receiverUrl' || field.key === 'token') return mode === 'receiver'
+  if (field.key === 'printCommand') return mode === 'command'
+  return true
+}
+
 export function pluginIcon(plugin) {
   if (plugin?.id === 'printer') return '⎙'
   return '·'

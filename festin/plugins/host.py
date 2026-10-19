@@ -190,6 +190,8 @@ def _clean_setting(field: dict, value):
             raise ValueError(field["key"] + " must be text")
         if field["key"] == "receiverUrl":
             return _clean_url(value)
+        if field["key"] == "printCommand":
+            return _clean_print_command(value)
         if field.get("secret") or field["key"] == "token":
             if len(value) > 500:
                 raise ValueError(field["key"] + " is too long")
@@ -197,6 +199,8 @@ def _clean_setting(field: dict, value):
         if "enum" in field and value not in field["enum"]:
             if field["key"] == "band":
                 raise ValueError("Unknown band art: " + value)
+            if field["key"] == "deliveryMode":
+                raise ValueError("Unknown delivery mode: " + value)
             raise ValueError("Unknown " + field["key"] + ": " + value)
         return value
     raise ValueError("Unknown plugin setting: " + field["key"])
@@ -211,6 +215,17 @@ def _clean_url(value: str) -> str:
     parsed = urlparse(text)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise ValueError("Print receiver URL must be an http(s) URL.")
+    return text
+
+
+def _clean_print_command(value: str) -> str:
+    text = value.strip()
+    if not text:
+        return ""
+    if len(text) > 500:
+        raise ValueError("Print command is too long")
+    if "{file}" not in text:
+        raise ValueError("Print command must include {file}.")
     return text
 
 

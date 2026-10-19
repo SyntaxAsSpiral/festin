@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { toastForPrintResult } from '../meals/printToast.js'
 import { callPluginAction, putPlugin } from './api.js'
-import { draftFromPlugin, fieldsFromSchema, pluginIcon, pluginSaveBody, pluginTestAction } from './plugins.js'
+import {
+  draftFromPlugin,
+  fieldsFromSchema,
+  pluginIcon,
+  pluginSaveBody,
+  pluginTestAction,
+  printerFieldVisible,
+} from './plugins.js'
 
 export function PluginPanel({ plugin, onUpdated }) {
   const [{ enabled, draft, secrets }, setLocal] = useState(() => draftFromPlugin(plugin))
@@ -77,7 +84,11 @@ export function PluginPanel({ plugin, onUpdated }) {
         <div className="plt">
           <h3 id={'sh-' + plugin.id}>{plugin.name || plugin.id}</h3>
           {plugin.id === 'printer' && (
-            <p className="fine">Prints the weekly slip, recipe cards and shopping lists on a receipt printer.</p>
+            <p className="fine">
+              Prints the weekly slip, recipe cards and notes on an 80&nbsp;mm receipt printer.
+              Choose a delivery mode below: a print receiver (HTTP) or a local print command
+              with <code>{'{file}'}</code>. Off never attempts a print.
+            </p>
           )}
         </div>
         <label className="pltg">
@@ -96,7 +107,9 @@ export function PluginPanel({ plugin, onUpdated }) {
         </label>
       </div>
       <div className="plb">
-        {fields.map((field) => (
+        {fields.map((field) => {
+          if (plugin.id === 'printer' && !printerFieldVisible(field, draft)) return null
+          return (
           <div key={field.key} className="sf">
             <label htmlFor={'p-' + plugin.id + '-' + field.key}>{field.label}</label>
             {field.type === 'enum' && (
@@ -177,7 +190,8 @@ export function PluginPanel({ plugin, onUpdated }) {
             )}
             {field.help ? <p className="fine">{field.help}</p> : null}
           </div>
-        ))}
+          )
+        })}
         {plugin.id === 'printer' && (
           <div className="snc">
             <p className={'fine' + (note && note !== 'Saved.' ? ' mo' : '')} id={'p-note-' + plugin.id}>

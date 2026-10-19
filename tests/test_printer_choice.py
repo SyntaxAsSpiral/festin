@@ -43,6 +43,7 @@ def _enable(conn, band="babette"):
         {
             "enabled": True,
             "settings": {
+                "deliveryMode": "receiver",
                 "receiverUrl": "http://127.0.0.1:9",
                 "token": "test-token",
                 "band": band,

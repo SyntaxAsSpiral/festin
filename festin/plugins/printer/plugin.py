@@ -43,10 +43,32 @@ class PrinterPlugin:
         bands = printing.band_catalog()["bands"]
         return [
             {
+                "key": "deliveryMode",
+                "type": "string",
+                "default": "",
+                "label": "Delivery",
+                "help": (
+                    "How Festin hands a finished PNG slip to your printer. "
+                    "Off never attempts a print. Print receiver POSTs the image to a "
+                    "small HTTP service (see docs/print-receiver.md). Print command runs "
+                    "a local shell command with {file} replaced by the PNG path."
+                ),
+                "enum": ["", "receiver", "command"],
+                "choices": [
+                    {"id": "", "description": "Off"},
+                    {"id": "receiver", "description": "Print receiver"},
+                    {"id": "command", "description": "Print command"},
+                ],
+            },
+            {
                 "key": "receiverUrl",
                 "type": "string",
                 "default": "",
                 "label": "Print receiver URL",
+                "help": (
+                    "Used when Delivery is Print receiver. Base URL only — Festin POSTs "
+                    "to <url>/print. Example: http://127.0.0.1:8766"
+                ),
             },
             {
                 "key": "token",
@@ -54,6 +76,18 @@ class PrinterPlugin:
                 "default": "",
                 "label": "Print receiver token",
                 "secret": True,
+                "help": "Bearer token the receiver expects. Used only in Print receiver mode.",
+            },
+            {
+                "key": "printCommand",
+                "type": "string",
+                "default": "",
+                "label": "Print command",
+                "help": (
+                    "Used when Delivery is Print command. Must include {file}, which "
+                    "becomes the absolute PNG path. Examples: lp -d thermal {file} · "
+                    "tm20-set print png {file}"
+                ),
             },
             {
                 "key": "band",
