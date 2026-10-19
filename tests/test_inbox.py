@@ -306,3 +306,17 @@ def test_hash_key_constant_compare():
     assert inbox_mod.key_matches(key, digest)
     assert not inbox_mod.key_matches(key + "x", digest)
     assert not inbox_mod.key_matches("", digest)
+
+
+def test_public_inbox_url_is_shown_to_settings_and_agents(tmp_path):
+    server = KitchenServer(
+        ("127.0.0.1", 0),
+        tmp_path / "store.sqlite",
+        inbox_port=0,
+        inbox_url="https://kitchen.example.net:8443/",
+    )
+    try:
+        assert server.inbox_address() == "https://kitchen.example.net:8443"
+        assert server._inbox_httpd.public_address == "https://kitchen.example.net:8443"
+    finally:
+        server.server_close()

@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import os
 import re
 import secrets
 import threading
@@ -69,6 +70,7 @@ class KitchenServer(ThreadingHTTPServer):
         origins=None,
         photos_dir=None,
         inbox_port=None,
+        inbox_url=None,
     ):
         self.db_path = str(db_path)
         self.origins = tuple(origin.rstrip("/") for origin in (origins or ()) if origin)
@@ -81,6 +83,9 @@ class KitchenServer(ThreadingHTTPServer):
         # Extra arguments for the chat engine (tests pass a fake model here).
         self.chat_options = {}
         self.inbox_port = inbox_port
+        # Where agents reach the inbox when the host exposes it (a tunnel, Funnel, a
+        # router); Settings and the agent instructions show this instead of the local port.
+        self.inbox_url = (inbox_url or "").rstrip("/") or None
         self._inbox_httpd = None
         self._inbox_thread = None
         self._inbox_lock = threading.Lock()
@@ -96,6 +101,8 @@ class KitchenServer(ThreadingHTTPServer):
             self.start_inbox()
 
     def inbox_address(self) -> str:
+        if self.inbox_url:
+            return self.inbox_url
         host = self.server_address[0]
         if host in ("0.0.0.0", "::", ""):
             host = "127.0.0.1"
@@ -122,7 +129,7 @@ class KitchenServer(ThreadingHTTPServer):
             )
             # Port 0 picks an ephemeral port; refresh the public address.
             bound = httpd.server_address[1]
-            httpd.public_address = self._inbox_public_address(host, bound).rstrip("/")
+            httpd.public_address = self.inbox_url or self._inbox_public_address(host, bound).rstrip("/")
             thread = threading.Thread(target=httpd.serve_forever, daemon=True)
             thread.start()
             self._inbox_httpd = httpd
@@ -1042,6 +1049,11 @@ def main(argv: list[str] | None = None) -> int:
         help=f"Incoming-recipes listener port (default {DEFAULT_INBOX_PORT}).",
     )
     parser.add_argument(
+        "--inbox-url",
+        default=os.environ.get("FESTIN_INBOX_URL", ""),
+        help="Public address of the inbox, when the host exposes it (or FESTIN_INBOX_URL).",
+    )
+    parser.add_argument(
         "--origin",
         action="append",
         default=[],
@@ -1053,6 +1065,7 @@ def main(argv: list[str] | None = None) -> int:
         args.db_path,
         origins=args.origin,
         inbox_port=args.inbox_port,
+        inbox_url=args.inbox_url,
     )
     print(f"listening on http://{args.host}:{args.port}", flush=True)
     if server.inbox_bound_port() is not None:

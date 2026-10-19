@@ -80,3 +80,13 @@ python -m festin.server data/kitchen.db --host 127.0.0.1 --port 8886 --inbox-por
 ```
 
 Kitchen API on `8886`, incoming recipes on `8896`.
+
+## Telling Festin its public address
+
+Once the inbox port is reachable from outside, start the kitchen with that address so Settings and the agent instructions show it instead of the local port:
+
+```
+python -m festin.server <db> --inbox-url https://kitchen.example.net:8443
+```
+
+or set `FESTIN_INBOX_URL`. Festin never discovers or opens the public address itself.
