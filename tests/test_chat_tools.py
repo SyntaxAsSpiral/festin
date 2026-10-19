@@ -182,16 +182,29 @@ def test_note_tools(kit):
     row = conn.execute("SELECT text, color FROM notes WHERE id = ?", (note_id,)).fetchone()
     assert row["text"] == "heavy cream"
 
-    # Context lane.
+    # Household context is its own tool; keep_note stays a note.
     registry.dispatch(
-        "keep_note",
-        {"context": "household", "text": "Three at the table."},
+        "update_household_context",
+        {"section": "household", "text": "Three at the table."},
         ctx,
     )
     lane = conn.execute(
-        "SELECT text FROM notes WHERE id = 'context-household'"
+        "SELECT text FROM household_context WHERE section = 'household'"
     ).fetchone()
     assert "Three" in lane["text"]
+    assert (
+        conn.execute(
+            "SELECT count(*) FROM notes WHERE id = 'context-household'"
+        ).fetchone()[0]
+        == 0
+    )
+    project = registry.dispatch(
+        "keep_note",
+        {"type": "project", "text": "UI refactor plan for the notes pane"},
+        ctx,
+    )
+    assert project["saved"]["type"] == "project"
+    assert "UI refactor" in project["saved"]["text"]
 
     registry.dispatch(
         "delete_note", {"id": note_id, "original": "heavy cream"}, ctx

@@ -206,12 +206,22 @@ def _replace_notes(conn: sqlite3.Connection, journal, memory) -> None:
     if not isinstance(journal, list):
         raise ValueError("journal must be a list")
     rows = [_note_from_journal(note) for note in journal]
+    # Context sections belong in household_context, never in notes.
+    rows = [
+        row
+        for row in rows
+        if not (isinstance(row[0], str) and row[0].startswith("context-"))
+        and row[1] not in CONTEXT_LANES
+    ]
     seen = {row[0] for row in rows}
     if isinstance(memory, dict):
         for row in _notes_from_memory(memory):
             if row[0] not in seen:
                 rows.append(row)
                 seen.add(row[0])
+        _replace_household_context(conn, memory)
+    else:
+        conn.execute("DELETE FROM household_context")
     conn.execute("DELETE FROM notes")
     conn.executemany(
         """
@@ -221,6 +231,22 @@ def _replace_notes(conn: sqlite3.Connection, journal, memory) -> None:
         """,
         rows,
     )
+
+
+def _replace_household_context(conn: sqlite3.Connection, memory: dict) -> None:
+    context = memory.get("context") if isinstance(memory.get("context"), dict) else {}
+    if context.get("dietary") and not context.get("restrictions"):
+        context = dict(context)
+        context["restrictions"] = context.get("dietary")
+    conn.execute("DELETE FROM household_context")
+    for lane in CONTEXT_LANES:
+        text = context.get(lane)
+        if not isinstance(text, str) or not text.strip():
+            continue
+        conn.execute(
+            "INSERT INTO household_context (section, text, updated_at) VALUES (?, ?, NULL)",
+            (lane, text),
+        )
 
 
 def _note_from_journal(note: dict) -> tuple:
@@ -293,15 +319,6 @@ def _notes_from_memory(memory: dict) -> list[tuple]:
                 updated or written,
             )
         )
-    context = memory.get("context") if isinstance(memory.get("context"), dict) else {}
-    if context.get("dietary") and not context.get("restrictions"):
-        context = dict(context)
-        context["restrictions"] = context.get("dietary")
-    for lane in CONTEXT_LANES:
-        text = context.get(lane)
-        if not isinstance(text, str) or not text.strip():
-            continue
-        rows.append((f"context-{lane}", lane, text, "none", None, 0, None, None, None, None))
     requests = memory.get("requests") if isinstance(memory.get("requests"), list) else []
     for req in requests:
         if not isinstance(req, dict):

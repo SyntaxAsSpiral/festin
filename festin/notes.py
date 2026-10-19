@@ -22,7 +22,10 @@ OPEN_NOTE_CAP = 25
 def list_notes(conn: sqlite3.Connection, *, q: str = "", cursor: str | None = None, limit: int = PAGE_SIZE) -> dict:
     limit = _page_limit(limit)
     params: list = []
-    where = []
+    where = [
+        "id NOT IN ('context-household', 'context-preferences', 'context-restrictions')",
+        "kind NOT IN ('household', 'preferences', 'restrictions')",
+    ]
     if q:
         needle = f"%{' '.join(q.split()).casefold()}%"
         where.append("(lower(kind) LIKE ? OR lower(text) LIKE ?)")

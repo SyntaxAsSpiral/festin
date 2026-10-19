@@ -61,26 +61,25 @@ export async function saveSettings(draft, expectedUpdatedAt) {
   return readSaveResult(res.status, body)
 }
 
-/** Context lanes live as notes (context-household, …). Missing notes are empty. */
+/** Household context sections live in household_context, not notes. */
 export async function fetchContextLanes() {
   const out = {}
   await Promise.all(
     CONTEXT_LANES.map(async (lane) => {
-      const res = await fetch('/api/notes/' + lane.id, { headers: { Accept: 'application/json' } })
-      if (res.status === 404) {
-        out[lane.key] = { id: lane.id, text: '', updatedAt: null, missing: true }
-        return
-      }
+      const res = await fetch('/api/household-context/' + lane.key, {
+        headers: { Accept: 'application/json' },
+      })
       const body = await readJson(res)
       if (!res.ok) {
-        out[lane.key] = { id: lane.id, text: '', updatedAt: null, missing: true }
+        out[lane.key] = { section: lane.key, text: '', updatedAt: null, missing: true }
         return
       }
+      const text = String(body?.text || '')
       out[lane.key] = {
-        id: lane.id,
-        text: String(body?.text || ''),
+        section: lane.key,
+        text,
         updatedAt: body?.updatedAt || null,
-        missing: false,
+        missing: !text && body?.updatedAt == null,
       }
     }),
   )
@@ -92,34 +91,17 @@ export async function saveContextLane(lane, text, expectedUpdatedAt) {
   if (!cleaned) {
     return { ok: false, conflict: false, error: 'Write a short note before saving.', body: null }
   }
-  if (lane.missing) {
-    const res = await fetch('/api/notes', {
-      method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: lane.id, type: lane.key, text: cleaned, color: 'none' }),
-    })
-    const body = await readJson(res)
-    if (!res.ok) {
-      return {
-        ok: false,
-        conflict: res.status === 409,
-        error: (body && body.error) || 'Could not create the note.',
-        body,
-      }
-    }
-    return { ok: true, conflict: false, error: null, body }
-  }
-  const res = await fetch('/api/notes/' + lane.id, {
-    method: 'POST',
+  const res = await fetch('/api/household-context/' + lane.key, {
+    method: 'PUT',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: cleaned, expectedUpdatedAt }),
+    body: JSON.stringify({ text: cleaned, expectedUpdatedAt: expectedUpdatedAt ?? null }),
   })
   const body = await readJson(res)
   if (res.status === 409) {
     return {
       ok: false,
       conflict: true,
-      error: (body && body.error) || 'This note changed. Refresh before editing it.',
+      error: (body && body.error) || 'This section changed. Refresh before editing it.',
       body,
     }
   }

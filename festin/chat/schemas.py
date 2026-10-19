@@ -124,7 +124,6 @@ RECIPE_REVISION = {
 }
 
 NOTE_REFERENCE = {
-    "context": {"type": "string", "enum": list(CONTEXT_LANES)},
     "id": {"type": "string"},
     "original": {"type": "string", "description": "Exact current text, for stale-edit protection."},
     "type": {"type": "string"},
@@ -406,8 +405,9 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
     (
         "analyze_notes",
         (
-            "Context card and pressing pinned (open) notes, highest priority then newest, "
-            "with the labels in use. Notes are not injected into chat."
+            "Pressing pinned (open) notes, highest priority then newest, with the labels "
+            "in use. Notes are not injected into chat. Household standing facts are "
+            "update_household_context, not notes."
         ),
         {"type": "object", "properties": {}, "additionalProperties": False},
     ),
@@ -419,10 +419,9 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
     (
         "edit_note",
         (
-            "Correct a context section or a note. For a section pass context, the full "
-            "text, and original. For a note pass id, the exact original text, and color, "
-            "band, or priority when those change. A new dietary restriction uses "
-            "keep_note with append=true in that same turn."
+            "Correct a note. Pass id, the exact original text, and color, band, or "
+            "priority when those change. Household standing facts use "
+            "update_household_context."
         ),
         {
             "type": "object",
@@ -444,22 +443,20 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
     (
         "keep_note",
         (
-            "Save a note, or replace a context section: household and preferences 800 "
-            "characters, restrictions 1,000. A new dietary restriction, allergy, or "
-            "forbidden food: context=restrictions, append=true, only the new line, same "
-            "turn, without waiting or dropping what is written. Otherwise pass type and, "
-            "when one fits, a Catppuccin accent color. Suggested: shopping green, "
-            "leftovers sky, to-do peach. none leaves it uncolored. Another short label "
-            "is fine. A kept note starts pinned; pass open=false only when the household "
-            "asks for a closed (archived) note. At most 25 pinned. To print something without saving "
-            "it (a shopping list from a photo), use prepare_slip kind=note instead. Choose color, band, and priority yourself. Do not ask "
-            "the household to set them."
+            "Save a note (projects, tasks, news, plans, shopping). Pass type and, when "
+            "one fits, a Catppuccin accent color. Suggested: shopping green, leftovers "
+            "sky, to-do peach. none leaves it uncolored. Another short label is fine. A "
+            "kept note starts pinned; pass open=false only when the household asks for a "
+            "closed (archived) note. At most 25 pinned. Lasting household facts "
+            "(who lives here, tastes, standing preferences, dietary restrictions) use "
+            "update_household_context, never this tool. To print something without "
+            "saving it (a shopping list from a photo), use prepare_slip kind=note "
+            "instead. Choose color, band, and priority yourself. Do not ask the "
+            "household to set them."
         ),
         {
             "type": "object",
             "properties": {
-                "context": {"type": "string", "enum": list(CONTEXT_LANES)},
-                "append": {"type": "boolean"},
                 "type": {"type": "string"},
                 "text": {"type": "string"},
                 "open": {"type": "boolean"},
@@ -471,6 +468,30 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
                 "priority": {"type": "string", "enum": ["high", "normal", "low"]},
             },
             "required": ["text"],
+            "additionalProperties": False,
+        },
+    ),
+    (
+        "update_household_context",
+        (
+            "Lasting facts about the household only: who lives here, tastes, standing "
+            "preferences, dietary restrictions. Never projects, tasks, news or plans "
+            "(those are keep_note). section is household, preferences, or restrictions. "
+            "Default mode=append adds one line. replace rewrites a section and needs "
+            "expected_updated_at. A new restriction, allergy, or forbidden food: "
+            "section=restrictions, mode=append, only the new line, same turn, without "
+            "waiting. Limits: household and preferences 800 characters, restrictions "
+            "1,000."
+        ),
+        {
+            "type": "object",
+            "properties": {
+                "section": {"type": "string", "enum": list(CONTEXT_LANES)},
+                "text": {"type": "string"},
+                "mode": {"type": "string", "enum": ["append", "replace"]},
+                "expected_updated_at": {"type": ["string", "null"]},
+            },
+            "required": ["section", "text"],
             "additionalProperties": False,
         },
     ),
@@ -520,6 +541,7 @@ TOOL_LABELS = {
     "search_history": "Searched the kitchen history",
     "read_chat_history": "Read an earlier chat",
     "keep_note": "Kept a note",
+    "update_household_context": "Updated household context",
     "read_notes": "Read the notes",
     "analyze_notes": "Checked current notes",
     "search_notes": "Searched the notes",

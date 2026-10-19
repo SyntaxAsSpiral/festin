@@ -22,6 +22,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 from festin import chats as chats_mod
+from festin import household as household_mod
 from festin import inbox as inbox_mod
 from festin import log as log_mod
 from festin import notes as notes_mod
@@ -214,6 +215,14 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/api/notes/"):
                 with self._db() as conn:
                     return self._send(200, notes_mod.get_note(conn, _id_after(path, "/api/notes/")))
+            if path.startswith("/api/household-context/"):
+                with self._db() as conn:
+                    return self._send(
+                        200,
+                        household_mod.get_section(
+                            conn, _id_after(path, "/api/household-context/")
+                        ),
+                    )
             if path == "/api/chats":
                 with self._db() as conn:
                     return self._send(
@@ -368,6 +377,16 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(
                         200,
                         plugins_host.update_plugin(conn, plugin_id, body, now=self.server.now()),
+                    )
+                if path.startswith("/api/household-context/"):
+                    return self._send(
+                        200,
+                        household_mod.put_section(
+                            conn,
+                            _id_after(path, "/api/household-context/"),
+                            body,
+                            now=self.server.now(),
+                        ),
                     )
                 if path.startswith("/api/recipes/"):
                     return self._send(

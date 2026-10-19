@@ -367,12 +367,51 @@ def _version_12(conn: sqlite3.Connection) -> None:
         )
 
 
+def _version_13(conn: sqlite3.Connection) -> None:
+    """Household context sections leave the notes table for household_context."""
+    conn.executescript(
+        """
+        CREATE TABLE household_context (
+            section TEXT PRIMARY KEY
+                CHECK (section IN ('household', 'preferences', 'restrictions')),
+            text TEXT NOT NULL DEFAULT '',
+            updated_at TEXT
+        );
+        """
+    )
+    lanes = ("household", "preferences", "restrictions")
+    ids = tuple(f"context-{lane}" for lane in lanes)
+    for lane, note_id in zip(lanes, ids):
+        row = conn.execute(
+            "SELECT text, updated_at FROM notes WHERE id = ?",
+            (note_id,),
+        ).fetchone()
+        if row is None:
+            continue
+        conn.execute(
+            """
+            INSERT INTO household_context (section, text, updated_at)
+            VALUES (?, ?, ?)
+            """,
+            (lane, row["text"] or "", row["updated_at"]),
+        )
+    conn.execute(
+        f"DELETE FROM kitchen_log_events WHERE ref_id IN ({','.join('?' * len(ids))})",
+        ids,
+    )
+    conn.execute(
+        f"DELETE FROM notes WHERE id IN ({','.join('?' * len(ids))})",
+        ids,
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
 # v6 is the Kitchen Log. Plugin tables are v7. Shared favourites are v8.
 # v9 widens the kitchen log event kinds CHECK.
 # v10 splits weeks.slip_quote from weeks.slip_title.
 # v11 is the incoming-recipes inbox toggle and key hash.
 # v12 files every chat that has a message (chats now file with their first).
+# v13 moves household context sections out of notes into household_context.
 MIGRATIONS = (
     _version_1,
     _version_2,
@@ -386,6 +425,7 @@ MIGRATIONS = (
     _version_10,
     _version_11,
     _version_12,
+    _version_13,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

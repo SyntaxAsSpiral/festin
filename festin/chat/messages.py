@@ -360,13 +360,6 @@ def build_chat_messages(
 
 
 def _context_lanes(conn: sqlite3.Connection) -> dict:
-    lanes = ("household", "preferences", "restrictions")
-    out = {name: "" for name in lanes}
-    for name in lanes:
-        row = conn.execute(
-            "SELECT text FROM notes WHERE id = ? OR kind = ?",
-            (f"context-{name}", name),
-        ).fetchone()
-        if row:
-            out[name] = row["text"] or ""
-    return out
+    from festin.household import all_sections
+
+    return all_sections(conn)

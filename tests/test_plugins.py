@@ -137,7 +137,7 @@ def test_plugins_over_http_and_tools_follow_the_switch(blank_db):
         ]
         assert registry.tool_label("prepare_slip") == "Prepared a slip"
         assert registry.tool_label("print_slip") == "Sent to the printer"
-        assert len(registry.names()) == 18
+        assert len(registry.names()) == 19
 
         status, dinner = client.request("POST", "/api/plugins/printer/print-dinner", {})
         assert status == 400
