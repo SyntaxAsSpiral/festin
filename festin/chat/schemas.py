@@ -107,13 +107,21 @@ RECIPE_FIELDS = {
         ),
     },
     "tattva": {"type": "array", "items": {"type": "string"}},
+    "searchDescription": {
+        "type": "string",
+        "maxLength": 300,
+        "description": (
+            "One or two plain sentences saying what the dish is and how it is made; "
+            "shown under the title and used by search. Required on a new card."
+        ),
+    },
     "category": {
         "type": "string",
         "enum": list(PLATE_SLUGS),
         "description": (
-            "Optional plate slug already stored on the card. Omit when the card has "
-            "no category. Do not choose one. uncategorized is not a slug; a missing "
-            "or unknown value uses that plate."
+            "The card's category, its plate slug. Required on a new card: choose the "
+            "one that fits (chicken is all poultry; meats is meat and game; misc when "
+            "nothing fits). On an edit, change it only when asked."
         ),
     },
 }
@@ -239,13 +247,14 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
             "is recipe: title and ingredients required, [] for a name-only stub, method "
             "only when load-bearing. kind=praxis is a technique (dish type, ingredient, "
             "house method): title and method required, ingredients optional, not a "
-            "dinner. Voice names the contributor or collection; source records the "
-            "original citation. Both default to unknown"
+            "dinner. Always give category and searchDescription. Voice is From (who "
+            "brought it to this kitchen); source is what the card itself credits, "
+            "empty when it credits nothing."
         ),
         {
             "type": "object",
             "properties": RECIPE_FIELDS,
-            "required": ["title"],
+            "required": ["title", "category", "searchDescription"],
             "additionalProperties": False,
         },
     ),

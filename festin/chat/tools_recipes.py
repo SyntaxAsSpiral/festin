@@ -636,6 +636,11 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
     creating = name == "add_recipe"
     if creating:
         changes = args
+        # A new card is filed and described on arrival, so search and the plates work.
+        if args.get("category") not in PLATE_SLUGS:
+            raise ValueError("Give the new card a category: one of " + ", ".join(PLATE_SLUGS) + ".")
+        if not str(args.get("searchDescription") or "").strip():
+            raise ValueError("Give the new card a searchDescription: one or two sentences on what the dish is.")
         row = {
             "voice": "Babette",
             "source": "",

@@ -118,6 +118,7 @@ def _recipe(**overrides):
     body = {
         "title": "Agent broth",
         "category": "soups-stews",
+        "description": "A plain broth of water and salt.",
         "ingredients": ["water", "salt"],
         "method": "1. Simmer.\n2. Season.",
         "source": "https://example.com/broth",
@@ -351,7 +352,10 @@ def test_inbox_requires_a_known_category(tmp_path):
     from festin.inbox import parse_recipe
 
     with pytest.raises(ValueError, match="category"):
-        parse_recipe({"title": "Soup", "ingredients": ["water"]}, "agent")
+        parse_recipe({"title": "Soup", "description": "A soup.", "ingredients": ["water"]}, "agent")
     with pytest.raises(ValueError, match="category"):
-        parse_recipe({"title": "Soup", "category": "soup", "ingredients": ["water"]}, "agent")
-    assert parse_recipe({"title": "Soup", "category": "soups-stews", "ingredients": ["water"]}, "agent")["category"] == "soups-stews"
+        parse_recipe({"title": "Soup", "category": "soup", "description": "A soup.", "ingredients": ["water"]}, "agent")
+    with pytest.raises(ValueError, match="description"):
+        parse_recipe({"title": "Soup", "category": "soups-stews", "ingredients": ["water"]}, "agent")
+    ok = parse_recipe({"title": "Soup", "category": "soups-stews", "description": "A soup.", "ingredients": ["water"]}, "agent")
+    assert (ok["category"], ok["searchDescription"]) == ("soups-stews", "A soup.")

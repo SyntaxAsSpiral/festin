@@ -26,7 +26,7 @@ from festin.schema import connect
 BODY_LIMIT = 64 * 1024
 RATE_LIMIT = 30
 RATE_WINDOW_S = 3600
-ALLOWED_FIELDS = frozenset({"title", "category", "ingredients", "notes", "method", "voice", "source"})
+ALLOWED_FIELDS = frozenset({"title", "category", "description", "ingredients", "notes", "method", "voice", "source"})
 # The two whose slugs read oddly to an outside agent.
 CATEGORY_HINTS = {"chicken": "chicken (all poultry)", "meats": "meats (meat and game)"}
 CATEGORY_TEXT = ", ".join(CATEGORY_HINTS.get(slug, slug) for slug in PLATE_SLUGS)
@@ -42,6 +42,8 @@ Auth
 Fields (text only; no images, files, or fetched links)
   title         required, <= 200 characters
   category      required, one of: {categories}
+  description   required, <= 300 characters: one or two plain sentences on what
+                the dish is and how it is made
   ingredients   required, 1–80 lines, each <= 240 characters
                 (JSON array of strings, or one string with newlines)
   method        optional, <= 4000 characters (steps)
@@ -64,7 +66,7 @@ Example
     -H "Authorization: Bearer $FESTIN_INBOX_KEY" \\
     -H "X-Agent-Name: my-agent" \\
     -H "Content-Type: application/json" \\
-    -d '{"title":"Agent broth","category":"soups-stews","ingredients":["water","salt"],"method":"1. Simmer.\\n2. Season.","source":"https://example.com/broth"}'
+    -d '{"title":"Agent broth","category":"soups-stews","description":"A plain broth, simmered and seasoned.","ingredients":["water","salt"],"method":"1. Simmer.\\n2. Season.","source":"https://example.com/broth"}'
 
 The kitchen host must expose this port (Tailscale Funnel, Cloudflare tunnel, or
 router port-forward). Festin only binds the kitchen's host; it does not put the
@@ -136,6 +138,9 @@ def parse_recipe(body: dict, agent: str) -> dict:
     category = body.get("category")
     if category not in PLATE_SLUGS:
         raise ValueError("Recipes require a category, one of: " + ", ".join(PLATE_SLUGS))
+    description = _optional(body, "description", 300)
+    if not description:
+        raise ValueError("Recipes require a description: one or two sentences on what the dish is.")
     ingredients = _ingredients(body.get("ingredients"))
     method = _optional(body, "method", 4000)
     notes = _optional(body, "notes", 4000)
@@ -153,6 +158,7 @@ def parse_recipe(body: dict, agent: str) -> dict:
         "status": "confirmed",
         "needsPracticeReview": True,
         "category": category,
+        "searchDescription": " ".join(description.split()),
         "stub": False,
     }
 
@@ -181,6 +187,7 @@ def instructions_payload(address: str) -> dict:
         "fields": {
             "title": "required, <= 200 characters",
             "category": "required, one of: " + CATEGORY_TEXT,
+            "description": "required, <= 300 characters: one or two sentences on what the dish is",
             "ingredients": "required, 1–80 lines, each <= 240 (array or newline string)",
             "method": "optional, <= 4000 characters",
             "notes": "optional, <= 4000 characters",
@@ -208,6 +215,7 @@ def instructions_payload(address: str) -> dict:
             "body": {
                 "title": "Agent broth",
                 "category": "soups-stews",
+                "description": "A plain broth of water and salt, simmered and seasoned.",
                 "ingredients": ["water", "salt"],
                 "method": "1. Simmer.\n2. Season.",
                 "source": "https://example.com/broth",
@@ -228,7 +236,7 @@ def example_curl(address: str, key: str) -> str:
         f'  -H "Authorization: Bearer {key}" \\\n'
         f'  -H "X-Agent-Name: my-agent" \\\n'
         f'  -H "Content-Type: application/json" \\\n'
-        f"""  -d '{{"title":"Agent broth","category":"soups-stews","ingredients":["water","salt"],"""
+        f"""  -d '{{"title":"Agent broth","category":"soups-stews","description":"A plain broth, simmered and seasoned.","ingredients":["water","salt"],"""
         f""""method":"1. Simmer.\\n2. Season.","source":"https://example.com/broth"}}'"""
     )
 

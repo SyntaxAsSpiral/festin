@@ -51,7 +51,7 @@ def test_recipe_tools(kit):
     conn, registry, ctx = kit
     added = registry.dispatch(
         "add_recipe",
-        {"title": "Bread", "ingredients": ["flour"], "voice": "zk", "source": "unknown"},
+        {"title": "Bread", "ingredients": ["flour"], "voice": "zk", "source": "unknown", "category": "breads", "searchDescription": "A plain loaf."},
         ctx,
     )
     assert added["status"] == "saved"
@@ -303,6 +303,12 @@ def test_kept_note_starts_pinned_unless_asked_closed(kit):
 def test_babette_new_recipe_is_generated(kit):
     conn, registry, ctx = kit
     saved = registry.dispatch(
-        "add_recipe", {"title": "Herb toast", "ingredients": ["bread", "herbs"], "method": "Toast."}, ctx
+        "add_recipe",
+        {"title": "Herb toast", "ingredients": ["bread", "herbs"], "method": "Toast.", "category": "snacks-sandwiches", "searchDescription": "Toast with herbs."},
+        ctx,
     )
     assert saved["recipe"]["provenance"] == "generated"
+    with pytest.raises(ValueError, match="category"):
+        registry.dispatch("add_recipe", {"title": "Bare", "ingredients": ["x"], "searchDescription": "A bare thing."}, ctx)
+    with pytest.raises(ValueError, match="searchDescription"):
+        registry.dispatch("add_recipe", {"title": "Bare", "ingredients": ["x"], "category": "misc"}, ctx)
