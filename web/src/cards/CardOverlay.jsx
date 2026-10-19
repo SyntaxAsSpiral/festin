@@ -11,29 +11,43 @@ import {
   loadItem,
   pointSessionAt,
   removeItem,
+  removeRecipePhoto,
   saveNote,
   saveRecipe,
   toggleNote,
   setRecipeFavourite,
   toItem,
+  updateRecipePhotos,
 } from './kinds.js'
 import { copyText } from '../secure.js'
 import { useLookingAt } from './looking.js'
 import { forgetOrigin, originRect } from './origin.js'
 import { ChatPage, NotePage, RecipeEditor, RecipePage } from './pages.jsx'
 
-function Confirm({ noun, onYes, onNo }) {
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024
+const MAX_PHOTOS_AT_ONCE = 4
+
+function readAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(new Error('Could not read ' + file.name))
+    reader.readAsDataURL(file)
+  })
+}
+
+function Confirm({ label, message, keepLabel = 'Keep it', yesLabel = 'Delete', onYes, onNo }) {
   const yes = useRef(null)
   useEffect(() => yes.current?.focus(), [])
   return (
-    <div className="confirm" role="alertdialog" aria-modal="true" aria-label={'Delete this ' + noun + '?'}>
-      <p>Delete this {noun}? It can't be brought back.</p>
+    <div className="confirm" role="alertdialog" aria-modal="true" aria-label={label}>
+      <p>{message}</p>
       <div className="confirm-actions">
         <button type="button" onClick={onNo}>
-          Keep it
+          {keepLabel}
         </button>
         <button ref={yes} type="button" className="danger" onClick={onYes}>
-          Delete
+          {yesLabel}
         </button>
       </div>
     </div>
@@ -83,9 +97,11 @@ export function CardOverlay({ kind, id, onChanged }) {
   const [draft, setDraft] = useState('')
   const [noteColor, setNoteColor] = useState('none')
   const [recipeDraft, setRecipeDraft] = useState(blankRecipe)
-  const [confirming, setConfirming] = useState(false)
+  const [confirming, setConfirming] = useState(null)
   const [note, setNote] = useState('')
+  const [photoBusy, setPhotoBusy] = useState(false)
   const closing = useRef(false)
+  const photoPicker = useRef(null)
   const spec = KINDS[kind]
 
   useEffect(() => {
@@ -152,7 +168,7 @@ export function CardOverlay({ kind, id, onChanged }) {
       if (event.key !== 'Escape') return
       if (event.target?.closest?.('.surface-panel, #sidebar')) return
       event.preventDefault()
-      if (confirming) setConfirming(false)
+      if (confirming) setConfirming(null)
       else if (phase === 'editing' && id !== 'new') setPhase('viewing')
       else close()
     }
@@ -166,6 +182,36 @@ export function CardOverlay({ kind, id, onChanged }) {
   const editingNote = kind === 'notes' && (creating || phase === 'editing')
   const title = creating ? 'New ' + spec.noun : item?.title || ''
   useLookingAt(title, kind, creating ? null : item?.id)
+
+  async function addPhotos(files) {
+    if (!raw || photoBusy) return
+    const list = [...files]
+    if (!list.length) return
+    if (list.length > MAX_PHOTOS_AT_ONCE) {
+      setNote('Choose up to four photos at a time.')
+      return
+    }
+    for (const file of list) {
+      if (file.size > MAX_PHOTO_BYTES) {
+        setNote('Each photo must be under 10 MB.')
+        return
+      }
+    }
+    setPhotoBusy(true)
+    setNote('')
+    try {
+      const photos = []
+      for (const file of list) photos.push(await readAsDataUrl(file))
+      await act(() =>
+        updateRecipePhotos(raw, photos).then((saved) => {
+          applySaved(saved)
+          setNote(photos.length === 1 ? 'Photo added.' : photos.length + ' photos added.')
+        }),
+      )
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
 
   return (
     <div className="card-layer" onClick={(event) => event.target === event.currentTarget && close()}>
@@ -187,7 +233,9 @@ export function CardOverlay({ kind, id, onChanged }) {
           {item === undefined && <p className="lstate">Opening…</p>}
           {item === null && !creating && <p className="lstate">This {spec.noun} isn't in the box any more.</p>}
           {editingRecipe && <RecipeEditor draft={recipeDraft} onDraft={setRecipeDraft} />}
-          {raw && kind === 'recipes' && phase !== 'editing' && <RecipePage recipe={raw} />}
+          {raw && kind === 'recipes' && phase !== 'editing' && (
+            <RecipePage recipe={raw} onRemovePhoto={(path) => setConfirming({ type: 'photo', path })} />
+          )}
           {(raw || creating) && kind === 'notes' && (
             <NotePage
               note={creating ? { type: 'note', text: draft, color: noteColor, date: '' } : raw}
@@ -295,6 +343,21 @@ export function CardOverlay({ kind, id, onChanged }) {
                   >
                     Cooked tonight
                   </button>
+                  <button type="button" disabled={photoBusy} onClick={() => photoPicker.current?.click()}>
+                    Add photo
+                  </button>
+                  <input
+                    ref={photoPicker}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    capture="environment"
+                    multiple
+                    hidden
+                    onChange={(event) => {
+                      addPhotos(event.target.files || []).catch((err) => setNote(err.message || 'Could not read that photo.'))
+                      event.target.value = ''
+                    }}
+                  />
                 </>
               )}
               {kind === 'chats' && raw && (
@@ -303,20 +366,40 @@ export function CardOverlay({ kind, id, onChanged }) {
                 </button>
               )}
               {raw && !editingRecipe && (
-                <button type="button" className="danger" onClick={() => setConfirming(true)}>
+                <button type="button" className="danger" onClick={() => setConfirming({ type: 'delete' })}>
                   Delete
                 </button>
               )}
             </div>
           </div>
         )}
-        {confirming && (
+        {confirming?.type === 'delete' && (
           <Confirm
-            noun={spec.noun}
-            onNo={() => setConfirming(false)}
+            label={'Delete this ' + spec.noun + '?'}
+            message={'Delete this ' + spec.noun + "? It can't be brought back."}
+            onNo={() => setConfirming(null)}
             onYes={() => {
-              setConfirming(false)
+              setConfirming(null)
               act(() => removeItem(kind, raw).then(() => (onChanged?.(), close())))
+            }}
+          />
+        )}
+        {confirming?.type === 'photo' && (
+          <Confirm
+            label="Remove this photo?"
+            message="Remove this cooked photo from the card?"
+            keepLabel="Keep it"
+            yesLabel="Remove"
+            onNo={() => setConfirming(null)}
+            onYes={() => {
+              const path = confirming.path
+              setConfirming(null)
+              act(() =>
+                removeRecipePhoto(raw, path).then((saved) => {
+                  applySaved(saved)
+                  setNote('Photo removed.')
+                }),
+              )
             }}
           />
         )}

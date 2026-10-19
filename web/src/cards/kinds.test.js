@@ -11,7 +11,9 @@ import {
   plateFor,
   provenance,
   recipeItem,
+  removeRecipePhoto,
   saveRecipe,
+  updateRecipePhotos,
   weekStartOn,
 } from './kinds.js'
 
@@ -149,6 +151,53 @@ describe('list paging and the 409 path', () => {
       title: 'Stock',
       ingredients: ['water'],
     })
+  })
+})
+
+describe('cooked photo writes', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('posts data URLs to add photos and returns the recipe', async () => {
+    const recipe = { id: 'CBK-0001', updatedAt: '2026-10-18T00:00:00.000000Z' }
+    const saved = { id: 'CBK-0001', updatedAt: '2026-10-18T01:00:00.000000Z', photos: ['data/cooking-photos/a.jpg'] }
+    const fetch = vi.fn(async () => jsonResponse(200, { ok: true, recipe: saved, photos: saved.photos }))
+    vi.stubGlobal('fetch', fetch)
+    const result = await updateRecipePhotos(recipe, ['data:image/png;base64,aaa'])
+    expect(result).toEqual(saved)
+    expect(fetch.mock.calls[0][0]).toBe('/api/recipes/CBK-0001/photos')
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+      expected_updated_at: recipe.updatedAt,
+      photos: ['data:image/png;base64,aaa'],
+    })
+  })
+
+  it('posts remove with the stored path and returns the recipe', async () => {
+    const recipe = {
+      id: 'CBK-0001',
+      updatedAt: '2026-10-18T00:00:00.000000Z',
+      photos: ['data/cooking-photos/a.jpg'],
+    }
+    const saved = { id: 'CBK-0001', updatedAt: '2026-10-18T01:00:00.000000Z', photos: [] }
+    const fetch = vi.fn(async () => jsonResponse(200, { ok: true, recipe: saved, photos: [] }))
+    vi.stubGlobal('fetch', fetch)
+    const result = await removeRecipePhoto(recipe, 'data/cooking-photos/a.jpg')
+    expect(result).toEqual(saved)
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+      expected_updated_at: recipe.updatedAt,
+      remove: 'data/cooking-photos/a.jpg',
+    })
+  })
+
+  it('turns a stale photo write into ConflictError', async () => {
+    const fetch = vi.fn(async () => jsonResponse(409, { error: 'Recipe changed. Refresh before changing its photos.' }))
+    vi.stubGlobal('fetch', fetch)
+    const err = await updateRecipePhotos({ id: 'CBK-0001', updatedAt: 'old' }, ['data:image/png;base64,aaa']).then(
+      () => null,
+      (caught) => caught,
+    )
+    expect(err).toBeInstanceOf(ConflictError)
   })
 })
 

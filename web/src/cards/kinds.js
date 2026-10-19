@@ -257,6 +257,21 @@ export function setRecipeFavourite(recipe, favourite) {
   })
 }
 
+// Cooked photos only. OCR box scans stay on the card and are not edited here.
+export function updateRecipePhotos(recipe, photos) {
+  return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id) + '/photos', {
+    expected_updated_at: recipe.updatedAt,
+    photos,
+  }).then((body) => body.recipe)
+}
+
+export function removeRecipePhoto(recipe, path) {
+  return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id) + '/photos', {
+    expected_updated_at: recipe.updatedAt,
+    remove: path,
+  }).then((body) => body.recipe)
+}
+
 export function saveNote(note, fields) {
   if (!note) {
     return send('POST', '/api/notes', {

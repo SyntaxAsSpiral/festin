@@ -74,6 +74,18 @@
   --banner-ratio: 2 / 1;
   --drawer-ms: 280ms;
   --ease-drawer: cubic-bezier(0.55, 0, 0.45, 1);
+
+  /* Soft action family: card foot, + new, photo remove, confirm. Same border
+     weight/tone as the main tabs and list/cards toggle; one height and radius. */
+  --btn-h: var(--tab-h);
+  --btn-px: 10px;
+  --btn-radius: 4px;
+  --btn-border: 1px solid var(--bb-tone-2);
+  --btn-fg: var(--bb-tone-5);
+  --btn-bg: transparent;
+  --btn-min-w: 2.25em;
+  --btn-danger-fg: var(--bb-rose);
+  --btn-danger-border: 1px solid color-mix(in srgb, var(--bb-rose) 40%, transparent);
 }
 
 @property --frieze {

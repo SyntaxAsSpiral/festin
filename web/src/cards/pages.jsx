@@ -25,10 +25,25 @@ function Paragraphs({ text, className }) {
   )
 }
 
-export function RecipePage({ recipe }) {
+function CookedPhoto({ path, src, title, onOpen, onRemove }) {
+  return (
+    <figure className="cooked-photo">
+      <button type="button" className="cooked-photo-open" onClick={() => onOpen(src)} aria-label="Open the photo">
+        <img src={src} alt={'Cooked: ' + title} loading="lazy" />
+      </button>
+      {onRemove && (
+        <button type="button" className="photo-remove" onClick={() => onRemove(path)}>
+          Remove
+        </button>
+      )}
+    </figure>
+  )
+}
+
+export function RecipePage({ recipe, onRemovePhoto }) {
   const [openImage, setOpenImage] = useState(null)
   const scans = (recipe.ocrPhotos || []).map(served)
-  const photos = (recipe.photos || []).map(served)
+  const photos = (recipe.photos || []).map((path) => ({ path, src: served(path) }))
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : []
   return (
     <article className="page page-recipe">
@@ -43,10 +58,15 @@ export function RecipePage({ recipe }) {
         {/* Cooked photos are the recipe's pictures; the box scan is a reference, kept below. */}
         {photos[0] && (
           <figure className="from-box">
-            <button type="button" onClick={() => setOpenImage(photos[0])} aria-label="Open the photo">
-              <img src={photos[0]} alt={'Cooked: ' + recipe.title} loading="lazy" />
+            <button type="button" className="cooked-photo-open" onClick={() => setOpenImage(photos[0].src)} aria-label="Open the photo">
+              <img src={photos[0].src} alt={'Cooked: ' + recipe.title} loading="lazy" />
             </button>
             <figcaption>From our kitchen</figcaption>
+            {onRemovePhoto && (
+              <button type="button" className="photo-remove" onClick={() => onRemovePhoto(photos[0].path)}>
+                Remove
+              </button>
+            )}
           </figure>
         )}
         {ingredients.length > 0 && (
@@ -69,10 +89,15 @@ export function RecipePage({ recipe }) {
       </div>
       {photos.length > 1 && (
         <div className="cooked-photos">
-          {photos.slice(1).map((src) => (
-            <button key={src} type="button" onClick={() => setOpenImage(src)} aria-label="Open the photo">
-              <img src={src} alt={'Cooked: ' + recipe.title} loading="lazy" />
-            </button>
+          {photos.slice(1).map((photo) => (
+            <CookedPhoto
+              key={photo.path}
+              path={photo.path}
+              src={photo.src}
+              title={recipe.title}
+              onOpen={setOpenImage}
+              onRemove={onRemovePhoto}
+            />
           ))}
         </div>
       )}
