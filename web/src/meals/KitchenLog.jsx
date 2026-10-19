@@ -4,6 +4,7 @@ import { rememberOrigin } from '../cards/origin.js'
 import { CATEGORY_LABELS, plateFor } from '../cards/kinds.js'
 import { fetchLogPage } from './plan.js'
 import { formatLogWhen } from './logDate.js'
+import { conversationSummary, entryMeta, RECIPE_EVENT_KINDS } from './logEntries.js'
 
 // Weeks are one entry type, so one accent: rosewater, unless the tattva plugin
 // colours the week (tokens in index.css).
@@ -96,8 +97,8 @@ export function KitchenLog() {
   function openKind(kind, id, el) {
     if (!id) return
     rememberOrigin(el)
-    if (kind === 'recipe_added' || kind === 'recipe_edited') navigate('/recipes/' + encodeURIComponent(id))
-    else if (kind === 'note_created') navigate('/notes/' + encodeURIComponent(id))
+    if (RECIPE_EVENT_KINDS.has(kind)) navigate('/recipes/' + encodeURIComponent(id))
+    else if (kind === 'note_created' || kind === 'note_archived') navigate('/notes/' + encodeURIComponent(id))
     else if (kind === 'chat') navigate('/chats/' + encodeURIComponent(id))
   }
 
@@ -110,11 +111,13 @@ export function KitchenLog() {
       <h3>the kitchen log</h3>
       {error && <p className="tl-more end">{error}</p>}
       <ol className="tlo">
-        {shown.map((entry, index) => {
+        {shown.map((entry) => {
           if (entry.kind === 'week') {
             const tone = WEEK_TONE
             const open = openWeek === entry.weekStart
             const dinners = (entry.nights || []).filter((n) => n.title || n.recipe).length
+            const chats = entry.conversations || []
+            const chatLine = conversationSummary(chats)
             const wx = weatherLine(entry.weather)
             const tattva = entry.tattva
             return (
@@ -145,6 +148,7 @@ export function KitchenLog() {
                   <span className="twx">
                     <span>
                       {dinners} dinner{dinners === 1 ? '' : 's'}
+                      {chatLine ? ` · ${chatLine}` : ''}
                       {wx ? ` · ${wx}` : ''}
                       {entry.slipTitle ? ` · ${entry.slipTitle}` : ''}
                     </span>
@@ -174,23 +178,41 @@ export function KitchenLog() {
                           ) : null}
                         </li>
                       ))}
+                    {chats.map((chat) => (
+                      <li key={'chat-' + chat.id}>
+                        <span>{chat.title || 'Conversation'}</span>
+                        <button
+                          type="button"
+                          className="link"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openKind('chat', chat.id, e.currentTarget)
+                          }}
+                        >
+                          open
+                        </button>
+                      </li>
+                    ))}
                   </ol>
                 </div>
               </li>
             )
           }
 
-          if (entry.kind === 'note_created') {
+          if (entry.kind === 'note_created' || entry.kind === 'note_archived') {
+            const meta = entryMeta(entry.kind)
             return (
-              <li key={'n-' + entry.id + entry.at} className="tn tl-c">
+              <li key={'n-' + entry.id + entry.at + entry.kind} className={'tn ' + meta.rowClass}>
                 <span className="tdot" aria-hidden="true" />
                 <button
                   type="button"
-                  className="tlk tl-c"
-                  onClick={(e) => openKind('note_created', entry.id, e.currentTarget)}
+                  className={'tlk ' + meta.rowClass}
+                  onClick={(e) => openKind(entry.kind, entry.id, e.currentTarget)}
                 >
                   <span>
-                    <small>{formatWhen(entry.at)} · Note created</small>
+                    <small>
+                      {formatWhen(entry.at)} · {meta.label}
+                    </small>
                     <span className="trl">
                       <b>{entry.title}</b> <i>{entry.type || entry.detail || ''}</i>
                     </span>
@@ -222,25 +244,30 @@ export function KitchenLog() {
             )
           }
 
-          const label = entry.kind === 'recipe_added' ? 'Added' : 'Updated'
+          const meta = entryMeta(entry.kind)
           const cat = CATEGORY_LABELS[entry.category] || entry.category || ''
+          const showPlate = RECIPE_EVENT_KINDS.has(entry.kind) && entry.kind !== 'photo_added'
           return (
-            <li key={'r-' + entry.id + entry.at + entry.kind} className={'tn tl-r tl-' + (entry.kind === 'recipe_added' ? 'a' : 'u')}>
+            <li
+              key={'r-' + entry.id + entry.at + entry.kind}
+              className={'tn ' + meta.rowClass + (meta.modClass ? ' ' + meta.modClass : '')}
+            >
               <span className="tdot" aria-hidden="true" />
               <button
                 type="button"
-                className="tlk tl-r"
+                className={'tlk ' + meta.rowClass}
                 onClick={(e) => openKind(entry.kind, entry.id, e.currentTarget)}
               >
-                {entry.category ? <img src={plateFor(entry.category)} alt="" draggable={false} /> : null}
+                {showPlate && entry.category ? <img src={plateFor(entry.category)} alt="" draggable={false} /> : null}
                 <span>
                   <small>
-                    {formatWhen(entry.at)} · {label}
+                    {formatWhen(entry.at)} · {meta.label}
+                    {entry.kind === 'photo_added' && entry.detail ? ` · ${entry.detail}` : ''}
                   </small>
                   <span className="trl">
                     <b>{entry.title}</b> <code>{entry.id}</code> <i>{cat}</i>
                   </span>
-                  {entry.detail ? <em>{entry.detail}</em> : null}
+                  {entry.kind !== 'photo_added' && entry.detail ? <em>{entry.detail}</em> : null}
                 </span>
               </button>
             </li>

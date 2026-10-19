@@ -12,7 +12,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert SCHEMA_VERSION == 8
+    assert SCHEMA_VERSION == 9
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "sessions" in tables
@@ -100,7 +100,7 @@ def test_v7_database_gains_favourite_at_v8(tmp_path):
     assert "favourite" not in {row["name"] for row in conn.execute("PRAGMA table_info(recipes)")}
 
     apply(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 8
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     row = conn.execute("SELECT favourite FROM recipes WHERE id = 'CBK-0001'").fetchone()
     assert row["favourite"] == 0
     conn.close()
@@ -148,4 +148,52 @@ def test_v6_adds_log_events_and_week_weather(tmp_path):
     ).fetchone()[0]
     assert "recipe_added" in kinds
     assert "note_created" in kinds
+    assert "recipe_cooked" in kinds
+    assert "note_archived" in kinds
+    assert "recipe_favourited" in kinds
+    assert "photo_added" in kinds
+    conn.close()
+
+
+def test_v8_database_widens_log_kinds_at_v9(tmp_path):
+    conn = connect(tmp_path / "store.sqlite")
+    for step in MIGRATIONS[:8]:
+        step(conn)
+    conn.execute("PRAGMA user_version = 8")
+    conn.execute(
+        """
+        INSERT INTO kitchen_log_events (kind, at, ref_id, title, detail, extra_json)
+        VALUES ('recipe_added', '2026-04-18T12:00:00.000000Z', 'CBK-0001', 'Soup', '', '{}')
+        """
+    )
+    conn.commit()
+    old_sql = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE name = 'kitchen_log_events'"
+    ).fetchone()[0]
+    assert "recipe_cooked" not in old_sql
+
+    apply(conn)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 9
+    kinds = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE name = 'kitchen_log_events'"
+    ).fetchone()[0]
+    assert "recipe_cooked" in kinds
+    assert "photo_added" in kinds
+    row = conn.execute(
+        "SELECT kind, ref_id FROM kitchen_log_events WHERE ref_id = 'CBK-0001'"
+    ).fetchone()
+    assert row["kind"] == "recipe_added"
+    conn.execute(
+        """
+        INSERT INTO kitchen_log_events (kind, at, ref_id, title, detail, extra_json)
+        VALUES ('recipe_cooked', '2026-04-19T12:00:00.000000Z', 'CBK-0001', 'Soup', '', '{}')
+        """
+    )
+    conn.commit()
+    assert (
+        conn.execute(
+            "SELECT count(*) FROM kitchen_log_events WHERE kind = 'recipe_cooked'"
+        ).fetchone()[0]
+        == 1
+    )
     conn.close()

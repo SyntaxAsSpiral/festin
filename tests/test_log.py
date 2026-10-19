@@ -233,9 +233,15 @@ def test_chat_appears_linked_with_date_approx(kitchen):
     assert status == 201
     assert chat["dateApprox"] is False
 
-    # Imported-style approximate chat.
+    # Imported-style approximate chat folds into its week; dated chats stay alone.
     conn = connect(kitchen.db_path)
     try:
+        conn.execute(
+            """
+            INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at, weather_json)
+            VALUES ('2026-04-18', 'Spring', '', NULL, '2026-04-18T12:00:00.000000Z', NULL)
+            """
+        )
         conn.execute(
             """
             INSERT INTO chats (id, title, ordinal, imported_active, updated_at, created_at, date_approx)
@@ -256,9 +262,11 @@ def test_chat_appears_linked_with_date_approx(kitchen):
     assert chat["id"] in by_id
     assert by_id[chat["id"]]["dateApprox"] is False
     assert by_id[chat["id"]]["createdAt"] == chat["createdAt"]
-    assert "approx-1" in by_id
-    assert by_id["approx-1"]["dateApprox"] is True
-    assert by_id["approx-1"]["createdAt"] == "2026-04-18"
+    assert "approx-1" not in by_id
+    week = next(entry for entry in body["entries"] if entry["kind"] == "week" and entry["weekStart"] == "2026-04-18")
+    assert len(week["conversations"]) == 1
+    assert week["conversations"][0]["id"] == "approx-1"
+    assert week["conversations"][0]["title"] == "Old thread"
 
 
 def test_chat_with_many_messages_is_one_log_entry_at_creation(kitchen):
@@ -449,3 +457,196 @@ def test_derived_import_recipe_and_note_without_duplicate_api_events(kitchen):
     status, body = client.request("GET", "/api/log")
     adds = [entry for entry in body["entries"] if entry["kind"] == "recipe_added" and entry["id"] == recipe["id"]]
     assert len(adds) == 1
+
+
+def test_first_cook_favourite_archive_and_photo_log_once(kitchen, tmp_path):
+    client = Client(kitchen.server_address[1])
+    status, recipe = client.request(
+        "POST",
+        "/api/recipes",
+        {
+            "title": "Barley stew",
+            "ingredients": ["barley"],
+            "needsPracticeReview": True,
+            "category": "soups-stews",
+        },
+    )
+    assert status == 201
+    assert recipe["needsPracticeReview"] is True
+
+    status, cooked = client.request(
+        "POST",
+        f"/api/recipes/{recipe['id']}/cooked",
+        {"expected_updated_at": recipe["updatedAt"]},
+    )
+    assert status == 200
+    assert cooked["needsPracticeReview"] is False
+
+    # Same cook again: no second first-cook line (and a plain edit instead).
+    status, again = client.request(
+        "POST",
+        f"/api/recipes/{recipe['id']}",
+        {
+            "expected_updated_at": cooked["updatedAt"],
+            "changes": {"needsPracticeReview": False, "notes": "still good"},
+        },
+    )
+    assert status == 200
+
+    status, loved = client.request(
+        "POST",
+        f"/api/recipes/{recipe['id']}",
+        {"expected_updated_at": again["updatedAt"], "favourite": True},
+    )
+    assert status == 200
+    assert loved["favourite"] is True
+
+    status, still = client.request(
+        "POST",
+        f"/api/recipes/{recipe['id']}",
+        {"expected_updated_at": loved["updatedAt"], "favourite": True},
+    )
+    assert status == 200
+
+    status, note = client.request(
+        "POST",
+        "/api/notes",
+        {"type": "kitchen", "text": "Soak the barley", "open": True},
+    )
+    assert status == 201
+    status, archived = client.request(
+        "POST",
+        f"/api/notes/{note['id']}/toggle",
+        {"expected_updated_at": note["updatedAt"]},
+    )
+    assert status == 200
+    assert archived["open"] is False
+    status, pinned = client.request(
+        "POST",
+        f"/api/notes/{note['id']}/toggle",
+        {"expected_updated_at": archived["updatedAt"]},
+    )
+    assert status == 200
+    assert pinned["open"] is True
+
+    tiny_png = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    )
+    status, photos = client.request(
+        "POST",
+        f"/api/recipes/{recipe['id']}/photos",
+        {"expected_updated_at": still["updatedAt"], "photos": [tiny_png]},
+    )
+    assert status == 200
+    status, photos_again = client.request(
+        "POST",
+        f"/api/recipes/{recipe['id']}/photos",
+        {
+            "expected_updated_at": photos["recipe"]["updatedAt"],
+            "photos": [photos["photos"][0]],
+        },
+    )
+    assert status == 200
+
+    status, body = client.request("GET", "/api/log")
+    assert status == 200
+    by_kind = {}
+    for entry in body["entries"]:
+        if entry.get("id") in (recipe["id"], note["id"]):
+            by_kind.setdefault(entry["kind"], []).append(entry)
+
+    assert len(by_kind.get("recipe_cooked", [])) == 1
+    assert by_kind["recipe_cooked"][0]["title"] == "Barley stew"
+    assert "recipe_edited" in by_kind  # the notes tweak after first cook
+    assert len(by_kind.get("recipe_favourited", [])) == 1
+    assert len(by_kind.get("note_archived", [])) == 1
+    assert by_kind["note_archived"][0]["title"].startswith("Soak the barley")
+    assert len(by_kind.get("photo_added", [])) == 1
+    assert by_kind["photo_added"][0]["detail"] == "1"
+
+
+def test_cook_wins_over_other_fields_in_one_save(kitchen):
+    client = Client(kitchen.server_address[1])
+    status, recipe = client.request(
+        "POST",
+        "/api/recipes",
+        {
+            "title": "Rye",
+            "ingredients": ["rye"],
+            "needsPracticeReview": True,
+        },
+    )
+    assert status == 201
+    status, saved = client.request(
+        "POST",
+        f"/api/recipes/{recipe['id']}",
+        {
+            "expected_updated_at": recipe["updatedAt"],
+            "changes": {
+                "needsPracticeReview": False,
+                "favourite": True,
+                "notes": "first loaf",
+            },
+        },
+    )
+    assert status == 200
+    status, body = client.request("GET", "/api/log")
+    kinds = [
+        entry["kind"]
+        for entry in body["entries"]
+        if entry.get("id") == recipe["id"] and entry["kind"] != "recipe_added"
+    ]
+    assert kinds == ["recipe_cooked"]
+
+
+def test_approx_chats_fold_into_week_summary(kitchen):
+    client = Client(kitchen.server_address[1])
+    week = "2026-05-16"
+    conn = connect(kitchen.db_path)
+    try:
+        conn.execute(
+            """
+            INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at, weather_json)
+            VALUES (?, 'May table', '', NULL, ?, NULL)
+            """,
+            (week, f"{week}T12:00:00.000000Z"),
+        )
+        for index in range(3):
+            chat_id = f"fold-{index}"
+            conn.execute(
+                """
+                INSERT INTO chats (id, title, ordinal, imported_active, updated_at, created_at, date_approx)
+                VALUES (?, ?, ?, 0, ?, ?, 1)
+                """,
+                (
+                    chat_id,
+                    f"Thread {index}",
+                    index,
+                    f"{week}T00:00:00.000000Z",
+                    week,
+                ),
+            )
+            conn.execute(
+                "INSERT INTO chat_messages (chat_id, position, role, content, extra_json) VALUES (?, 0, 'user', ?, '{}')",
+                (chat_id, f"hello {index}"),
+            )
+        # Dated chat stays on the timeline.
+        conn.execute(
+            """
+            INSERT INTO chats (id, title, ordinal, imported_active, updated_at, created_at, date_approx)
+            VALUES ('dated-1', 'Fresh', 9, 0, '2026-05-20T15:00:00.000000Z', '2026-05-20T15:00:00.000000Z', 0)
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    status, body = client.request("GET", "/api/log")
+    assert status == 200
+    week_entry = next(entry for entry in body["entries"] if entry["kind"] == "week" and entry["weekStart"] == week)
+    assert len(week_entry["conversations"]) == 3
+    assert {c["id"] for c in week_entry["conversations"]} == {"fold-0", "fold-1", "fold-2"}
+    chat_ids = {entry["id"] for entry in body["entries"] if entry["kind"] == "chat"}
+    assert "dated-1" in chat_ids
+    assert not ({"fold-0", "fold-1", "fold-2"} & chat_ids)
