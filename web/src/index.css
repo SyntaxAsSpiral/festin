@@ -17,31 +17,33 @@
   /* Paper texture: a tile drawn once by paper.js; none until then, or without WebGL. */
   --paper-grain: none;
   --paper-tile: 512px;
-  --bb-paper: #fffaf0; /* L*98.4 */
-  --bb-tone-1: #e0dad5; /* L*87.4 */
-  --bb-tone-2: #c2bbba; /* L*76.4 */
-  --bb-tone-3: #a49d9c; /* L*65.3 */
-  --bb-tone-4: #87817d; /* L*54.4 */
-  --bb-tone-5: #6b6563; /* L*43.3 */
+  /* Ivory (zk, 2026-10-19). The five greys are even steps from paper to ink, mixed
+     in OKLab, so faded text keeps its place in the ladder on the warmer paper. */
+  --bb-paper: #f3e8d8; /* L*92.5 */
+  --bb-tone-1: #d6ccbd; /* L*82.5 */
+  --bb-tone-2: #bab0a3; /* L*72.3 */
+  --bb-tone-3: #9e968a; /* L*62.4 */
+  --bb-tone-4: #837c71; /* L*52.3 */
+  --bb-tone-5: #6a635a; /* L*42.3 */
   --bb-ink: #514b43; /* L*32.2 */
   --bb-sepia: #7a5a3a; /* Babette's dried ink: chat replies settle to it */
   /* Accents: Catppuccin Frappé washed toward sepia #a08a6e, the mock's tattva rule.
-     wash = OKLab mix 35% to sepia (stripes, tints); ink = wash at L 0.54, chroma x1.35
-     (text on paper, >= 4.5:1); glyph = L 0.645, chroma x1.3 (dots, icons). */
-  --acc-rosewater: #d5baac; --acc-rosewater-ink: #866756; --acc-rosewater-glyph: #a68675; /* ink 4.9:1 */
-  --acc-flamingo: #d2aca1; --acc-flamingo-ink: #906155; --acc-flamingo-glyph: #b08174; /* ink 5.0:1 */
-  --acc-pink: #d6a8ba; --acc-pink-ink: #925b73; --acc-pink-glyph: #b27b92; /* ink 5.1:1 */
-  --acc-mauve: #bb98bd; --acc-mauve-ink: #885d8b; --acc-mauve-glyph: #a87cab; /* ink 5.1:1 */
-  --acc-red: #cf867c; --acc-red-ink: #ab4e45; --acc-red-glyph: #cc6f64; /* ink 5.2:1 */
-  --acc-maroon: #d0948c; --acc-maroon-ink: #a1564d; --acc-maroon-glyph: #c1766d; /* ink 5.1:1 */
-  --acc-peach: #d39873; --acc-peach-ink: #a35823; --acc-peach-glyph: #c37948; /* ink 5.1:1 */
-  --acc-yellow: #ccb284; --acc-yellow-ink: #8a6827; --acc-yellow-glyph: #a9884b; /* ink 4.9:1 */
-  --acc-green: #a6b880; --acc-green-ink: #63782a; --acc-green-glyph: #82984e; /* ink 4.7:1 */
-  --acc-teal: #90b3a2; --acc-teal-ink: #4d7a65; --acc-teal-glyph: #6d9984; /* ink 4.7:1 */
-  --acc-sky: #9eb8b5; --acc-sky-ink: #557672; --acc-sky-glyph: #749591; /* ink 4.8:1 */
-  --acc-sapphire: #92aeb6; --acc-sapphire-ink: #50767f; --acc-sapphire-glyph: #70959e; /* ink 4.8:1 */
-  --acc-blue: #94a0c2; --acc-blue-ink: #5e6d98; --acc-blue-glyph: #7d8cb7; /* ink 4.9:1 */
-  --acc-lavender: #b1aac3; --acc-lavender-ink: #716988; --acc-lavender-glyph: #9088a7; /* ink 4.9:1 */
+     wash = OKLab mix 35% to sepia (stripes, tints); ink = wash at L 0.514, chroma x1.35
+     (text on ivory paper, >= 4.5:1; was L 0.54 on the old near-white); glyph = L 0.645, chroma x1.3 (dots, icons). */
+  --acc-rosewater: #d5baac; --acc-rosewater-ink: #7e604f; --acc-rosewater-glyph: #a68675; /* ink 4.7:1 */
+  --acc-flamingo: #d2aca1; --acc-flamingo-ink: #885a4e; --acc-flamingo-glyph: #b08174; /* ink 4.8:1 */
+  --acc-pink: #d6a8ba; --acc-pink-ink: #8a546b; --acc-pink-glyph: #b27b92; /* ink 4.9:1 */
+  --acc-mauve: #bb98bd; --acc-mauve-ink: #805683; --acc-mauve-glyph: #a87cab; /* ink 4.8:1 */
+  --acc-red: #cf867c; --acc-red-ink: #a2463e; --acc-red-glyph: #cc6f64; /* ink 5.0:1 */
+  --acc-maroon: #d0948c; --acc-maroon-ink: #994e46; --acc-maroon-glyph: #c1766d; /* ink 4.9:1 */
+  --acc-peach: #d39873; --acc-peach-ink: #9b501a; --acc-peach-glyph: #c37948; /* ink 4.9:1 */
+  --acc-yellow: #ccb284; --acc-yellow-ink: #82601e; --acc-yellow-glyph: #a9884b; /* ink 4.8:1 */
+  --acc-green: #a6b880; --acc-green-ink: #5c7021; --acc-green-glyph: #82984e; /* ink 4.6:1 */
+  --acc-teal: #90b3a2; --acc-teal-ink: #46725e; --acc-teal-glyph: #6d9984; /* ink 4.5:1 */
+  --acc-sky: #9eb8b5; --acc-sky-ink: #4e6e6b; --acc-sky-glyph: #749591; /* ink 4.6:1 */
+  --acc-sapphire: #92aeb6; --acc-sapphire-ink: #496e77; --acc-sapphire-glyph: #70959e; /* ink 4.6:1 */
+  --acc-blue: #94a0c2; --acc-blue-ink: #576590; --acc-blue-glyph: #7d8cb7; /* ink 4.7:1 */
+  --acc-lavender: #b1aac3; --acc-lavender-ink: #6a6280; --acc-lavender-glyph: #9088a7; /* ink 4.7:1 */
   --bb-rosewater-latte: #eecbb4; /* L*84.1 */
   --bb-rosewater-frappe: #d2c6bd; /* L*80.6 */
   --bb-flamingo-latte: #ba8f7e; /* L*63.0 */
