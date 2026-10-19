@@ -92,7 +92,7 @@ def create_chat(
             raise NotFound("Unknown session.")
         previous = session["chat_id"]
         if previous and previous != chat_id:
-            _file_chat(conn, previous)
+            file_chat(conn, previous)
         conn.execute(
             "UPDATE sessions SET chat_id = ?, draft = '', updated_at = ? WHERE id = ?",
             (chat_id, stamp, session_id),
@@ -144,7 +144,8 @@ def delete_chat(conn: sqlite3.Connection, chat_id: str, body: dict) -> dict:
     return {"status": "deleted", "id": chat_id}
 
 
-def _file_chat(conn: sqlite3.Connection, chat_id: str) -> None:
+def file_chat(conn: sqlite3.Connection, chat_id: str) -> None:
+    """Put a chat in the Chats list, titled by its first message. Filed chats stay put."""
     row = conn.execute("SELECT * FROM chats WHERE id = ?", (chat_id,)).fetchone()
     if row is None:
         return
@@ -158,7 +159,8 @@ def _file_chat(conn: sqlite3.Connection, chat_id: str) -> None:
         (chat_id,),
     ).fetchone()
     title = row["title"]
-    if first and isinstance(first["content"], str):
+    # A chat already titled (by its first turn, or by hand) keeps that title.
+    if not (title or "").strip() and first and isinstance(first["content"], str):
         line = " ".join(first["content"].split())
         if line:
             title = line[:80]

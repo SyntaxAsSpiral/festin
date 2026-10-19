@@ -371,6 +371,7 @@ def _chat_entries(conn: sqlite3.Connection) -> list[dict]:
         SELECT id, title, created_at, date_approx, updated_at
         FROM chats
         WHERE created_at IS NOT NULL
+          AND EXISTS (SELECT 1 FROM chat_messages WHERE chat_id = chats.id)
         """
     ).fetchall()
     items = []

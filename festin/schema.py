@@ -340,11 +340,39 @@ def _version_11(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_12(conn: sqlite3.Connection) -> None:
+    """Chats file with their first message: file every chat that has one, oldest first."""
+    rows = conn.execute(
+        """
+        SELECT id FROM chats
+        WHERE ordinal IS NULL
+          AND EXISTS (SELECT 1 FROM chat_messages WHERE chat_id = chats.id)
+        ORDER BY created_at, id
+        """
+    ).fetchall()
+    for (chat_id,) in rows:
+        first = conn.execute(
+            "SELECT content FROM chat_messages WHERE chat_id = ? AND role = 'user' ORDER BY position LIMIT 1",
+            (chat_id,),
+        ).fetchone()
+        line = " ".join(str(first[0] or "").split())[:80] if first else ""
+        conn.execute(
+            """
+            UPDATE chats SET
+                title = CASE WHEN ? = '' THEN title ELSE ? END,
+                ordinal = (SELECT coalesce(max(ordinal), -1) + 1 FROM chats WHERE ordinal IS NOT NULL)
+            WHERE id = ?
+            """,
+            (line, line, chat_id),
+        )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
 # v6 is the Kitchen Log. Plugin tables are v7. Shared favourites are v8.
 # v9 widens the kitchen log event kinds CHECK.
 # v10 splits weeks.slip_quote from weeks.slip_title.
 # v11 is the incoming-recipes inbox toggle and key hash.
+# v12 files every chat that has a message (chats now file with their first).
 MIGRATIONS = (
     _version_1,
     _version_2,
@@ -357,6 +385,7 @@ MIGRATIONS = (
     _version_9,
     _version_10,
     _version_11,
+    _version_12,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

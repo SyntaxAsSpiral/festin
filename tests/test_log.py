@@ -234,8 +234,13 @@ def test_chat_appears_linked_with_date_approx(kitchen):
     assert chat["dateApprox"] is False
 
     # Imported-style approximate chat folds into its week; dated chats stay alone.
+    # A chat reaches the Log once it holds a message.
     conn = connect(kitchen.db_path)
     try:
+        conn.execute(
+            "INSERT INTO chat_messages (chat_id, position, role, content, extra_json) VALUES (?, 0, 'user', 'eggs', '{}')",
+            (chat["id"],),
+        )
         conn.execute(
             """
             INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at, weather_json)
@@ -637,6 +642,9 @@ def test_approx_chats_fold_into_week_summary(kitchen):
             INSERT INTO chats (id, title, ordinal, imported_active, updated_at, created_at, date_approx)
             VALUES ('dated-1', 'Fresh', 9, 0, '2026-05-20T15:00:00.000000Z', '2026-05-20T15:00:00.000000Z', 0)
             """
+        )
+        conn.execute(
+            "INSERT INTO chat_messages (chat_id, position, role, content, extra_json) VALUES ('dated-1', 0, 'user', 'hi', '{}')"
         )
         conn.commit()
     finally:

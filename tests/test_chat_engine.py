@@ -180,6 +180,26 @@ def test_first_user_message_titles_an_untitled_chat(db):
     assert again["title"] == titled["title"]
 
 
+def test_first_message_files_the_chat(db):
+    conn, data_dir = db
+    conn.execute("UPDATE chats SET ordinal = NULL WHERE id = 'chat-1'")
+    conn.commit()
+    events, emit = _events()
+    chat(
+        conn,
+        text="What's for dinner?",
+        week=SAT,
+        chat_id="chat-1",
+        session_chat_id="chat-1",
+        data_dir=data_dir,
+        emit=emit,
+        completer=FakeCompleter([{"message": {"role": "assistant", "content": "Soup."}}]),
+        image_support=True,
+    )
+    filed = conn.execute("SELECT ordinal FROM chats WHERE id = 'chat-1'").fetchone()
+    assert filed["ordinal"] is not None
+
+
 def test_first_user_message_keeps_an_explicit_title(db):
     conn, data_dir = db
     conn.execute("UPDATE chats SET title = ? WHERE id = 'chat-1'", ("Market list",))

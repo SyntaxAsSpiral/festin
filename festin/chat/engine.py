@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 
 from festin.chat.exceptions import ChatCancelled, StaleState
+from festin.chats import file_chat
 from festin.chat.flights import (
     begin_flight,
     clear_flights,
@@ -125,6 +126,9 @@ def chat(
         if submission_id:
             incoming["submission_id"] = submission_id
         append_message(conn, active_id, incoming)
+        # A chat joins the Chats list with its first message, not when it is put away.
+        file_chat(conn, active_id)
+        conn.commit()
 
     if not settings.get("model"):
         raise ValueError("Choose a model in Connection first. Your message has been kept.")
