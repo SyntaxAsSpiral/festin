@@ -103,6 +103,28 @@ def test_a_device_with_no_chat_gets_one_and_keeps_it(kitchen):
     assert after["chat_id"] == before["chat_id"]
 
 
+def test_first_chat_message_sets_the_chat_title(kitchen):
+    kitchen.chat_options["completer"] = FakeCompleter([reply("Bonsoir."), reply("Encore.")])
+    device = Device(kitchen)
+    device.chat("What should we cook tonight?")
+    _, session = device.session()
+    chat_id = session["chat_id"]
+    assert chat_id
+    conn = connect(kitchen.db_path)
+    try:
+        row = conn.execute("SELECT title FROM chats WHERE id = ?", (chat_id,)).fetchone()
+        assert row["title"] == "What should we cook tonight?"
+    finally:
+        conn.close()
+    device.chat("Something simpler")
+    conn = connect(kitchen.db_path)
+    try:
+        row = conn.execute("SELECT title FROM chats WHERE id = ?", (chat_id,)).fetchone()
+        assert row["title"] == "What should we cook tonight?"
+    finally:
+        conn.close()
+
+
 def test_two_devices_on_different_chats_answer_at_once(kitchen):
     kitchen.chat_options["completer"] = FakeCompleter([{"wait_cancel": True}, reply("meanwhile")])
     slow, quick = Device(kitchen), Device(kitchen)

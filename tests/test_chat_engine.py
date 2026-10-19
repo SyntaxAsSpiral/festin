@@ -140,6 +140,64 @@ def test_event_order_start_delta_done(db):
     msgs = load_messages(conn, "chat-1")
     assert msgs[-1]["role"] == "assistant"
     assert msgs[-1]["content"] == "Bonsoir. The pot is warm."
+    titled = conn.execute("SELECT title FROM chats WHERE id = 'chat-1'").fetchone()
+    assert titled["title"] == "Hello"
+
+
+def test_first_user_message_titles_an_untitled_chat(db):
+    conn, data_dir = db
+    row = conn.execute("SELECT title FROM chats WHERE id = 'chat-1'").fetchone()
+    assert row["title"] == "Current conversation"
+    events, emit = _events()
+    long = "Need a loaf  " + ("x" * 100) + "\nand more"
+    chat(
+        conn,
+        text=long,
+        week=SAT,
+        chat_id="chat-1",
+        session_chat_id="chat-1",
+        data_dir=data_dir,
+        emit=emit,
+        completer=FakeCompleter([{"message": {"role": "assistant", "content": "Yes."}}]),
+        image_support=True,
+    )
+    titled = conn.execute("SELECT title FROM chats WHERE id = 'chat-1'").fetchone()
+    assert titled["title"] == ("Need a loaf " + ("x" * 100) + " and more")[:80]
+
+    # A later turn keeps that title.
+    chat(
+        conn,
+        text="Second thought",
+        week=SAT,
+        chat_id="chat-1",
+        session_chat_id="chat-1",
+        data_dir=data_dir,
+        emit=emit,
+        completer=FakeCompleter([{"message": {"role": "assistant", "content": "Ok."}}]),
+        image_support=True,
+    )
+    again = conn.execute("SELECT title FROM chats WHERE id = 'chat-1'").fetchone()
+    assert again["title"] == titled["title"]
+
+
+def test_first_user_message_keeps_an_explicit_title(db):
+    conn, data_dir = db
+    conn.execute("UPDATE chats SET title = ? WHERE id = 'chat-1'", ("Market list",))
+    conn.commit()
+    events, emit = _events()
+    chat(
+        conn,
+        text="Something else entirely",
+        week=SAT,
+        chat_id="chat-1",
+        session_chat_id="chat-1",
+        data_dir=data_dir,
+        emit=emit,
+        completer=FakeCompleter([{"message": {"role": "assistant", "content": "Noted."}}]),
+        image_support=True,
+    )
+    titled = conn.execute("SELECT title FROM chats WHERE id = 'chat-1'").fetchone()
+    assert titled["title"] == "Market list"
 
 
 def test_reset_on_broken_stream_then_plain(db):
