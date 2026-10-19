@@ -55,7 +55,7 @@ A good recipe here
 
 Example
 
-  curl -sS -D - -X POST http://127.0.0.1:8889/recipes \\
+  curl -sS -D - -X POST {address}/recipes \\
     -H "Authorization: Bearer $FESTIN_INBOX_KEY" \\
     -H "X-Agent-Name: my-agent" \\
     -H "Content-Type: application/json" \\
@@ -268,7 +268,7 @@ class InboxHandler(BaseHTTPRequestHandler):
         payload = instructions_payload(self.server.public_address)
         if "application/json" in accept:
             return self._send(200, payload)
-        body = _INSTRUCTIONS_TEXT.encode("utf-8")
+        body = _INSTRUCTIONS_TEXT.replace("{address}", self.server.public_address).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))

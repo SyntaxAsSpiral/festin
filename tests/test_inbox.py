@@ -320,3 +320,17 @@ def test_public_inbox_url_is_shown_to_settings_and_agents(tmp_path):
         assert server._inbox_httpd.public_address == "https://kitchen.example.net:8443"
     finally:
         server.server_close()
+
+
+def test_plain_instructions_show_the_public_address(tmp_path):
+    server = KitchenServer(
+        ("127.0.0.1", 0), tmp_path / "store.sqlite", inbox_port=0, inbox_url="https://kitchen.example.net:8443"
+    )
+    try:
+        conn = HTTPConnection("127.0.0.1", server.inbox_bound_port(), timeout=5)
+        conn.request("GET", "/")
+        text = conn.getresponse().read().decode()
+        assert "https://kitchen.example.net:8443/recipes" in text
+        assert "127.0.0.1" not in text
+    finally:
+        server.server_close()
