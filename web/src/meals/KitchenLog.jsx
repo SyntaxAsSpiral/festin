@@ -231,7 +231,7 @@ export function KitchenLog() {
                 >
                   <span>
                     <small>
-                      {formatLogWhen(entry.at, { approx: Boolean(entry.dateApprox) })} · Chat
+                      {formatLogWhen(entry.at, { approx: Boolean(entry.dateApprox) })} · {entryMeta('chat').label}
                     </small>
                     <span className="trl">
                       <b>{entry.title}</b>

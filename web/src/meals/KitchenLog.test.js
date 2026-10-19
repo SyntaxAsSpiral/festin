@@ -25,7 +25,7 @@ describe('formatLogWhen', () => {
 describe('entryMeta', () => {
   it('labels and classes the new kitchen log kinds', () => {
     expect(entryMeta('recipe_cooked')).toEqual({
-      label: 'First cooked',
+      label: 'Recipe first cooked',
       rowClass: 'tl-cooked',
     })
     expect(entryMeta('note_archived')).toEqual({
@@ -33,15 +33,15 @@ describe('entryMeta', () => {
       rowClass: 'tl-archived',
     })
     expect(entryMeta('recipe_favourited')).toEqual({
-      label: 'Favourited',
+      label: 'Recipe favourited',
       rowClass: 'tl-fav',
     })
     expect(entryMeta('photo_added')).toEqual({
-      label: 'Photo added',
+      label: 'Recipe photo added',
       rowClass: 'tl-photo',
     })
-    expect(entryMeta('recipe_added').label).toBe('Added')
-    expect(entryMeta('recipe_edited').label).toBe('Updated')
+    expect(entryMeta('recipe_added').label).toBe('Recipe added')
+    expect(entryMeta('recipe_edited').label).toBe('Recipe updated')
   })
 
   it('treats photo and favourite events as recipe navigations', () => {
