@@ -390,10 +390,20 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                       {kind === 'recipes' && <span className="nid">{item.id}</span>}
                     </span>
                     {layout === 'cards' && kind === 'recipes' ? (
-                      <span className="nline">
-                        <span className="ncat">{CATEGORY_LABELS[item.raw?.category] || 'Uncategorized'}</span>
-                        {String(face.line || '').replace(/^[^,]*/, '')}
-                      </span>
+                      <>
+                        {/* The category with its engraved icon; where it came from on a line of its own. */}
+                        <span className="nline ncat">
+                          <i
+                            className="ncat-icon"
+                            aria-hidden="true"
+                            style={{ '--icon': `url(/art/icons/${CATEGORY_LABELS[item.raw?.category] ? item.raw.category : 'uncategorized'}.svg)` }}
+                          />
+                          {CATEGORY_LABELS[item.raw?.category] || 'Uncategorized'}
+                        </span>
+                        {String(face.line || '').replace(/^[^,]*,?\s*/, '') && (
+                          <span className="nline nfrom">{String(face.line || '').replace(/^[^,]*,?\s*/, '')}</span>
+                        )}
+                      </>
                     ) : (
                       <span className="nline">{face.line}</span>
                     )}

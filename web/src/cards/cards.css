@@ -640,10 +640,22 @@ html[data-motion='off'] .card-layer { transition: none; }
 
 /* Recipe cards: the category in sepia small caps. */
 .ncat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-style: normal;
   font-variant: small-caps;
   letter-spacing: 0.05em;
   color: var(--bb-sepia);
+}
+/* The category's engraved icon, drawn in the sepia ink through a mask. */
+.ncat-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
 }
 
 /* Chat cards: a printer's fleuron centred on the top edge, between hairlines, in
