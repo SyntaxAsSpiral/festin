@@ -4,6 +4,8 @@ import {
   fieldFromSchema,
   fieldsFromSchema,
   isSecretField,
+  outboundDestinations,
+  pluginIcon,
   pluginSaveBody,
   pluginTestAction,
   readPluginSaveResult,
@@ -117,5 +119,21 @@ describe('plugin save result', () => {
   it('wires the printer test-slip action for the Settings button', () => {
     expect(pluginTestAction({ id: 'printer', name: 'Thermal printer' })).toBe('test-slip')
     expect(pluginTestAction({ id: 'hue' })).toBe(null)
+  })
+
+  it('skips agents schema fields and reads outbound destinations', () => {
+    expect(fieldFromSchema({ key: 'destinations', type: 'agents', default: [], label: 'Destinations' })).toBe(null)
+    expect(pluginIcon({ id: 'outbound' })).toBe('⇢')
+    expect(
+      outboundDestinations({
+        settings: {
+          defaultAgent: 'grok-bot',
+          destinations: [{ name: 'grok-bot', url: 'https://example.invalid/h', auth_env: 'KEY' }],
+        },
+      }),
+    ).toEqual({
+      default: 'grok-bot',
+      destinations: [{ name: 'grok-bot', url: 'https://example.invalid/h', auth_env: 'KEY' }],
+    })
   })
 })

@@ -356,6 +356,69 @@ html[data-motion='off'] #sidebar,
   color: var(--bb-rose);
 }
 
+#sidebar .sfr.c3 {
+  grid-template-columns: 1.2fr 1.4fr 1fr;
+}
+#sidebar .cloud-agents {
+  margin-top: 8px;
+}
+#sidebar .cloud-agent-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 8px;
+}
+#sidebar .cloud-agent-row {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bb-tone-1);
+}
+#sidebar .cloud-agent-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+#sidebar .cloud-agent-main {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+}
+#sidebar .cloud-agent-main div {
+  min-width: 0;
+}
+#sidebar .cloud-agent-main strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+}
+#sidebar .cloud-agent-url {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+#sidebar .cloud-agent-main input[type='radio'] {
+  width: 18px;
+  min-height: 18px;
+  margin-top: 3px;
+  flex: 0 0 auto;
+  accent-color: var(--bb-rose);
+}
+#sidebar .cloud-agent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+#sidebar .cloud-agent-add {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dotted var(--bb-tone-3);
+}
+#sidebar .cloud-agent-actions button.primary {
+  background: color-mix(in srgb, var(--bb-yellow-frappe) 70%, transparent);
+}
+
 @media (max-width: 600px) {
   #sidebar {
     width: 100vw;
@@ -370,7 +433,8 @@ html[data-motion='off'] #sidebar,
   }
 }
 @media (max-width: 380px) {
-  #sidebar .sfr {
+  #sidebar .sfr,
+  #sidebar .sfr.c3 {
     grid-template-columns: 1fr;
   }
 }

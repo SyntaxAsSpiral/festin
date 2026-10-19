@@ -51,6 +51,10 @@ export function fieldFromSchema(field) {
   if (type === 'number' || type === 'integer') {
     return { ...base, type: 'number', secret: false }
   }
+  // Destinations are edited by the Cloud agents panel, not as a text field.
+  if (type === 'agents') {
+    return null
+  }
   // Default and unknown types render as text.
   return { ...base, type: secret ? 'secret' : 'string' }
 }
@@ -143,5 +147,24 @@ export function pluginTestAction(plugin) {
 export function pluginIcon(plugin) {
   if (plugin?.id === 'printer') return '⎙'
   if (plugin?.id === 'tattva') return '🜂'
+  if (plugin?.id === 'outbound') return '⇢'
   return '·'
 }
+
+/** Destinations + default from a public outbound plugin payload. */
+export function outboundDestinations(plugin) {
+  const settings = plugin?.settings && typeof plugin.settings === 'object' ? plugin.settings : {}
+  const destinations = Array.isArray(settings.destinations) ? settings.destinations : []
+  return {
+    default: typeof settings.defaultAgent === 'string' ? settings.defaultAgent : '',
+    destinations: destinations
+      .filter((row) => row && typeof row === 'object')
+      .map((row) => ({
+        name: String(row.name || ''),
+        url: String(row.url || ''),
+        auth_env: String(row.auth_env || ''),
+      })),
+  }
+}
+
+
