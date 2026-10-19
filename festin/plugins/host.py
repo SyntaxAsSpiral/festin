@@ -15,8 +15,9 @@ from festin.chat.core_tools import register_core_tools
 from festin.chat.registry import ToolRegistry
 from festin.errors import NotFound
 from festin.plugins.printer.plugin import PLUGIN as PRINTER
+from festin.plugins.tattva.plugin import PLUGIN as TATTVA
 
-PLUGINS = (PRINTER,)
+PLUGINS = (PRINTER, TATTVA)
 _BY_ID = {plugin.id: plugin for plugin in PLUGINS}
 
 
@@ -189,7 +190,13 @@ def _clean_setting(field: dict, value):
         if not isinstance(value, str):
             raise ValueError(field["key"] + " must be text")
         if field["key"] == "receiverUrl":
-            return _clean_url(value)
+            return _clean_url(value, label="Print receiver URL")
+        if field["key"] == "sideriodUrl":
+            return _clean_url(value, label="Sideriod URL")
+        if field["key"] == "dinnerHour":
+            from festin.plugins.tattva.compute import clean_dinner_hour
+
+            return clean_dinner_hour(value)
         if field.get("secret") or field["key"] == "token":
             if len(value) > 500:
                 raise ValueError(field["key"] + " is too long")
@@ -202,15 +209,15 @@ def _clean_setting(field: dict, value):
     raise ValueError("Unknown plugin setting: " + field["key"])
 
 
-def _clean_url(value: str) -> str:
+def _clean_url(value: str, *, label: str = "URL") -> str:
     text = value.strip()
     if not text:
         return ""
     if len(text) > 300 or any(ch.isspace() for ch in text):
-        raise ValueError("Print receiver URL must be an http(s) URL.")
+        raise ValueError(label + " must be an http(s) URL.")
     parsed = urlparse(text)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
-        raise ValueError("Print receiver URL must be an http(s) URL.")
+        raise ValueError(label + " must be an http(s) URL.")
     return text
 
 

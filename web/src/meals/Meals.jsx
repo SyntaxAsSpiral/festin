@@ -11,7 +11,7 @@ export function Meals() {
     let gone = false
     fetchSettings()
       .then((body) => !gone && setSettings(body))
-      .catch(() => !gone && setSettings({ dinnerHour: '17:30', weekStart: 'sat' }))
+      .catch(() => !gone && setSettings({ weekStart: 'sat' }))
     fetchRecipes(120)
       .then((list) => !gone && setRecipes(list))
       .catch(() => !gone && setRecipes([]))

@@ -16,20 +16,19 @@ describe('settings form mapping', () => {
   it('reads the public settings shape into a draft', () => {
     const draft = draftFromSettings({
       tableName: 'Holliday Table',
-      dinnerHour: '18:00',
       weekStart: 'mon',
       weather: { location: '83835', timezone: 'America/Los_Angeles' },
       updatedAt: '2026-10-18T12:00:00.000000Z',
     })
     expect(draft).toMatchObject({
       tableName: 'Holliday Table',
-      dinnerHour: '18:00',
       weekStart: 'mon',
       weatherLocation: '83835',
       updatedAt: '2026-10-18T12:00:00.000000Z',
       modelBaseUrl: OPENROUTER_BASE,
       modelName: '',
     })
+    expect(draft).not.toHaveProperty('dinnerHour')
   })
 
   it('reads the nested model object without treating it as the name', () => {
@@ -62,7 +61,6 @@ describe('settings form mapping', () => {
   it('keeps flat model fields when a caller still sends them', () => {
     const draft = draftFromSettings({
       tableName: "Babette's Table",
-      dinnerHour: '17:30',
       weekStart: 'sat',
       weather: { location: '' },
       modelName: 'qwen2.5-7b-instruct',
@@ -78,7 +76,6 @@ describe('settings form mapping', () => {
     const body = settingsSaveBody(
       {
         tableName: 'Holliday Table',
-        dinnerHour: '18:15',
         weekStart: 'sun',
         weatherLocation: '83835',
         modelName: 'tool-model',
@@ -88,7 +85,6 @@ describe('settings form mapping', () => {
     )
     expect(body).toEqual({
       tableName: 'Holliday Table',
-      dinnerHour: '18:15',
       weekStart: 'sun',
       weatherLocation: '83835',
       modelName: 'tool-model',
@@ -97,6 +93,7 @@ describe('settings form mapping', () => {
       expectedUpdatedAt: 'stamp-1',
       expected_updated_at: 'stamp-1',
     })
+    expect(body).not.toHaveProperty('dinnerHour')
   })
 
   it('reads inbox settings and builds the one-time agent copy block', () => {
@@ -149,10 +146,10 @@ describe('settings conflict path', () => {
       conflict: false,
       body: { tableName: "Babette's Table", updatedAt: 't2' },
     })
-    expect(readSaveResult(400, { error: 'Use a dinner hour like 17:30.' })).toMatchObject({
+    expect(readSaveResult(400, { error: 'Enter a table name under 80 characters.' })).toMatchObject({
       ok: false,
       conflict: false,
-      error: 'Use a dinner hour like 17:30.',
+      error: 'Enter a table name under 80 characters.',
     })
   })
 })
