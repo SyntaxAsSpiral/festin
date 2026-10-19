@@ -668,8 +668,7 @@ def test_approx_chats_fold_into_week_summary(kitchen):
     assert not ({"fold-0", "fold-1", "fold-2"} & chat_ids)
 
 
-def test_current_week_shows_only_its_folded_conversations(kitchen):
-    """This week's imported chats fold into a conversations-only week entry."""
+def test_week_in_progress_has_no_box_and_its_events_stay_loose(kitchen):
     client = Client(kitchen.server_address[1])
     current_week = "2026-10-17"
     conn = connect(kitchen.db_path)
@@ -692,6 +691,9 @@ def test_current_week_shows_only_its_folded_conversations(kitchen):
             """,
             (current_week,),
         )
+        conn.execute(
+            "INSERT INTO chat_messages (chat_id, position, role, content, extra_json) VALUES ('old-1', 0, 'user', 'hi', '{}')"
+        )
         conn.commit()
     finally:
         conn.close()
@@ -699,8 +701,6 @@ def test_current_week_shows_only_its_folded_conversations(kitchen):
     with patch("festin.log.household_today", return_value=date(2026, 10, 18)):
         status, body = client.request("GET", "/api/log")
     assert status == 200
-    assert not [e for e in body["entries"] if e["kind"] == "chat"]
-    week = next(e for e in body["entries"] if e["kind"] == "week")
-    assert week["weekStart"] == current_week
-    assert [c["id"] for c in week["conversations"]] == ["old-1"]
-    assert week["nights"] == [] and week["slipTitle"] == ""
+    # The week in progress gets no box; its events, imported chats included, stay loose.
+    assert not [e for e in body["entries"] if e["kind"] == "week"]
+    assert [e["id"] for e in body["entries"] if e["kind"] == "chat"] == ["old-1"]

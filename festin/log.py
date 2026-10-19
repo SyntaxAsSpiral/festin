@@ -159,19 +159,20 @@ def _collect(conn: sqlite3.Connection) -> list[dict]:
     return items
 
 
-def _week_entries(conn: sqlite3.Connection) -> list[dict]:
-    """Saved weeks. The household week that contains today shows only its folded
-    conversations, since the slip already shows its dinners."""
+def _current_week(conn: sqlite3.Connection) -> str:
     settings = get_settings(conn)
-    current_start = week_start_for(
-        household_today(conn), settings["week_start_day"]
-    ).isoformat()
+    return week_start_for(household_today(conn), settings["week_start_day"]).isoformat()
+
+
+def _week_entries(conn: sqlite3.Connection) -> list[dict]:
+    """Saved weeks that have ended. The week in progress gets no box: its events
+    stay loose on the timeline, and the box is made once the week is over."""
+    current_start = _current_week(conn)
     approx_by_week = _approx_chats_by_week(conn)
     rows = conn.execute("SELECT * FROM weeks ORDER BY start_date DESC").fetchall()
     items = []
     for week in rows:
-        current = week["start_date"] == current_start
-        if current and not approx_by_week.get(week["start_date"]):
+        if week["start_date"] >= current_start:
             continue
         start = date.fromisoformat(week["start_date"])
         end = start + timedelta(days=6)
@@ -194,15 +195,13 @@ def _week_entries(conn: sqlite3.Connection) -> list[dict]:
                 weather = json.loads(week["weather_json"])
             except (TypeError, json.JSONDecodeError):
                 weather = None
-        if current:
-            nights, weather = [], None
         items.append(
             {
                 "kind": "week",
                 "id": week["start_date"],
                 "at": _day_end(end),
                 "weekStart": week["start_date"],
-                "slipTitle": "" if current else week["slip_title"] or "",
+                "slipTitle": week["slip_title"] or "",
                 "nights": nights,
                 "conversations": approx_by_week.get(week["start_date"], []),
                 "weather": weather,
@@ -362,9 +361,13 @@ def _derived_note_entries(conn: sqlite3.Connection) -> list[dict]:
 
 
 def _chat_entries(conn: sqlite3.Connection) -> list[dict]:
-    """Dated chats only. Approximate imports ride inside their week entry."""
+    """Dated chats, and approximate imports from the week in progress. Older
+    approximate imports ride inside their (ended) week's entry."""
+    current_start = _current_week(conn)
     week_starts = {
-        row[0] for row in conn.execute("SELECT start_date FROM weeks").fetchall()
+        row[0]
+        for row in conn.execute("SELECT start_date FROM weeks").fetchall()
+        if row[0] < current_start
     }
     rows = conn.execute(
         """
