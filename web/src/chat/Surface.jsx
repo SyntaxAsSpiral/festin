@@ -102,7 +102,8 @@ function SurfaceView({ peekLine, lookingAt, header, children }) {
   const openH = state === 'full' ? fullPx : (peekPx ?? peekDefault)
   const shownH = liveH ?? (state === 'tucked' ? STRIP : openH)
   const shownW = liveW ?? width
-  const maxW = Math.min(720, window.innerWidth - 160)
+  // Ultrawide: Meals sits left, so the overlay may be pulled far into the free space.
+  const maxW = window.innerWidth >= 1800 ? Math.min(1600, window.innerWidth - 900) : Math.min(720, window.innerWidth - 160)
 
   useEffect(() => {
     function onKey(event) {

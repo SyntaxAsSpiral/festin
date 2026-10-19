@@ -840,3 +840,12 @@ html[data-motion='off'] .kl .tcar {
 .kl .tl-r small,
 .kl .tl-c small,
 .kl .tl-chat small { color: var(--ec-ink); }
+
+/* Ultrawide: the slip and Log sit to the left, leaving the right for the chat. */
+@media (min-width: 1800px) {
+  @container main (min-width: 780px) {
+    .stage:has(.meals) {
+      justify-content: start !important;
+    }
+  }
+}
