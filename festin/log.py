@@ -111,7 +111,8 @@ def _collect(conn: sqlite3.Connection) -> list[dict]:
 
 
 def _week_entries(conn: sqlite3.Connection) -> list[dict]:
-    """Saved weeks except the household week that contains today (the slip already shows it)."""
+    """Saved weeks. The household week that contains today shows only its folded
+    conversations, since the slip already shows its dinners."""
     settings = get_settings(conn)
     current_start = week_start_for(
         household_today(conn), settings["week_start_day"]
@@ -120,7 +121,8 @@ def _week_entries(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute("SELECT * FROM weeks ORDER BY start_date DESC").fetchall()
     items = []
     for week in rows:
-        if week["start_date"] == current_start:
+        current = week["start_date"] == current_start
+        if current and not approx_by_week.get(week["start_date"]):
             continue
         start = date.fromisoformat(week["start_date"])
         end = start + timedelta(days=6)
@@ -143,13 +145,15 @@ def _week_entries(conn: sqlite3.Connection) -> list[dict]:
                 weather = json.loads(week["weather_json"])
             except (TypeError, json.JSONDecodeError):
                 weather = None
+        if current:
+            nights, weather = [], None
         items.append(
             {
                 "kind": "week",
                 "id": week["start_date"],
                 "at": _day_end(end),
                 "weekStart": week["start_date"],
-                "slipTitle": week["slip_title"] or "",
+                "slipTitle": "" if current else week["slip_title"] or "",
                 "nights": nights,
                 "conversations": approx_by_week.get(week["start_date"], []),
                 "weather": weather,

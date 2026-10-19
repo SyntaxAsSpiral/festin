@@ -147,8 +147,7 @@ export function KitchenLog() {
                   <span className="tws">{weekSummary(entry.nights)}</span>
                   <span className="twx">
                     <span>
-                      {dinners} dinner{dinners === 1 ? '' : 's'}
-                      {chatLine ? ` · ${chatLine}` : ''}
+                      {[dinners || !chatLine ? `${dinners} dinner${dinners === 1 ? '' : 's'}` : '', chatLine].filter(Boolean).join(' · ')}
                       {wx ? ` · ${wx}` : ''}
                       {entry.slipTitle ? ` · ${entry.slipTitle}` : ''}
                     </span>
