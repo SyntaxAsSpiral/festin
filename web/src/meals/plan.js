@@ -1,6 +1,6 @@
 // Slip week helpers and plan API mapping (state-machine.md §3).
 
-export const DEFAULT_SLIP_TITLE = 'LE FESTIN'
+export const DEFAULT_SLIP_TITLE = 'Le Festin'
 export const SLIP_TITLE_MAX = 40
 export const WEEK_BACK = 8
 export const WEEK_AHEAD = 12
@@ -98,8 +98,7 @@ export function displayRecipeId(id) {
 }
 
 export function slipTitleOf(plan) {
-  const raw = plan?.slipTitle ?? plan?.slipQuote ?? ''
-  const text = String(raw).trim()
+  const text = String(plan?.slipTitle ?? '').trim()
   return text || DEFAULT_SLIP_TITLE
 }
 

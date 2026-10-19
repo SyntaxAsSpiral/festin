@@ -313,9 +313,26 @@ def _version_9(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_10(conn: sqlite3.Connection) -> None:
+    """Split the on-screen slip title from the printed French closing quote."""
+    conn.execute(
+        "ALTER TABLE weeks ADD COLUMN slip_quote TEXT NOT NULL DEFAULT ''"
+    )
+    # Imported weeks held Babette's quote in slip_title. A week that only held the
+    # default heading (saved from the slip screen) has no quote to carry over.
+    conn.execute(
+        """
+        UPDATE weeks
+        SET slip_quote = CASE WHEN lower(trim(slip_title)) = 'le festin' THEN '' ELSE slip_title END,
+            slip_title = ''
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
 # v6 is the Kitchen Log. Plugin tables are v7. Shared favourites are v8.
 # v9 widens the kitchen log event kinds CHECK.
+# v10 splits weeks.slip_quote from weeks.slip_title.
 MIGRATIONS = (
     _version_1,
     _version_2,
@@ -326,6 +343,7 @@ MIGRATIONS = (
     _version_7,
     _version_8,
     _version_9,
+    _version_10,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

@@ -26,6 +26,7 @@ export function fieldFromSchema(field) {
     type: secret ? 'secret' : type,
     secret,
     default: field.default,
+    help: typeof field.help === 'string' && field.help.trim() ? field.help.trim() : '',
   }
   if (Array.isArray(field.enum) && field.enum.length) {
     const choices = Array.isArray(field.choices) ? field.choices : []

@@ -77,7 +77,7 @@ def save_plan(conn: sqlite3.Connection, week_start: str, body: dict, *, now: dat
                 "cooked": bool(slot.get("cooked")),
             }
         )
-    slip_title = body.get("slipTitle", body.get("slipQuote"))
+    slip_title = body.get("slipTitle")
     if slip_title is None and existing is not None:
         slip_title = existing["slip_title"]
     elif slip_title is None:
@@ -85,6 +85,10 @@ def save_plan(conn: sqlite3.Connection, week_start: str, body: dict, *, now: dat
     if not isinstance(slip_title, str):
         raise ValueError("slipTitle must be text")
     slip_title = " ".join(slip_title.split())
+    # Printed closing line — plans API never writes it; prepare_slip does.
+    slip_quote = existing["slip_quote"] if existing is not None else ""
+    if slip_quote is None:
+        slip_quote = ""
     notes = body.get("notes")
     if notes is None and existing is not None:
         notes = existing["notes"]
@@ -117,10 +121,10 @@ def save_plan(conn: sqlite3.Connection, week_start: str, body: dict, *, now: dat
     conn.execute("DELETE FROM weeks WHERE start_date = ?", (start.isoformat(),))
     conn.execute(
         """
-        INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at, weather_json)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO weeks (start_date, slip_title, slip_quote, notes, plates_json, updated_at, weather_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (start.isoformat(), slip_title, notes, plates_json, stamp, weather_json),
+        (start.isoformat(), slip_title, slip_quote, notes, plates_json, stamp, weather_json),
     )
     for slot in cleaned:
         conn.execute(

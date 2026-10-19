@@ -364,16 +364,18 @@ def _replace_plans(conn: sqlite3.Connection, plans: list[tuple[str, dict]]) -> N
             raise ValueError(f"{name} nights are not Saturday through Friday")
         quote = plan.get("slipQuote")
         if quote is None or quote == "":
-            slip_title = ""
+            slip_quote = ""
         elif isinstance(quote, str):
-            slip_title = " ".join(quote.split())
+            slip_quote = " ".join(quote.split())
         else:
             raise ValueError(f"{name} slipQuote is not text")
+        # Live has no separate title; the on-screen heading defaults in the UI.
+        slip_title = ""
         notes = plan.get("notes") if isinstance(plan.get("notes"), str) else ""
         plates = plan.get("slipPlates")
         plates_json = _json(plates) if isinstance(plates, dict) else None
         updated = plan.get("updatedAt") if isinstance(plan.get("updatedAt"), str) else None
-        weeks.append((start, slip_title, notes, plates_json, updated))
+        weeks.append((start, slip_title, slip_quote, notes, plates_json, updated))
         for index, day in enumerate(days):
             when = start_date + timedelta(days=index)
             if WEEKDAY_NUMBER[day["day"]] != when.weekday():
@@ -397,7 +399,7 @@ def _replace_plans(conn: sqlite3.Connection, plans: list[tuple[str, dict]]) -> N
     conn.execute("DELETE FROM nights")
     conn.execute("DELETE FROM weeks")
     conn.executemany(
-        "INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO weeks (start_date, slip_title, slip_quote, notes, plates_json, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
         weeks,
     )
     conn.executemany(

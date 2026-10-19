@@ -20,17 +20,17 @@ describe('slip mapping', () => {
     expect(parseRecipeId('not-an-id')).toBe(null)
   })
 
-  it('falls back to LE FESTIN when the week has no title', () => {
+  it('falls back to Le Festin when the week has no title', () => {
     expect(slipTitleOf({ slipTitle: '' })).toBe(DEFAULT_SLIP_TITLE)
     expect(slipTitleOf({ slipTitle: '  ' })).toBe(DEFAULT_SLIP_TITLE)
-    expect(slipTitleOf({ slipQuote: 'Bon appétit' })).toBe('Bon appétit')
-    expect(slipTitleOf({ slipTitle: 'Que la chaleur' })).toBe('Que la chaleur')
+    expect(slipTitleOf({ slipQuote: 'Bon appétit' })).toBe(DEFAULT_SLIP_TITLE)
+    expect(slipTitleOf({ slipTitle: 'Autumn table' })).toBe('Autumn table')
   })
 
   it('maps a plan onto seven editable nights', () => {
     const plan = {
       weekStart: '2026-10-17',
-      slipTitle: 'Que la chaleur de la table console et rassemble.',
+      slipTitle: 'Autumn table',
       updatedAt: '2026-10-17T11:56:46.122772+00:00',
       days: [
         { day: 'sat', date: '2026-10-17', recipe: null, title: 'Chicken Salad', ingredients: [], cooked: false },
@@ -38,7 +38,7 @@ describe('slip mapping', () => {
       ],
     }
     const draft = planToDraft(plan)
-    expect(draft.slipTitle).toBe('Que la chaleur de la table console et rassemble.')
+    expect(draft.slipTitle).toBe('Autumn table')
     expect(draft.days).toHaveLength(7)
     expect(draft.days[0]).toMatchObject({ title: 'Chicken Salad', recipe: null, cooked: false })
     expect(draft.days[1]).toMatchObject({ title: 'Venison Stroganoff', recipe: 'CBK-0933', cooked: true })
@@ -49,7 +49,7 @@ describe('slip mapping', () => {
   it('sends expected_updated_at with the seven nights', () => {
     const draft = planToDraft({
       weekStart: '2026-10-17',
-      slipTitle: 'LE FESTIN',
+      slipTitle: 'Le Festin',
       updatedAt: 'stamp-1',
       days: Array.from({ length: 7 }, (_, i) => ({
         day: 'sat',
@@ -93,7 +93,7 @@ describe('409 conflict path', () => {
   it('raises a conflict error with status 409', async () => {
     const draft = planToDraft({
       weekStart: '2026-10-17',
-      slipTitle: 'LE FESTIN',
+      slipTitle: 'Le Festin',
       updatedAt: 'stale',
       days: Array.from({ length: 7 }, (_, i) => ({
         day: 'sat',

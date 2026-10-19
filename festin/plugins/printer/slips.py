@@ -108,11 +108,13 @@ def _saved_week(conn, week: str) -> dict | None:
     return plans_mod.get_plan(conn, week)
 
 
-def _as_print_plan(saved: dict) -> dict:
+def _as_print_plan(conn, saved: dict) -> dict:
+    week = saved["weekStart"]
     plan = {
-        "weekStart": saved["weekStart"],
+        "weekStart": week,
         "days": saved["days"],
-        "slipQuote": saved.get("slipTitle") or "",
+        "slipTitle": saved.get("slipTitle") or "",
+        "slipQuote": printing.stored_week_quote(conn, week),
     }
     if saved.get("plates"):
         plan["slipPlates"] = saved["plates"]
@@ -132,10 +134,13 @@ def preview(conn, data_dir: Path, week=None, draft=None):
         if len(plan["days"]) != 7:
             raise ValueError("Use exactly seven dinners.")
         saved = _saved_week(conn, week)
-        if saved and saved.get("slipTitle"):
-            plan["slipQuote"] = saved["slipTitle"]
-        elif draft.get("slipQuote") or draft.get("slipTitle"):
-            plan["slipQuote"] = draft.get("slipQuote") or draft.get("slipTitle")
+        if saved is not None:
+            plan["slipTitle"] = saved.get("slipTitle") or ""
+        elif draft.get("slipTitle"):
+            plan["slipTitle"] = draft.get("slipTitle") or ""
+        plan["slipQuote"] = printing.stored_week_quote(conn, week)
+        if not plan["slipQuote"] and isinstance(draft.get("slipQuote"), str):
+            plan["slipQuote"] = draft["slipQuote"]
         if saved and isinstance(saved.get("plates"), dict):
             plan["slipPlates"] = printing.resolve_print_plates(saved["plates"], week)
         elif isinstance(draft.get("slipPlates"), dict):
@@ -149,13 +154,14 @@ def preview(conn, data_dir: Path, week=None, draft=None):
         saved = _saved_week(conn, week)
         if saved is None:
             raise ValueError("No saved plan for this week. Open it in the editor to preview a draft.")
-        plan = _as_print_plan(saved)
+        plan = _as_print_plan(conn, saved)
     by_id = _recipes_by_id(conn, plan)
     directory = slips_dir(data_dir)
     output = directory / (str(uuid.uuid4()) + ".png")
     printing.dinner(plan, by_id, output)
     items = _dedupe([item for slot in plan["days"] for item in _day_ingredients(slot, by_id)])
-    rendered = "\n".join(
+    heading = " ".join(str(plan.get("slipTitle") or "").split()) or printing.DEFAULT_SLIP_TITLE
+    rendered = heading + "\n" + "\n".join(
         slot["day"] + ": " + (slot.get("title") or _day_title(slot, by_id)) for slot in plan["days"]
     )
     rendered += "\n\n" + (plan.get("slipQuote") or printing.DEFAULT_SLIP_QUOTE)
@@ -163,13 +169,16 @@ def preview(conn, data_dir: Path, week=None, draft=None):
         "image": "/slips/" + output.name,
         "ingredients": items,
         "draft": draft is not None,
-        "title": "Le Festin · " + plan["weekStart"],
+        "title": heading + " · " + plan["weekStart"],
         "rendered_text": rendered,
     }
 
 
 def note_slip_band(conn, args, settings):
-    """Chosen band, else the saved note's band when no band was passed, else this week's pantry plate."""
+    """Fixed setting wins; else chosen band, else the saved note's band, else this week's pantry plate."""
+    locked = printing.fixed_band(settings)
+    if locked:
+        return locked
     raw = args.get("band")
     if raw not in (None, ""):
         return clean_note_band(raw) or printing.week_note_band(conn, settings)
@@ -290,6 +299,15 @@ def prepare_slip(conn: sqlite3.Connection, args: dict, *, data_dir: Path, chat_i
             week = str(args.get("week_start") or "").strip()
             if not week:
                 raise ValueError("weekStart must be an ISO date.")
+            raw_plates = args.get("plates")
+            if isinstance(raw_plates, dict):
+                chosen = printing.accept_plates(
+                    raw_plates, week, printing.last_week_plates(conn, week)
+                )
+                printing.store_week_plates(conn, week, chosen)
+            raw_quote = args.get("quote")
+            if isinstance(raw_quote, str) and raw_quote.strip():
+                printing.store_week_quote(conn, week, raw_quote)
             draft = args.get("_plan")
             result = preview(
                 conn,

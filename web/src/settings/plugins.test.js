@@ -17,10 +17,12 @@ const printerSchema = [
   {
     key: 'band',
     type: 'string',
-    default: 'scroll',
+    default: 'babette',
     label: 'Band art',
-    enum: ['scroll', 'rose'],
+    help: "Dinner slips keep their own weekly plates either way.",
+    enum: ['babette', 'scroll', 'rose'],
     choices: [
+      { id: 'babette', description: "Babette's pick" },
       { id: 'scroll', file: 'scroll.png', description: 'A quiet scroll' },
       { id: 'rose', file: 'rose.png', description: 'A small rose' },
     ],
@@ -36,7 +38,10 @@ describe('plugin schema mapping', () => {
     expect(fields[2]).toMatchObject({
       key: 'band',
       type: 'enum',
+      help: "Dinner slips keep their own weekly plates either way.",
+      default: 'babette',
       options: [
+        { value: 'babette', label: "Babette's pick" },
         { value: 'scroll', label: 'A quiet scroll' },
         { value: 'rose', label: 'A small rose' },
       ],

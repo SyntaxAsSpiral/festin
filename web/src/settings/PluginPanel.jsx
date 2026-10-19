@@ -175,6 +175,7 @@ export function PluginPanel({ plugin, onUpdated }) {
                 onBlur={() => save({ draft: draftRef.current })}
               />
             )}
+            {field.help ? <p className="fine">{field.help}</p> : null}
           </div>
         ))}
         {plugin.id === 'printer' && (

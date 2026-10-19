@@ -12,7 +12,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert SCHEMA_VERSION == 9
+    assert SCHEMA_VERSION == 10
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "sessions" in tables
@@ -23,6 +23,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     assert "favourite" in recipe_columns
     week_columns = {row["name"] for row in conn.execute("PRAGMA table_info(weeks)")}
     assert "weather_json" in week_columns
+    assert "slip_quote" in week_columns
     plugin_columns = {row["name"] for row in conn.execute("PRAGMA table_info(plugin_settings)")}
     assert plugin_columns == {"plugin_id", "enabled", "settings_json", "updated_at"}
     session_columns = {row["name"] for row in conn.execute("PRAGMA table_info(sessions)")}
@@ -173,7 +174,7 @@ def test_v8_database_widens_log_kinds_at_v9(tmp_path):
     assert "recipe_cooked" not in old_sql
 
     apply(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 9
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     kinds = conn.execute(
         "SELECT sql FROM sqlite_master WHERE name = 'kitchen_log_events'"
     ).fetchone()[0]
@@ -196,4 +197,40 @@ def test_v8_database_widens_log_kinds_at_v9(tmp_path):
         ).fetchone()[0]
         == 1
     )
+    conn.close()
+
+
+def test_v10_moves_slip_title_into_slip_quote(tmp_path):
+    conn = connect(tmp_path / "store.sqlite")
+    for step in MIGRATIONS[:9]:
+        step(conn)
+    conn.execute("PRAGMA user_version = 9")
+    quote = "Que la chaleur de la table console et rassemble."
+    conn.execute(
+        """
+        INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at)
+        VALUES ('2026-10-17', ?, '', NULL, NULL)
+        """,
+        (quote,),
+    )
+    conn.execute(
+        "INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at)"
+        " VALUES ('2026-10-24', 'LE FESTIN', '', NULL, NULL)"
+    )
+    conn.commit()
+    assert "slip_quote" not in {row["name"] for row in conn.execute("PRAGMA table_info(weeks)")}
+
+    apply(conn)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 10
+    week_columns = {row["name"] for row in conn.execute("PRAGMA table_info(weeks)")}
+    assert "slip_quote" in week_columns
+    row = conn.execute(
+        "SELECT slip_title, slip_quote FROM weeks WHERE start_date = '2026-10-17'"
+    ).fetchone()
+    assert row["slip_title"] == ""
+    assert row["slip_quote"] == quote
+    default = conn.execute(
+        "SELECT slip_title, slip_quote FROM weeks WHERE start_date = '2026-10-24'"
+    ).fetchone()
+    assert (default["slip_title"], default["slip_quote"]) == ("", "")
     conn.close()

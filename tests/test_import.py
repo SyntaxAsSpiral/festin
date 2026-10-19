@@ -86,13 +86,17 @@ def test_nights_land_on_real_dates(tmp_path):
     conn.close()
 
 
-def test_slip_quote_becomes_slip_title(tmp_path):
+def test_slip_quote_lands_in_slip_quote(tmp_path):
     quote = "Que la chaleur de la table console et rassemble."
     root = write_copy(tmp_path / "live", plan={"slipQuote": quote})
     db = tmp_path / "store.sqlite"
     import_directory(root, db)
     conn = connect(db)
-    assert conn.execute("SELECT slip_title FROM weeks WHERE start_date = '2026-10-17'").fetchone()[0] == quote
+    row = conn.execute(
+        "SELECT slip_title, slip_quote FROM weeks WHERE start_date = '2026-10-17'"
+    ).fetchone()
+    assert row["slip_title"] == ""
+    assert row["slip_quote"] == quote
     conn.close()
 
 
@@ -412,11 +416,12 @@ def _assert_live_plans(conn):
         start = date.fromisoformat(plan["weekStart"])
         assert start.weekday() == 5
         row = conn.execute(
-            "SELECT slip_title, notes FROM weeks WHERE start_date = ?",
+            "SELECT slip_title, slip_quote, notes FROM weeks WHERE start_date = ?",
             (plan["weekStart"],),
         ).fetchone()
         quote = " ".join(plan["slipQuote"].split()) if plan.get("slipQuote") else ""
-        assert row["slip_title"] == quote
+        assert row["slip_title"] == ""
+        assert row["slip_quote"] == quote
         assert row["notes"] == (plan.get("notes") or "")
         for index, day in enumerate(plan["days"]):
             when = (start + timedelta(days=index)).isoformat()
