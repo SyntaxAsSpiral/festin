@@ -33,7 +33,7 @@ function useColumns(ref, active) {
 // Card view unless this device chose the list.
 function storedLayout(kind) {
   try {
-    return localStorage.getItem('festin.layout.' + kind) === 'list' ? 'list' : 'cards'
+    return localStorage.getItem('festin.view.' + kind) === 'list' ? 'list' : 'cards'
   } catch {
     return 'cards'
   }
@@ -109,7 +109,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('festin.layout.' + kind, layout)
+      localStorage.setItem('festin.view.' + kind, layout)
     } catch {
       /* per-device nicety only */
     }
