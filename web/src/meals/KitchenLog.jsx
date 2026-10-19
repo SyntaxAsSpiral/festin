@@ -49,19 +49,8 @@ export function KitchenLog() {
   const [loading, setLoading] = useState(false)
   const [ended, setEnded] = useState(false)
   const [error, setError] = useState('')
-  const [sideBySide, setSideBySide] = useState(false)
   const sentinel = useRef(null)
   const busy = useRef(false)
-
-  useEffect(() => {
-    const main = document.querySelector('.main')
-    if (!main || typeof ResizeObserver === 'undefined') return undefined
-    const apply = () => setSideBySide(main.clientWidth >= 780)
-    apply()
-    const ro = new ResizeObserver(apply)
-    ro.observe(main)
-    return () => ro.disconnect()
-  }, [])
 
   const loadMore = useCallback(async (reset) => {
     if (busy.current) return
@@ -91,7 +80,7 @@ export function KitchenLog() {
   }, [])
 
   useEffect(() => {
-    if (!sideBySide || ended || !nextCursor) return undefined
+    if (ended || !nextCursor) return undefined
     const el = sentinel.current
     if (!el) return undefined
     const io = new IntersectionObserver(
@@ -102,7 +91,7 @@ export function KitchenLog() {
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [sideBySide, ended, nextCursor, entries.length, loadMore])
+  }, [ended, nextCursor, entries.length, loadMore])
 
   function openKind(kind, id, el) {
     if (!id) return
@@ -112,7 +101,9 @@ export function KitchenLog() {
     else if (kind === 'chat') navigate('/chats/' + encodeURIComponent(id))
   }
 
-  const shown = sideBySide ? entries : entries.slice(0, 8)
+  // Stacked under the slip (tablet, phone) the Log pages back just as it does
+  // beside it: the whole timeline, older pages as you scroll to the end.
+  const shown = entries
 
   return (
     <section className="kl tl" aria-label="Kitchen log">
@@ -255,20 +246,9 @@ export function KitchenLog() {
             </li>
           )
         })}
-        {sideBySide && (
-          <li
-            className={'tl-more' + (ended ? ' end' : '')}
-            ref={sentinel}
-            aria-hidden="true"
-          >
-            <span>{ended ? 'the first page of the log' : loading ? 'loading…' : 'earlier weeks'}</span>
-          </li>
-        )}
-        {!sideBySide && ended && (
-          <li className="tl-more end" aria-hidden="true">
-            <span>the first page of the log</span>
-          </li>
-        )}
+        <li className={'tl-more' + (ended ? ' end' : '')} ref={sentinel} aria-hidden="true">
+          <span>{ended ? 'the first page of the log' : loading ? 'loading…' : 'earlier weeks'}</span>
+        </li>
       </ol>
     </section>
   )
