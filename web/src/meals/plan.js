@@ -205,6 +205,15 @@ export async function fetchLogPage(before) {
   return res.json()
 }
 
+// A random handful of recipes, in one request (the frieze shows a fresh spread each visit).
+export async function fetchRecipeSample(limit = 80) {
+  const res = await fetch('/api/recipes?' + new URLSearchParams({ sample: '1', limit: String(limit) }), {
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error('recipes ' + res.status)
+  return (await res.json()).recipes || []
+}
+
 export async function fetchRecipes(limit = 100) {
   const items = []
   let cursor = null

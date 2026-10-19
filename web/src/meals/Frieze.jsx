@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { rememberOrigin } from '../cards/origin.js'
 import { plateFor } from '../cards/kinds.js'
 import { useReducedMotion } from '../useReducedMotion.js'
-import { fetchRecipes } from './plan.js'
+import { fetchRecipeSample } from './plan.js'
 
 const MOTIFS = [
   '/art/frieze/motif-scroll.png',
@@ -49,7 +49,7 @@ export function Frieze() {
 
   useEffect(() => {
     let gone = false
-    fetchRecipes(80)
+    fetchRecipeSample(80)
       .then((list) => !gone && setRecipes(list))
       .catch(() => !gone && setRecipes([]))
     return () => {

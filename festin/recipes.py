@@ -41,8 +41,19 @@ _LIST_FIELDS = {
 }
 
 
-def list_recipes(conn: sqlite3.Connection, *, q: str = "", cursor: str | None = None, limit: int = PAGE_SIZE) -> dict:
+def list_recipes(
+    conn: sqlite3.Connection,
+    *,
+    q: str = "",
+    cursor: str | None = None,
+    limit: int = PAGE_SIZE,
+    sample: bool = False,
+) -> dict:
     limit = _page_limit(limit)
+    if sample:
+        # A random handful (the Meals frieze): one page, no cursor.
+        rows = conn.execute("SELECT * FROM recipes ORDER BY random() LIMIT ?", (limit,)).fetchall()
+        return {"recipes": [_card(_public(row)) for row in rows], "nextCursor": None}
     params: list = []
     where = []
     if q:
