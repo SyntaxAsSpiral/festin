@@ -31,6 +31,17 @@ function useColumns(ref, active) {
 }
 
 // Card view unless this device chose the list.
+// Each card kind wears one piece of stationery trim at its top edge: notes a doily,
+// recipes a gilt index-card rule, chats a printer's fleuron (chosen by the chat's id,
+// so each chat keeps its own).
+const FLEURONS = ['❦', '❧', '✾', '❁', '✿', '⁂', '❀', '☙']
+
+function fleuronFor(id) {
+  let h = 0
+  for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return FLEURONS[h % FLEURONS.length]
+}
+
 function storedLayout(kind) {
   try {
     return localStorage.getItem('festin.view.' + kind) === 'list' ? 'list' : 'cards'
@@ -361,11 +372,17 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                 <li key={item.id}>
                   <button
                     type="button"
-                    className={'nitem' + (archived ? ' nitem-archived' : '')}
+                    className={'nitem' + (archived ? ' nitem-archived' : '') + (kind === 'recipes' && item.raw?.favourite ? ' nitem-fav' : '')}
                     data-cursor={i === cursor || undefined}
                     onClick={(event) => open(item, event.currentTarget)}
                   >
                     {layout === 'cards' && kind === 'notes' && <span className="nswatch" data-color={item.raw.color || 'none'} />}
+                    {layout === 'cards' && kind === 'recipes' && <span className="ntrim-rule" aria-hidden="true" />}
+                    {layout === 'cards' && kind === 'chats' && (
+                      <span className="ntrim-fleuron" aria-hidden="true">
+                        {fleuronFor(item.id)}
+                      </span>
+                    )}
                     <span className="nhead">
                       <span className="ntitle">
                         {kind === 'notes' && item.raw?.open && <PinMark />}
@@ -373,7 +390,14 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                       </span>
                       {kind === 'recipes' && <span className="nid">{item.id}</span>}
                     </span>
-                    <span className="nline">{face.line}</span>
+                    {layout === 'cards' && kind === 'recipes' ? (
+                      <span className="nline">
+                        <span className="ncat">{CATEGORY_LABELS[item.raw?.category] || 'Uncategorized'}</span>
+                        {String(face.line || '').replace(/^[^,]*/, '')}
+                      </span>
+                    ) : (
+                      <span className="nline">{face.line}</span>
+                    )}
                     {face.tip && <span className="ntip">{face.tip}</span>}
                   </button>
                   {kind === 'recipes' && (
