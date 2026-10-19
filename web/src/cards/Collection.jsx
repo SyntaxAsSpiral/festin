@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { CATEGORY_LABELS, KINDS, loadItems, matches, plateFor, setRecipeFavourite } from './kinds.js'
 import { rememberOrigin } from './origin.js'
 import {
-  DEFAULT_CHOICE,
+  defaultChoice,
   applySortFilter,
   isDefaultChoice,
   readStoredChoice,
@@ -60,7 +60,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
   const [failed, setFailed] = useState(false)
   const [query, setQuery] = useState('')
   const [layout, setLayout] = useState(() => storedLayout(kind))
-  const [choice, setChoice] = useState(() => (kind === 'recipes' || kind === 'notes' ? readStoredChoice(kind) : { ...DEFAULT_CHOICE }))
+  const [choice, setChoice] = useState(() => readStoredChoice(kind))
   const [sortOpen, setSortOpen] = useState(false)
   const [cursor, setCursor] = useState(-1)
   const [shown, setShown] = useState(PAGE)
@@ -70,7 +70,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
   const cardColumns = useColumns(list, layout === 'cards')
   const columnCount = layout === 'cards' ? cardColumns : 1
   const more = useRef(null)
-  const canSort = kind === 'recipes' || kind === 'notes'
+  const canSort = kind === 'recipes' || kind === 'notes' || kind === 'chats'
 
   // The row's heart toggles in place; a stale row (changed elsewhere) reloads the list.
   const [reload, setReload] = useState(0)
@@ -120,7 +120,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
   }, [kind, choice, canSort])
 
   useEffect(() => {
-    setChoice(canSort ? readStoredChoice(kind) : { ...DEFAULT_CHOICE })
+    setChoice(readStoredChoice(kind))
     setSortOpen(false)
   }, [kind, canSort])
 
@@ -212,7 +212,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
   }
 
   function clearChoice() {
-    setChoice({ ...DEFAULT_CHOICE })
+    setChoice(defaultChoice(kind))
     setSortOpen(false)
   }
 
@@ -259,7 +259,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                 aria-expanded={sortOpen}
                 aria-controls="lsort-panel"
                 aria-haspopup="dialog"
-                aria-pressed={!isDefaultChoice(choice)}
+                aria-pressed={!isDefaultChoice(choice, kind)}
                 title="Sort and filter"
                 onClick={() => setSortOpen((o) => !o)}
               >
@@ -269,6 +269,18 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                 <div id="lsort-panel" className="lsort-panel" role="dialog" aria-label="Sort and filter">
                   <fieldset className="lsort-field">
                     <legend>Sort</legend>
+                    {kind === 'chats' && (
+                      <>
+                        <label className="lsort-opt">
+                          <input type="radio" name="lsort-sort" checked={choice.sort === 'date-newest'} onChange={() => setSort('date-newest')} />
+                          Most recent first
+                        </label>
+                        <label className="lsort-opt">
+                          <input type="radio" name="lsort-sort" checked={choice.sort === 'date-oldest'} onChange={() => setSort('date-oldest')} />
+                          Oldest first
+                        </label>
+                      </>
+                    )}
                     <label className="lsort-opt">
                       <input type="radio" name="lsort-sort" checked={choice.sort === 'name'} onChange={() => setSort('name')} />
                       Name (A–Z)

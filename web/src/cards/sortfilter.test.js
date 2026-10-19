@@ -3,6 +3,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
+  defaultChoice,
   DEFAULT_CHOICE,
   STORAGE_KEY,
   applySortFilter,
@@ -158,5 +159,33 @@ describe('stored choice', () => {
   it('ignores unknown sort or category keys', () => {
     localStorage.setItem(STORAGE_KEY + 'recipes', JSON.stringify({ sort: 'bogus', category: 'nope' }))
     expect(readStoredChoice('recipes')).toEqual(DEFAULT_CHOICE)
+  })
+})
+
+describe('chats sort by date', () => {
+  const chat = (id, title, createdAt, updatedAt) => ({ id, title, raw: { id, createdAt, updatedAt }, search: title })
+  const CHATS = [
+    chat('a', 'Old soup', '2026-09-05', null),
+    chat('b', 'Undated', null, null),
+    chat('c', 'Tonight', '2026-10-19T01:00:00Z', '2026-10-19T06:00:00Z'),
+    chat('d', 'Last week', '2026-10-12', null),
+  ]
+
+  it('opens on the most recent first, undated last', () => {
+    expect(defaultChoice('chats').sort).toBe('date-newest')
+    expect(applySortFilter(CHATS, defaultChoice('chats'), 'chats').map((c) => c.id)).toEqual(['c', 'd', 'a', 'b'])
+    expect(isDefaultChoice(defaultChoice('chats'), 'chats')).toBe(true)
+    expect(summarizeChoice(defaultChoice('chats'), 'chats')).toBe('')
+  })
+
+  it('can sort oldest first, undated still last', () => {
+    const choice = { ...defaultChoice('chats'), sort: 'date-oldest' }
+    expect(applySortFilter(CHATS, choice, 'chats').map((c) => c.id)).toEqual(['a', 'd', 'c', 'b'])
+    expect(summarizeChoice(choice, 'chats')).toBe('oldest first')
+  })
+
+  it('reads a fresh device as most recent first', () => {
+    localStorage.removeItem(STORAGE_KEY + 'chats')
+    expect(readStoredChoice('chats').sort).toBe('date-newest')
   })
 })

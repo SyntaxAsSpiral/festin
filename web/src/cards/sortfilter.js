@@ -3,13 +3,20 @@ import { CATEGORY_LABELS } from './kinds.js'
 
 export const STORAGE_KEY = 'festin.sortfilter.'
 
-export const SORT_IDS = ['name', 'id-newest', 'id-oldest']
+export const SORT_IDS = ['name', 'id-newest', 'id-oldest', 'date-newest', 'date-oldest']
 
 export const DEFAULT_CHOICE = Object.freeze({ sort: 'name', category: '', showArchived: false, favouritesOnly: false })
 
-export function isDefaultChoice(choice) {
+// Chats open on the most recent; recipes and notes on their names.
+const DEFAULT_SORT = { chats: 'date-newest' }
+
+export function defaultChoice(kind) {
+  return { ...DEFAULT_CHOICE, sort: DEFAULT_SORT[kind] || 'name' }
+}
+
+export function isDefaultChoice(choice, kind = 'recipes') {
   if (!choice) return true
-  const sortOk = !choice.sort || choice.sort === 'name'
+  const sortOk = !choice.sort || choice.sort === defaultChoice(kind).sort
   const catOk = !choice.category
   const archOk = !choice.showArchived
   const favOk = !choice.favouritesOnly
@@ -33,6 +40,20 @@ function byIdDesc(a, b) {
   return cbkNumber(b.id) - cbkNumber(a.id) || byTitle(a, b)
 }
 
+// A chat's last activity, else the day it began. Undated chats sort last either way.
+function chatTime(item) {
+  return String(item?.raw?.updatedAt || item?.raw?.createdAt || '')
+}
+
+function byDate(newest) {
+  return (a, b) => {
+    const x = chatTime(a)
+    const y = chatTime(b)
+    if (!x || !y) return (x ? 0 : 1) - (y ? 0 : 1) || byTitle(a, b)
+    return (newest ? y.localeCompare(x) : x.localeCompare(y)) || byTitle(a, b)
+  }
+}
+
 function isPinned(item) {
   return Boolean(item?.raw?.open)
 }
@@ -51,6 +72,8 @@ export function sortItems(items, sort) {
   const out = items.slice()
   if (sort === 'id-newest') out.sort(byIdDesc)
   else if (sort === 'id-oldest') out.sort(byIdAsc)
+  else if (sort === 'date-newest') out.sort(byDate(true))
+  else if (sort === 'date-oldest') out.sort(byDate(false))
   else out.sort(byTitle)
   return out
 }
@@ -67,11 +90,12 @@ export function pinThenArchived(items) {
 }
 
 export function applySortFilter(items, choice, kind = 'recipes') {
-  const sort = choice && SORT_IDS.includes(choice.sort) ? choice.sort : 'name'
+  const sort = choice && SORT_IDS.includes(choice.sort) ? choice.sort : defaultChoice(kind).sort
   const category = choice && CATEGORY_LABELS[choice.category] ? choice.category : ''
   const showArchived = Boolean(choice && choice.showArchived)
 
   let list = items
+  if (kind === 'chats') return sortItems(list, sort)
   if (kind === 'notes') {
     if (!showArchived) list = list.filter(isPinned)
     list = sortItems(list, sort)
@@ -84,8 +108,13 @@ export function applySortFilter(items, choice, kind = 'recipes') {
 }
 
 export function summarizeChoice(choice, kind = 'recipes') {
-  if (isDefaultChoice(choice)) return ''
+  if (isDefaultChoice(choice, kind)) return ''
   const parts = []
+  if (kind === 'chats') {
+    if (choice.sort === 'date-oldest') return 'oldest first'
+    if (choice.sort === 'name') return 'by name'
+    return ''
+  }
   if (kind === 'notes') {
     if (choice.sort === 'id-newest') parts.push('by ID, newest first')
     else if (choice.sort === 'id-oldest') parts.push('by ID, oldest first')
@@ -100,10 +129,10 @@ export function summarizeChoice(choice, kind = 'recipes') {
 }
 
 // Anything unknown falls back to its default, field by field.
-function normalizeChoice(raw) {
-  if (!raw || typeof raw !== 'object') return { ...DEFAULT_CHOICE }
+function normalizeChoice(raw, kind) {
+  if (!raw || typeof raw !== 'object') return defaultChoice(kind)
   return {
-    sort: SORT_IDS.includes(raw.sort) ? raw.sort : 'name',
+    sort: SORT_IDS.includes(raw.sort) ? raw.sort : defaultChoice(kind).sort,
     category: CATEGORY_LABELS[raw.category] ? raw.category : '',
     showArchived: Boolean(raw.showArchived),
     favouritesOnly: Boolean(raw.favouritesOnly),
@@ -113,16 +142,16 @@ function normalizeChoice(raw) {
 export function readStoredChoice(kind) {
   try {
     const raw = localStorage.getItem(STORAGE_KEY + kind)
-    if (!raw) return { ...DEFAULT_CHOICE }
-    return normalizeChoice(JSON.parse(raw))
+    if (!raw) return defaultChoice(kind)
+    return normalizeChoice(JSON.parse(raw), kind)
   } catch {
-    return { ...DEFAULT_CHOICE }
+    return defaultChoice(kind)
   }
 }
 
 export function writeStoredChoice(kind, choice) {
   try {
-    localStorage.setItem(STORAGE_KEY + kind, JSON.stringify(normalizeChoice(choice)))
+    localStorage.setItem(STORAGE_KEY + kind, JSON.stringify(normalizeChoice(choice, kind)))
   } catch {
     /* per-device nicety only */
   }
