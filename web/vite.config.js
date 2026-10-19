@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// Every /api goes to the Festin backend. Card scans and cooking photos still come
-// from the live kitchen's files until the switchover copies them over.
+// Every /api and the cooking photos go to the Festin backend. Card scans (2.6 GB)
+// still come from the live kitchen's files until the switchover copies them over.
 // Both apps reject a write whose Origin is not their own host, so the proxy rewrites it.
 const LIVE = 'http://127.0.0.1:8876'
 // FESTIN_PORT lets each worker point at its own dev kitchen (default 8879).
@@ -18,7 +18,7 @@ function to(target) {
 
 export const proxy = {
   '/cards': { target: LIVE, changeOrigin: true },
-  '/photos': { target: LIVE, changeOrigin: true },
+  '/photos': { target: FESTIN, changeOrigin: true },
   '/api': to(FESTIN),
 }
 

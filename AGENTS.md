@@ -20,7 +20,7 @@ python -m festin.importer <copy of the live data dir> data/kitchen.db
 npm run kitchen        # or FESTIN_DB=<path> npm run kitchen
 ```
 
-`npm run kitchen` serves that database (`data/` is gitignored) at `127.0.0.1:8879`. Vite sends every `/api` call there; start Vite with `FESTIN_PORT=<port>` to use your own dev kitchen. Only `/cards` (recipe scans) and `/photos` (cooking photos) still come from the live app's files until the switchover copies them. Chat needs a model key in the environment (`OPENROUTER_API_KEY` or `FESTIN_MODEL_KEY`) or a 0600 `model.key` next to the database.
+`npm run kitchen` serves that database (`data/` is gitignored) at `127.0.0.1:8879`. Vite sends every `/api` call there; start Vite with `FESTIN_PORT=<port>` to use your own dev kitchen. Only `/cards` (recipe scans) still come from the live app's files until the switchover copies them. Cooking photos live in `photos/` next to the database. Chat needs a model key in the environment (`OPENROUTER_API_KEY` or `FESTIN_MODEL_KEY`) or a 0600 `model.key` next to the database.
 
 ## Rules for workers
 
