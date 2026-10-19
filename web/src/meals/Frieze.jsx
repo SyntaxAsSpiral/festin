@@ -188,8 +188,6 @@ export function Frieze() {
             >
               <img src={plateFor(it.p)} alt="" draggable={false} />
               <b>{it.n}</b>
-              <i>{20 + it.n.length}m</i>
-              {it.tip ? <span className="ds">{it.tip}</span> : null}
             </button>
           ),
         )}

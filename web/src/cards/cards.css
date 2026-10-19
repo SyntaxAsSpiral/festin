@@ -1,7 +1,6 @@
 /* Card system: one list machine and one card, read as pages from a family cookbook.
    Bold in one place: the engraved plates. Everything else stays quiet. */
 
-.collection { max-width: 64rem; }
 
 /* List bar */
 .lbar {

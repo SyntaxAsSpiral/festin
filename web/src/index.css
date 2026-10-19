@@ -347,3 +347,8 @@ html[data-motion="off"] .card-flip {
   transition: none;
   animation: none;
 }
+
+/* Desktop: a wider side gutter. Tablet and phone keep theirs. */
+@media (min-width: 901px) {
+  .app { --stage-px: clamp(24px, 2.2vw, 44px); }
+}
