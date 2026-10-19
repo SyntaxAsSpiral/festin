@@ -1,1 +1,1 @@
-"""Thermal printer plugin: raster slips and the print receiver."""
+"""Thermal printer plugin: raster slips, then delivery by receiver or command."""

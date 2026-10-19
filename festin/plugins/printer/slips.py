@@ -11,6 +11,7 @@ import base64
 import hashlib
 import json
 import os
+import shlex
 import sqlite3
 import subprocess
 import uuid
@@ -425,15 +426,13 @@ def print_slip(conn: sqlite3.Connection, slip_id: str, *, data_dir: Path) -> dic
             if im.width != 576:
                 raise ValueError("Unexpected slip width.")
             im.verify()
-        wrapper = path.with_suffix(".md")
-        wrapper.write_text(f"![slip]({path.name})\n")
         _set_status(conn, slip_id, "printing")
         conn.commit()
     except Exception:
         conn.rollback()
         raise
     try:
-        status = deliver_print(path, wrapper, slip_id, row["sha256"], _plugin_settings(conn))
+        status = deliver_print(path, slip_id, row["sha256"], _plugin_settings(conn))
         message = print_message(status)
     except ValueError:
         conn.execute("BEGIN IMMEDIATE")
@@ -521,11 +520,44 @@ def print_recipe(conn, body: dict, *, data_dir: Path) -> dict:
     return print_slip(conn, slip["slip_id"], data_dir=data_dir)
 
 
-def deliver_print(path: Path, wrapper: Path, slip_id: str, digest: str, settings: dict) -> str:
-    url = str((settings or {}).get("receiverUrl") or "").rstrip("/")
+PRINT_COMMAND_ENV = "FESTIN_PRINT_COMMAND"
+
+DELIVERY_OFF_MESSAGE = (
+    "Print delivery is not configured. Choose Print receiver in Settings → Plugins "
+    "(or Print command when the host sets FESTIN_PRINT_COMMAND)."
+)
+
+
+def print_command_configured() -> bool:
+    return bool(os.environ.get(PRINT_COMMAND_ENV, "").strip())
+
+
+def resolve_delivery_mode(settings: dict | None) -> str:
+    """Effective delivery mode. Empty + receiverUrl keeps pre-deliveryMode kitchens printing."""
+    raw = settings or {}
+    mode = str(raw.get("deliveryMode") or "").strip()
+    if mode:
+        return mode
+    if str(raw.get("receiverUrl") or "").strip():
+        return "receiver"
+    return ""
+
+
+def deliver_print(path: Path, slip_id: str, digest: str, settings: dict) -> str:
+    """Send one PNG slip. Mode comes from settings (with receiverUrl back-compat)."""
+    mode = resolve_delivery_mode(settings)
+    if mode == "receiver":
+        return _receiver_print(path, slip_id, digest, settings or {})
+    if mode == "command":
+        return _command_print(path)
+    raise ValueError(DELIVERY_OFF_MESSAGE)
+
+
+def _receiver_print(path: Path, slip_id: str, digest: str, settings: dict) -> str:
+    url = str(settings.get("receiverUrl") or "").rstrip("/")
     if not url:
-        return _local_tm20(wrapper)
-    token = str((settings or {}).get("token") or "")
+        raise ValueError("Print receiver URL is not set.")
+    token = str(settings.get("token") or "")
     if not token:
         raise ValueError("Print receiver token is not set.")
     body = json.dumps(
@@ -553,14 +585,31 @@ def deliver_print(path: Path, wrapper: Path, slip_id: str, digest: str, settings
         raise ValueError("Print receiver rejected the job.") from exc
     except (OSError, URLError, TimeoutError):
         return "uncertain"
-    return result.get("status") if isinstance(result, dict) and result.get("status") in ("printed", "uncertain") else "uncertain"
+    return (
+        result.get("status")
+        if isinstance(result, dict) and result.get("status") in ("printed", "uncertain")
+        else "uncertain"
+    )
 
 
-def _local_tm20(wrapper: Path) -> str:
-    binary = os.environ.get("FESTIN_TM20", "tm20-set")
+def _command_print(path: Path) -> str:
+    template = os.environ.get(PRINT_COMMAND_ENV, "").strip()
+    if not template:
+        raise ValueError(
+            "Print command is not configured on the host (set FESTIN_PRINT_COMMAND)."
+        )
+    if "{file}" not in template:
+        raise ValueError("FESTIN_PRINT_COMMAND must include {file}.")
+    try:
+        parts = shlex.split(template)
+    except ValueError as exc:
+        raise ValueError("FESTIN_PRINT_COMMAND could not be parsed.") from exc
+    if not parts or not any("{file}" in part for part in parts):
+        raise ValueError("FESTIN_PRINT_COMMAND must include {file}.")
+    argv = [part.replace("{file}", str(path)) for part in parts]
     try:
         process = subprocess.run(
-            [binary, "print", "md", str(wrapper)],
+            argv,
             capture_output=True,
             text=True,
             timeout=120,

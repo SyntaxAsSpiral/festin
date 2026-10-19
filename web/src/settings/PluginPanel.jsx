@@ -2,7 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { toastForPrintResult } from '../meals/printToast.js'
 import { CloudAgents } from './CloudAgents.jsx'
 import { callPluginAction, putPlugin } from './api.js'
-import { draftFromPlugin, fieldsFromSchema, pluginIcon, pluginSaveBody, pluginTestAction } from './plugins.js'
+import {
+  draftFromPlugin,
+  fieldsFromSchema,
+  pluginIcon,
+  pluginSaveBody,
+  pluginTestAction,
+  printCommandAvailable,
+  printerFieldVisible,
+} from './plugins.js'
 
 export function PluginPanel({ plugin, onUpdated }) {
   const [{ enabled, draft, secrets }, setLocal] = useState(() => draftFromPlugin(plugin))
@@ -30,6 +38,7 @@ export function PluginPanel({ plugin, onUpdated }) {
       ? []
       : fieldsFromSchema(plugin.schema).filter((field) => field.key !== 'defaultAgent')
   const testAction = pluginTestAction(plugin)
+  const hostPrintCommand = plugin.id === 'printer' && printCommandAvailable(plugin.schema)
 
   async function save(partial) {
     const nextEnabled = partial.enabled ?? enabledRef.current
@@ -81,7 +90,12 @@ export function PluginPanel({ plugin, onUpdated }) {
         <div className="plt">
           <h3 id={'sh-' + plugin.id}>{plugin.name || plugin.id}</h3>
           {plugin.id === 'printer' && (
-            <p className="fine">Prints the weekly slip, recipe cards and shopping lists on a receipt printer.</p>
+            <p className="fine">
+              Prints the weekly slip, recipe cards and notes on an 80&nbsp;mm receipt printer.
+              Choose Print receiver below, or Print command when the host has set{' '}
+              <code>FESTIN_PRINT_COMMAND</code> (configured on the server, not here). Off never
+              attempts a print.
+            </p>
           )}
           {plugin.id === 'tattva' && (
             <p className="fine">
@@ -108,7 +122,9 @@ export function PluginPanel({ plugin, onUpdated }) {
         </label>
       </div>
       <div className="plb">
-        {fields.map((field) => (
+        {fields.map((field) => {
+          if (plugin.id === 'printer' && !printerFieldVisible(field, draft)) return null
+          return (
           <div key={field.key} className="sf">
             <label htmlFor={'p-' + plugin.id + '-' + field.key}>{field.label}</label>
             {field.type === 'enum' && (
@@ -189,8 +205,12 @@ export function PluginPanel({ plugin, onUpdated }) {
               />
             )}
             {field.help ? <p className="fine">{field.help}</p> : null}
+            {field.key === 'deliveryMode' && hostPrintCommand ? (
+              <p className="fine">Print command is configured on the host via FESTIN_PRINT_COMMAND.</p>
+            ) : null}
           </div>
-        ))}
+          )
+        })}
         {plugin.id === 'printer' && (
           <div className="snc">
             <p className={'fine' + (note && note !== 'Saved.' ? ' mo' : '')} id={'p-note-' + plugin.id}>

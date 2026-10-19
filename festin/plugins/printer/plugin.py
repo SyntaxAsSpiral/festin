@@ -41,12 +41,47 @@ class PrinterPlugin:
 
     def settings_schema(self) -> list[dict]:
         bands = printing.band_catalog()["bands"]
+        command_on = slips.print_command_configured()
+        mode_enum = ["", "receiver"]
+        mode_choices = [
+            {"id": "", "description": "Off"},
+            {"id": "receiver", "description": "Print receiver"},
+        ]
+        mode_help = (
+            "How Festin hands a finished PNG slip to your printer. "
+            "Off never attempts a print. Print receiver POSTs the image to a "
+            "small HTTP service (see docs/print-receiver.md)."
+        )
+        if command_on:
+            mode_enum.append("command")
+            mode_choices.append({"id": "command", "description": "Print command"})
+            mode_help += (
+                " Print command runs the host's FESTIN_PRINT_COMMAND (set on the "
+                "server, not editable here), with {file} replaced by the PNG path."
+            )
+        else:
+            mode_help += (
+                " Print command appears here only when the host sets FESTIN_PRINT_COMMAND."
+            )
         return [
+            {
+                "key": "deliveryMode",
+                "type": "string",
+                "default": "",
+                "label": "Delivery",
+                "help": mode_help,
+                "enum": mode_enum,
+                "choices": mode_choices,
+            },
             {
                 "key": "receiverUrl",
                 "type": "string",
                 "default": "",
                 "label": "Print receiver URL",
+                "help": (
+                    "Used when Delivery is Print receiver. Base URL only — Festin POSTs "
+                    "to <url>/print. Example: http://127.0.0.1:8766"
+                ),
             },
             {
                 "key": "token",
@@ -54,6 +89,7 @@ class PrinterPlugin:
                 "default": "",
                 "label": "Print receiver token",
                 "secret": True,
+                "help": "Bearer token the receiver expects. Used only in Print receiver mode.",
             },
             {
                 "key": "band",

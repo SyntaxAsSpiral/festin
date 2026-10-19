@@ -127,11 +127,19 @@ def _public(conn, plugin) -> dict:
 
 def _public_settings(plugin, settings: dict) -> dict:
     """Public settings never include secret values — only a <key>Set flag."""
+    from festin.plugins.printer import slips as printer_slips
+
     out = {}
     for field in plugin.settings_schema():
         key = field["key"]
         if field.get("secret"):
             out[key + "Set"] = bool(str(settings.get(key) or "").strip())
+            continue
+        if key == "deliveryMode" and plugin.id == "printer":
+            mode = printer_slips.resolve_delivery_mode(settings)
+            if mode == "command" and not printer_slips.print_command_configured():
+                mode = ""
+            out[key] = mode
             continue
         out[key] = settings.get(key, field.get("default"))
     return out
@@ -211,6 +219,8 @@ def _clean_setting(field: dict, value):
         if "enum" in field and value not in field["enum"]:
             if field["key"] == "band":
                 raise ValueError("Unknown band art: " + value)
+            if field["key"] == "deliveryMode":
+                raise ValueError("Unknown delivery mode: " + value)
             raise ValueError("Unknown " + field["key"] + ": " + value)
         return value
     raise ValueError("Unknown plugin setting: " + field["key"])

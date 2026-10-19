@@ -8,12 +8,26 @@ import {
   pluginIcon,
   pluginSaveBody,
   pluginTestAction,
+  printCommandAvailable,
+  printerFieldVisible,
   readPluginSaveResult,
   secretIsSet,
   secretState,
 } from './plugins.js'
 
 const printerSchema = [
+  {
+    key: 'deliveryMode',
+    type: 'string',
+    default: '',
+    label: 'Delivery',
+    enum: ['', 'receiver', 'command'],
+    choices: [
+      { id: '', description: 'Off' },
+      { id: 'receiver', description: 'Print receiver' },
+      { id: 'command', description: 'Print command' },
+    ],
+  },
   { key: 'receiverUrl', type: 'string', default: '', label: 'Print receiver URL' },
   { key: 'token', type: 'string', default: '', label: 'Print receiver token', secret: true },
   {
@@ -31,13 +45,37 @@ const printerSchema = [
   },
 ]
 
+const printerSchemaNoCommand = [
+  {
+    key: 'deliveryMode',
+    type: 'string',
+    default: '',
+    label: 'Delivery',
+    enum: ['', 'receiver'],
+    choices: [
+      { id: '', description: 'Off' },
+      { id: 'receiver', description: 'Print receiver' },
+    ],
+  },
+  { key: 'receiverUrl', type: 'string', default: '', label: 'Print receiver URL' },
+]
+
 describe('plugin schema mapping', () => {
   it('maps string, enum, and token fields', () => {
     const fields = fieldsFromSchema(printerSchema)
-    expect(fields).toHaveLength(3)
-    expect(fields[0]).toMatchObject({ key: 'receiverUrl', type: 'string', secret: false })
-    expect(fields[1]).toMatchObject({ key: 'token', type: 'secret', secret: true })
-    expect(fields[2]).toMatchObject({
+    expect(fields).toHaveLength(4)
+    expect(fields[0]).toMatchObject({
+      key: 'deliveryMode',
+      type: 'enum',
+      options: [
+        { value: '', label: 'Off' },
+        { value: 'receiver', label: 'Print receiver' },
+        { value: 'command', label: 'Print command' },
+      ],
+    })
+    expect(fields[1]).toMatchObject({ key: 'receiverUrl', type: 'string', secret: false })
+    expect(fields[2]).toMatchObject({ key: 'token', type: 'secret', secret: true })
+    expect(fields[3]).toMatchObject({
       key: 'band',
       type: 'enum',
       help: "Dinner slips keep their own weekly plates either way.",
@@ -48,6 +86,19 @@ describe('plugin schema mapping', () => {
         { value: 'rose', label: 'A small rose' },
       ],
     })
+  })
+
+  it('shows only the delivery fields that match the mode', () => {
+    expect(printerFieldVisible({ key: 'deliveryMode' }, { deliveryMode: '' })).toBe(true)
+    expect(printerFieldVisible({ key: 'receiverUrl' }, { deliveryMode: '' })).toBe(false)
+    expect(printerFieldVisible({ key: 'token' }, { deliveryMode: 'receiver' })).toBe(true)
+    expect(printerFieldVisible({ key: 'band' }, { deliveryMode: 'command' })).toBe(true)
+  })
+
+  it('detects when the host exposes Print command in the schema', () => {
+    expect(printCommandAvailable(printerSchema)).toBe(true)
+    expect(printCommandAvailable(printerSchemaNoCommand)).toBe(false)
+    expect(printCommandAvailable([])).toBe(false)
   })
 
   it('treats boolean and number types when a later plugin uses them', () => {
@@ -67,11 +118,21 @@ describe('plugin schema mapping', () => {
     const { enabled, draft, secrets } = draftFromPlugin({
       id: 'printer',
       enabled: true,
-      settings: { receiverUrl: 'http://127.0.0.1:9', tokenSet: true, band: 'rose' },
+      settings: {
+        deliveryMode: 'receiver',
+        receiverUrl: 'http://127.0.0.1:9',
+        tokenSet: true,
+        band: 'rose',
+      },
       schema: printerSchema,
     })
     expect(enabled).toBe(true)
-    expect(draft).toEqual({ receiverUrl: 'http://127.0.0.1:9', token: '', band: 'rose' })
+    expect(draft).toEqual({
+      deliveryMode: 'receiver',
+      receiverUrl: 'http://127.0.0.1:9',
+      token: '',
+      band: 'rose',
+    })
     expect(secrets).toEqual({ token: 'set' })
     expect(secretIsSet({ tokenSet: true }, 'token')).toBe(true)
     expect(secretIsSet({ tokenSet: false }, 'token')).toBe(false)
@@ -81,22 +142,41 @@ describe('plugin schema mapping', () => {
     expect(
       pluginSaveBody({
         enabled: true,
-        draft: { receiverUrl: 'http://127.0.0.1:9', token: '', band: 'scroll' },
+        draft: {
+          deliveryMode: 'receiver',
+          receiverUrl: 'http://127.0.0.1:9',
+          token: '',
+          band: 'scroll',
+        },
         secrets: { token: 'set' },
         dirtySecrets: {},
       }),
     ).toEqual({
       enabled: true,
-      settings: { receiverUrl: 'http://127.0.0.1:9', band: 'scroll' },
+      settings: {
+        deliveryMode: 'receiver',
+        receiverUrl: 'http://127.0.0.1:9',
+        band: 'scroll',
+      },
     })
     expect(
       pluginSaveBody({
-        draft: { receiverUrl: 'http://127.0.0.1:9', token: 'new-token', band: 'scroll' },
+        draft: {
+          deliveryMode: 'receiver',
+          receiverUrl: 'http://127.0.0.1:9',
+          token: 'new-token',
+          band: 'scroll',
+        },
         secrets: { token: 'set' },
         dirtySecrets: { token: true },
       }),
     ).toEqual({
-      settings: { receiverUrl: 'http://127.0.0.1:9', token: 'new-token', band: 'scroll' },
+      settings: {
+        deliveryMode: 'receiver',
+        receiverUrl: 'http://127.0.0.1:9',
+        token: 'new-token',
+        band: 'scroll',
+      },
     })
   })
 })
