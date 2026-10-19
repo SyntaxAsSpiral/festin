@@ -20,11 +20,22 @@ function clamp(n, lo, hi) {
   return Math.min(hi, Math.max(lo, n))
 }
 
+// On a wide screen the Meals pane (frieze, slip, Log) ends about here; what lies
+// to its right is free. With room for her, Babette starts open and fills it.
+const MEALS_EDGE = 1610
+const ROOMY_MIN = 600
+
+function roomToTheRight() {
+  if (window.matchMedia(NARROW).matches) return 0
+  const free = window.innerWidth - MEALS_EDGE
+  return free >= ROOMY_MIN ? Math.min(free, 1600) : 0
+}
+
 export function SurfaceProvider({ children }) {
-  const [state, setState] = useState('tucked')
+  const [state, setState] = useState(() => (roomToTheRight() ? 'peek' : 'tucked'))
   const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW).matches)
   const [peekPx, setPeekPx] = useState(null)
-  const [width, setWidth] = useState(420)
+  const [width, setWidth] = useState(() => roomToTheRight() || 420)
 
   useEffect(() => {
     const mq = window.matchMedia(NARROW)
