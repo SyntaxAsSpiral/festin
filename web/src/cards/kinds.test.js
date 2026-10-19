@@ -21,7 +21,7 @@ describe('recipe provenance', () => {
   })
   it('skips placeholder sources and falls back to the voice', () => {
     expect(provenance({ category: 'breads', source: 'unknown', voice: 'grandma' })).toBe('Breads, from grandma')
-    expect(provenance({ category: 'meats', source: 'zk-chat', voice: 'zk' })).toBe('Meats, from zk')
+    expect(provenance({ category: 'meats', source: 'zk-chat', voice: 'zk' })).toBe('Meat & Game, from zk')
   })
   it('says only the category when nobody is known', () => {
     expect(provenance({ category: 'cakes', source: 'unknown', voice: 'unknown' })).toBe('Cakes')

@@ -172,6 +172,7 @@ function SurfaceView({ peekLine, lookingAt, header, children }) {
           aria-controls="bab"
           onClick={() => (state === 'tucked' ? open() : tuck())}
         >
+          <img src="/art/chrome/b-glyph-112.png" alt="" draggable={false} />
           <span>Babette</span>
         </button>
       )}

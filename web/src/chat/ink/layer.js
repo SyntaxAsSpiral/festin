@@ -10,6 +10,7 @@ export function mountInkLayer(host, { plain = false } = {}) {
   const builder = createInkBuilder(host)
   let lit = 0
   let destroyed = false
+  let lastSync = 0
 
   if (plain) host.classList.add('ink-plain')
   else host.classList.remove('ink-plain')
@@ -31,11 +32,20 @@ export function mountInkLayer(host, { plain = false } = {}) {
       const prefix = text.slice(0, n)
       builder.setTyped(prefix)
       const duration = seepMsFor(cps)
+      // Letters due in the same frame would all start together and the front would
+      // advance in clumps (visible at high speed). Spread each batch back across
+      // the time since the last frame, so every letter starts at its own moment.
+      const now = performance.now()
+      const elapsed = Math.min(Math.max(0, now - (lastSync || now)), 100)
+      lastSync = now
+      const fresh = []
       for (let i = 0; i < builder.length; i++) {
-        if (!builder.spans[i].classList.contains('on')) {
-          builder.light(i, { durationMs: duration })
-        }
+        if (!builder.spans[i].classList.contains('on')) fresh.push(i)
       }
+      fresh.forEach((i, j) => {
+        const lateMs = fresh.length > 1 ? (elapsed * (fresh.length - 1 - j)) / fresh.length : 0
+        builder.light(i, { durationMs: duration, lateMs })
+      })
       lit = n
     },
     reset() {

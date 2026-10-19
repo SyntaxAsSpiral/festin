@@ -151,14 +151,15 @@ export function createInkBuilder(host) {
       if (tryAppend(src)) return
       fullRebuild(src)
     },
-    light(index, { durationMs, mx, my } = {}) {
+    light(index, { durationMs, mx, my, lateMs = 0 } = {}) {
       const el = spans[index]
       if (!el) return null
       if (mx != null) el.style.setProperty('--mx', mx)
       if (my != null) el.style.setProperty('--my', my)
       if (durationMs != null) el.style.setProperty('--d', durationMs + 'ms')
-      el.dataset.at = String(performance.now())
-      el.style.animationDelay = '0ms'
+      // A letter lit late (several in one frame) starts partway in, as if on time.
+      el.dataset.at = String(performance.now() - lateMs)
+      el.style.animationDelay = lateMs ? `-${Math.round(lateMs)}ms` : '0ms'
       el.classList.add('on')
       return el
     },

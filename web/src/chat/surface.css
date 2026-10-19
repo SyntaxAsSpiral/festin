@@ -5,10 +5,13 @@
   min-height: 0;
 }
 
+/* The tucked desktop rail, as in the mock: Babette's B above her name. */
 .surface-rail {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: flex-start;
+  gap: 14px;
   width: 100%;
   height: 100%;
   padding: 12px 0 0;
@@ -19,12 +22,29 @@
   color: var(--bb-tone-4);
   font: italic 13px/1 var(--bb-font);
   letter-spacing: 0.12em;
-  writing-mode: vertical-rl;
   cursor: pointer;
+}
+.surface-rail span {
+  writing-mode: vertical-rl;
+  opacity: 0.7;
+}
+.surface-rail img {
+  display: block;
+  width: min(46px, 82%);
+  height: auto;
+  mix-blend-mode: multiply;
+  filter: contrast(1.25) saturate(1.1);
+  transition: transform 0.3s;
 }
 .surface-rail:hover,
 .surface-rail:focus-visible {
   background: color-mix(in srgb, var(--bb-yellow-frappe) 12%, var(--bb-paper));
+}
+.surface-rail:hover img {
+  transform: translateX(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .surface-rail img { transition: none; }
 }
 
 .surface-panel {
