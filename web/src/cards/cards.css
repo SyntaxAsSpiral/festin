@@ -171,7 +171,19 @@
 }
 .nitem:hover .ntitle { color: var(--bb-rose); }
 .nitem[data-cursor] { background: color-mix(in srgb, var(--bb-yellow-latte) 35%, var(--bb-paper)); }
-.ntitle { font-size: 18px; line-height: 1.25; }
+.ntitle { font-size: 18px; line-height: 1.25; display: inline-flex; align-items: baseline; gap: 6px; }
+.npin {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: var(--bb-rose);
+  opacity: 0.72;
+  transform: translateY(1px);
+}
+.nitem-archived {
+  opacity: 0.55;
+}
+.nitem-archived:hover { opacity: 0.78; }
 /* Title line: the title, and a recipe's ID right-aligned and quiet. */
 .nhead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .nid {

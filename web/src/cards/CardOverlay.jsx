@@ -13,6 +13,7 @@ import {
   removeItem,
   saveNote,
   saveRecipe,
+  toggleNote,
   toItem,
 } from './kinds.js'
 import { copyText } from '../secure.js'
@@ -244,9 +245,19 @@ export function CardOverlay({ kind, id, onChanged }) {
                     Done
                   </button>
                 ) : (
-                  <button type="button" onClick={() => (setDraft(raw.text || ''), setPhase('editing'))}>
-                    Edit
-                  </button>
+                  <>
+                    <button type="button" onClick={() => (setDraft(raw.text || ''), setPhase('editing'))}>
+                      Edit
+                    </button>
+                    {raw && (
+                      <button
+                        type="button"
+                        onClick={() => act(() => toggleNote(raw).then((saved) => applySaved(saved)))}
+                      >
+                        {raw.open ? 'Archive' : 'Pin'}
+                      </button>
+                    )}
+                  </>
                 ))}
               {kind === 'recipes' && raw && !editingRecipe && (
                 <>

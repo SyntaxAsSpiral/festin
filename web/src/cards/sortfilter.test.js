@@ -7,6 +7,7 @@ import {
   STORAGE_KEY,
   applySortFilter,
   isDefaultChoice,
+  pinThenArchived,
   readStoredChoice,
   summarizeChoice,
   writeStoredChoice,
@@ -16,11 +17,22 @@ function item(id, title, category) {
   return { id, title, raw: { id, title, category }, search: title.toLowerCase() }
 }
 
+function note(id, title, open) {
+  return { id, title, raw: { id, text: title, open }, search: title.toLowerCase() }
+}
+
 const SAMPLE = [
   item('CBK-0003', 'Zebra Cake', 'cakes'),
   item('CBK-0010', 'Apple Pie', 'pies-tarts'),
   item('CBK-0001', 'Banana Bread', 'breads'),
   item('CBK-0007', 'Carrot Cake', 'cakes'),
+]
+
+const NOTES = [
+  note('n-z', 'Zucchini leftover', true),
+  note('n-a', 'Ask for cream', false),
+  note('n-b', 'Buy butter', true),
+  note('n-c', 'Closed shopping', false),
 ]
 
 describe('applySortFilter', () => {
@@ -51,6 +63,23 @@ describe('applySortFilter', () => {
   })
 })
 
+describe('notes pin and archive', () => {
+  it('hides archived notes by default', () => {
+    const titles = applySortFilter(NOTES, DEFAULT_CHOICE, 'notes').map((r) => r.title)
+    expect(titles).toEqual(['Buy butter', 'Zucchini leftover'])
+  })
+
+  it('shows archived when asked, faded sort after pinned', () => {
+    const titles = applySortFilter(NOTES, { sort: 'name', showArchived: true }, 'notes').map((r) => r.title)
+    expect(titles).toEqual(['Buy butter', 'Zucchini leftover', 'Ask for cream', 'Closed shopping'])
+  })
+
+  it('pinThenArchived keeps relative order within each group', () => {
+    const mixed = [NOTES[1], NOTES[0], NOTES[3], NOTES[2]]
+    expect(pinThenArchived(mixed).map((r) => r.id)).toEqual(['n-z', 'n-b', 'n-a', 'n-c'])
+  })
+})
+
 describe('summarizeChoice', () => {
   it('is empty for the default', () => {
     expect(summarizeChoice(DEFAULT_CHOICE)).toBe('')
@@ -69,6 +98,11 @@ describe('summarizeChoice', () => {
   it('joins category and ID order', () => {
     expect(summarizeChoice({ sort: 'id-newest', category: 'cakes' })).toBe('Cakes, by ID, newest first')
   })
+
+  it('names Show archived for notes', () => {
+    expect(summarizeChoice({ sort: 'name', showArchived: true }, 'notes')).toBe('Show archived')
+    expect(isDefaultChoice({ sort: 'name', showArchived: true })).toBe(false)
+  })
 })
 
 describe('stored choice', () => {
@@ -82,8 +116,13 @@ describe('stored choice', () => {
   it('remembers a choice per kind', () => {
     writeStoredChoice('recipes', { sort: 'id-newest', category: 'cakes' })
     expect(localStorage.getItem(STORAGE_KEY + 'recipes')).toBeTruthy()
-    expect(readStoredChoice('recipes')).toEqual({ sort: 'id-newest', category: 'cakes' })
+    expect(readStoredChoice('recipes')).toEqual({ sort: 'id-newest', category: 'cakes', showArchived: false })
     expect(readStoredChoice('notes')).toEqual(DEFAULT_CHOICE)
+  })
+
+  it('remembers Show archived for notes', () => {
+    writeStoredChoice('notes', { sort: 'name', showArchived: true })
+    expect(readStoredChoice('notes')).toEqual({ sort: 'name', category: '', showArchived: true })
   })
 
   it('ignores a corrupt payload', () => {

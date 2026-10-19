@@ -355,7 +355,8 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
         "search_notes",
         (
             "Find notes whose text contains every word. Returns priority, color, dates, "
-            "age, and open. Notes are not injected into chat."
+            "age, and open (pinned when true, archived when false). Notes are not injected "
+            "into chat."
         ),
         {
             "type": "object",
@@ -370,8 +371,8 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
     (
         "analyze_notes",
         (
-            "Context card and pressing open notes, highest priority then newest, with "
-            "the labels in use. Notes are not injected into chat."
+            "Context card and pressing pinned (open) notes, highest priority then newest, "
+            "with the labels in use. Notes are not injected into chat."
         ),
         {"type": "object", "properties": {}, "additionalProperties": False},
     ),
@@ -414,8 +415,9 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
             "turn, without waiting or dropping what is written. Otherwise pass type and, "
             "when one fits, a Catppuccin accent color. Suggested: shopping green, "
             "leftovers sky, to-do peach. none leaves it uncolored. Another short label "
-            "is fine. open=true only while it needs attention; at most 25 open. Choose "
-            "color, band, and priority yourself. Do not ask the household to set them."
+            "is fine. open=true pins a note (needs attention); open=false archives it. "
+            "At most 25 pinned. Choose color, band, and priority yourself. Do not ask "
+            "the household to set them."
         ),
         {
             "type": "object",

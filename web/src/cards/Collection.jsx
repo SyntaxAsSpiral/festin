@@ -42,6 +42,16 @@ function typing(el) {
   return Boolean(el?.closest?.('input, textarea, select, [contenteditable="true"]'))
 }
 
+/** Small drawn thumbtack for pinned notes — drawn glyph, not an emoji. */
+function PinMark() {
+  return (
+    <svg className="npin" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+      <path d="M3.8 1.8h4.4v1.1H3.8z" fill="currentColor" />
+      <path d="M4.4 2.9h3.2l-.55 2.35c.55.3.9.85.9 1.45v.4H6.35V11H5.65V7.1H3.95v-.4c0-.6.35-1.15.9-1.45L4.4 2.9z" fill="currentColor" />
+    </svg>
+  )
+}
+
 // One copy of the list machine per tab: Layout, Query, Results, Cursor (§4).
 export function Collection({ kind, cardOpen, revision = 0 }) {
   const spec = KINDS[kind]
@@ -50,7 +60,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
   const [failed, setFailed] = useState(false)
   const [query, setQuery] = useState('')
   const [layout, setLayout] = useState(() => storedLayout(kind))
-  const [choice, setChoice] = useState(() => (kind === 'recipes' ? readStoredChoice(kind) : { ...DEFAULT_CHOICE }))
+  const [choice, setChoice] = useState(() => (kind === 'recipes' || kind === 'notes' ? readStoredChoice(kind) : { ...DEFAULT_CHOICE }))
   const [sortOpen, setSortOpen] = useState(false)
   const [cursor, setCursor] = useState(-1)
   const [shown, setShown] = useState(PAGE)
@@ -60,7 +70,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
   const cardColumns = useColumns(list, layout === 'cards')
   const columnCount = layout === 'cards' ? cardColumns : 1
   const more = useRef(null)
-  const canSort = kind === 'recipes'
+  const canSort = kind === 'recipes' || kind === 'notes'
 
   // Chats search on the server (the list row has no transcript). Recipes and notes
   // come back with their text, so the filter stays on this page.
@@ -105,7 +115,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
   const results = useMemo(() => {
     if (!items) return []
     const matched = kind === 'chats' || !query.trim() ? items : items.filter((it) => matches(it, query))
-    return canSort ? applySortFilter(matched, choice) : matched
+    return canSort ? applySortFilter(matched, choice, kind) : matched
   }, [items, query, kind, choice, canSort])
   useEffect(() => {
     setShown(PAGE)
@@ -171,7 +181,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
     if (cursor >= shown - 5) setShown((n) => n + PAGE)
   }, [cursor, shown])
 
-  const summary = canSort ? summarizeChoice(choice) : ''
+  const summary = canSort ? summarizeChoice(choice, kind) : ''
 
   function setSort(sort) {
     setChoice((c) => ({ ...c, sort }))
@@ -179,6 +189,10 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
 
   function setCategory(category) {
     setChoice((c) => ({ ...c, category }))
+  }
+
+  function setShowArchived(showArchived) {
+    setChoice((c) => ({ ...c, showArchived }))
   }
 
   function clearChoice() {
@@ -243,26 +257,38 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                       <input type="radio" name="lsort-sort" checked={choice.sort === 'name'} onChange={() => setSort('name')} />
                       Name (A–Z)
                     </label>
-                    <label className="lsort-opt">
-                      <input type="radio" name="lsort-sort" checked={choice.sort === 'id-newest'} onChange={() => setSort('id-newest')} />
-                      ID, newest first
-                    </label>
-                    <label className="lsort-opt">
-                      <input type="radio" name="lsort-sort" checked={choice.sort === 'id-oldest'} onChange={() => setSort('id-oldest')} />
-                      ID, oldest first
-                    </label>
+                    {kind === 'recipes' && (
+                      <>
+                        <label className="lsort-opt">
+                          <input type="radio" name="lsort-sort" checked={choice.sort === 'id-newest'} onChange={() => setSort('id-newest')} />
+                          ID, newest first
+                        </label>
+                        <label className="lsort-opt">
+                          <input type="radio" name="lsort-sort" checked={choice.sort === 'id-oldest'} onChange={() => setSort('id-oldest')} />
+                          ID, oldest first
+                        </label>
+                      </>
+                    )}
                   </fieldset>
-                  <label className="lsort-cat">
-                    <span>Category</span>
-                    <select value={choice.category} onChange={(event) => setCategory(event.target.value)} aria-label="Filter by category">
-                      <option value="">All</option>
-                      {Object.entries(CATEGORY_LABELS).map(([id, label]) => (
-                        <option key={id} value={id}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  {kind === 'recipes' && (
+                    <label className="lsort-cat">
+                      <span>Category</span>
+                      <select value={choice.category} onChange={(event) => setCategory(event.target.value)} aria-label="Filter by category">
+                        <option value="">All</option>
+                        {Object.entries(CATEGORY_LABELS).map(([id, label]) => (
+                          <option key={id} value={id}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  {kind === 'notes' && (
+                    <label className="lsort-opt">
+                      <input type="checkbox" checked={Boolean(choice.showArchived)} onChange={(event) => setShowArchived(event.target.checked)} />
+                      Show archived
+                    </label>
+                  )}
                 </div>
               )}
             </div>
@@ -280,7 +306,12 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
       {failed && <p className="lstate">The kitchen did not answer. Try again in a moment.</p>}
       {!failed && !items && <p className="lstate">Opening the box…</p>}
       {items && !results.length && query.trim() && <p className="lstate">Nothing by that name. Ask Babette.</p>}
-      {items && !results.length && !query.trim() && items.length > 0 && summary && <p className="lstate">Nothing in that category.</p>}
+      {items && !results.length && !query.trim() && items.length > 0 && summary && kind === 'recipes' && (
+        <p className="lstate">Nothing in that category.</p>
+      )}
+      {items && !results.length && !query.trim() && items.length > 0 && kind === 'notes' && !choice.showArchived && (
+        <p className="lstate">Nothing pinned. Show archived, or write a note.</p>
+      )}
       {items && !items.length && !query.trim() && <p className="lstate">{spec.empty}</p>}
       <div ref={list} className={'nlist nlist-' + layout}>
         {/* Cards are dealt round-robin into columns, so they read left to right and
@@ -290,13 +321,22 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
             {results.slice(0, shown).map((item, i) => {
               if (i % columnCount !== col) return null
               const face = layout === 'cards' && item.card ? { ...item, ...item.card } : item
+              const archived = kind === 'notes' && item.raw && !item.raw.open
               return (
                 <li key={item.id}>
-                  <button type="button" className="nitem" data-cursor={i === cursor || undefined} onClick={(event) => open(item, event.currentTarget)}>
+                  <button
+                    type="button"
+                    className={'nitem' + (archived ? ' nitem-archived' : '')}
+                    data-cursor={i === cursor || undefined}
+                    onClick={(event) => open(item, event.currentTarget)}
+                  >
                     {layout === 'cards' && kind === 'recipes' && <img className="nplate" src={plateFor(item.raw.category)} alt="" loading="lazy" />}
                     {layout === 'cards' && kind === 'notes' && <span className="nswatch" data-color={item.raw.color || 'none'} />}
                     <span className="nhead">
-                      <span className="ntitle">{face.title}</span>
+                      <span className="ntitle">
+                        {kind === 'notes' && item.raw?.open && <PinMark />}
+                        {face.title}
+                      </span>
                       {kind === 'recipes' && <span className="nid">{item.id}</span>}
                     </span>
                     <span className="nline">{face.line}</span>
