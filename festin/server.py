@@ -29,7 +29,7 @@ from festin import settings as core_settings
 from festin import weather as weather_mod
 from festin.chat.engine import chat as run_chat
 from festin.chat.flights import stop_request
-from festin.chat.keys import model_key_is_set, resolve_model_key, write_model_key
+from festin.chat.keys import model_key_is_set, model_key_source, resolve_model_key, write_model_key
 from festin.chat.model_probe import probe_model
 from festin.errors import NotFound, StaleState
 from festin.plugins import host as plugins_host
@@ -404,9 +404,11 @@ class Handler(BaseHTTPRequestHandler):
         return self._settings_body(conn)
 
     def _settings_body(self, conn) -> dict:
+        raw = core_settings.get_settings(conn)
         return _public_settings(
-            core_settings.get_settings(conn),
+            raw,
             model_key_is_set(self.server.data_dir),
+            model_key_source(self.server.data_dir, raw["model_base_url"]),
         )
 
     def _save_model_key(self, body: dict) -> dict:
@@ -645,7 +647,7 @@ class _closing:
         self.conn.close()
         return False
 
-def _public_settings(raw: dict, key_set: bool) -> dict:
+def _public_settings(raw: dict, key_set: bool, key_source: str = "none") -> dict:
     return {
         "tableName": raw["table_name"],
         "dinnerHour": raw["dinner_hour"],
@@ -656,6 +658,7 @@ def _public_settings(raw: dict, key_set: bool) -> dict:
             "baseUrl": raw["model_base_url"],
             "name": raw["model_name"],
             "keySet": bool(key_set),
+            "keySource": key_source if key_source in ("file", "env", "none") else "none",
         },
     }
 

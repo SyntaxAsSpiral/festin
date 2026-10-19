@@ -40,7 +40,7 @@ export function baseUrlForProvider(provider, current) {
   return now
 }
 
-/** Map GET /api/settings into the form draft. Model is { baseUrl, name, keySet }. */
+/** Map GET /api/settings into the form draft. Model is { baseUrl, name, keySet, keySource }. */
 export function draftFromSettings(body) {
   const weather = body?.weather && typeof body.weather === 'object' ? body.weather : {}
   const nested = body?.model && typeof body.model === 'object' ? body.model : null
@@ -50,6 +50,8 @@ export function draftFromSettings(body) {
     OPENROUTER_BASE
   const named = nested && typeof nested.name === 'string' ? nested.name : undefined
   const modelName = named ?? pick(body, 'modelName', 'model_name') ?? (typeof body?.model === 'string' ? body.model : '')
+  const keySource = cleanKeySource(nested ? nested.keySource : body?.keySource)
+  const keySet = Boolean(nested ? nested.keySet : body?.keySet) || keySource === 'file'
   return {
     tableName: String(body?.tableName || body?.table_name || DEFAULT_TABLE).trim() || DEFAULT_TABLE,
     dinnerHour: normalizeHour(body?.dinnerHour || body?.dinner_hour || '17:30'),
@@ -57,9 +59,17 @@ export function draftFromSettings(body) {
     weatherLocation: String(weather.location || body?.weatherLocation || '').trim(),
     modelName: String(modelName).trim(),
     modelBaseUrl: String(modelBaseUrl).trim().replace(/\/+$/, '') || OPENROUTER_BASE,
-    keySet: Boolean(nested ? nested.keySet : body?.keySet),
+    keySet,
+    keySource,
     updatedAt: body?.updatedAt || body?.updated_at || null,
   }
+}
+
+export function keySourceMessage(source, keySet) {
+  if (source === 'env') return "Using the server's environment key."
+  if (source === 'file' || keySet)
+    return 'A key is stored next to the database. It is never sent back to the browser.'
+  return 'No key is stored yet. It stays out of the shared database.'
 }
 
 /** Body for POST /api/settings. The key is a separate write and never rides along. */
@@ -120,6 +130,11 @@ function pick(obj, ...keys) {
 function cleanWeek(value) {
   const day = String(value || 'sat').trim().toLowerCase()
   return WEEK_STARTS.some((item) => item.value === day) ? day : 'sat'
+}
+
+function cleanKeySource(value) {
+  const source = String(value || '').trim().toLowerCase()
+  return source === 'file' || source === 'env' || source === 'none' ? source : 'none'
 }
 
 function normalizeHour(value) {

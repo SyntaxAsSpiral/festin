@@ -20,6 +20,7 @@ import {
   WEEK_STARTS,
   baseUrlForProvider,
   draftFromSettings,
+  keySourceMessage,
   lanePreview,
   parseSettingsTab,
   providerOf,
@@ -357,23 +358,25 @@ export function SettingsSidebar() {
                   id="s-key"
                   type="password"
                   value={keyText}
-                  placeholder={draft.keySet ? 'Key stored — paste a new one to replace it' : 'Paste an API key'}
+                  placeholder={
+                    draft.keySource === 'file' || draft.keySet
+                      ? 'Key stored — paste a new one to replace it'
+                      : draft.keySource === 'env'
+                        ? 'Environment key in use — paste a file key to override later'
+                        : 'Paste an API key'
+                  }
                   spellCheck={false}
                   autoCapitalize="none"
                   autoComplete="off"
                   onChange={(e) => setKeyText(e.target.value)}
                   disabled={busy}
                 />
-                <p className="fine">
-                  {draft.keySet
-                    ? 'A key is stored next to the database. It is never sent back to the browser.'
-                    : 'No key is stored yet. It stays out of the shared database.'}
-                </p>
+                <p className="fine">{keySourceMessage(draft.keySource, draft.keySet)}</p>
                 <p className="fine">
                   <button type="button" onClick={() => commitKey(keyText)} disabled={busy || !keyText.trim()}>
                     Save key
                   </button>
-                  {draft.keySet ? (
+                  {draft.keySource === 'file' || draft.keySet ? (
                     <button type="button" onClick={() => commitKey('')} disabled={busy}>
                       Clear key
                     </button>

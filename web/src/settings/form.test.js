@@ -3,6 +3,7 @@ import {
   OPENROUTER_BASE,
   baseUrlForProvider,
   draftFromSettings,
+  keySourceMessage,
   lanePreview,
   parseSettingsTab,
   providerOf,
@@ -37,12 +38,24 @@ describe('settings form mapping', () => {
         baseUrl: 'http://127.0.0.1:1234/v1',
         name: 'qwen2.5-7b-instruct',
         keySet: true,
+        keySource: 'file',
       },
     })
     expect(draft.modelName).toBe('qwen2.5-7b-instruct')
     expect(draft.modelBaseUrl).toBe('http://127.0.0.1:1234/v1')
     expect(draft.keySet).toBe(true)
+    expect(draft.keySource).toBe('file')
     expect(providerOf(draft.modelBaseUrl)).toBe('local')
+  })
+
+  it('names an environment key without claiming a file is stored', () => {
+    const draft = draftFromSettings({
+      model: { baseUrl: OPENROUTER_BASE, name: '', keySet: false, keySource: 'env' },
+    })
+    expect(draft.keySource).toBe('env')
+    expect(draft.keySet).toBe(false)
+    expect(keySourceMessage(draft.keySource, draft.keySet)).toBe("Using the server's environment key.")
+    expect(keySourceMessage('none', false)).toMatch(/No key is stored/)
   })
 
   it('keeps flat model fields when a caller still sends them', () => {

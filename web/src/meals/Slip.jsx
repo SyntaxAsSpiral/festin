@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { rememberOrigin } from '../cards/origin.js'
+import { setActiveMealsPlan } from './activePlan.js'
 import {
   DEFAULT_SLIP_TITLE,
   SLIP_TITLE_MAX,
@@ -155,6 +156,8 @@ export function Slip({ settings, recipesById, recipesByTitle }) {
 
   useEffect(() => {
     draftRef.current = draft
+    setActiveMealsPlan(draft)
+    return () => setActiveMealsPlan(null)
   }, [draft])
 
   // Keep the contentEditable title in sync when the week loads, without fighting typing.

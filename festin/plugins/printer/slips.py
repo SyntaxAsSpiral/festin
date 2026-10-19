@@ -437,19 +437,46 @@ def print_slip(conn: sqlite3.Connection, slip_id: str, *, data_dir: Path) -> dic
 
 
 def print_dinner(conn, body: dict, *, data_dir: Path) -> dict:
-    """Print one Le Festin of the dinners open on the Meals slip."""
-    draft = body.get("plan") if isinstance(body, dict) else None
-    rendered = preview(conn, data_dir, draft=draft)
-    path = _slip_path(data_dir, rendered["image"])
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    with Image.open(path) as im:
-        if im.width != 576:
-            raise ValueError("Unexpected slip width.")
-        im.verify()
-    wrapper = path.with_suffix(".md")
-    wrapper.write_text(f"![slip]({path.name})\n")
-    status = deliver_print(path, wrapper, path.stem, digest, _plugin_settings(conn))
-    return {"status": status, "message": print_message(status)}
+    """Print one Le Festin for the week on Meals. One copy; repeats are idempotent."""
+    if not isinstance(body, dict):
+        raise ValueError("JSON object required")
+    plan = body.get("plan")
+    week = body.get("weekStart", body.get("week_start"))
+    if isinstance(plan, dict):
+        week = week or plan.get("weekStart")
+    if not isinstance(week, str) or not week.strip():
+        raise ValueError("weekStart must be an ISO date.")
+    week = week.strip()
+    args = {
+        "kind": "plan",
+        "week_start": week,
+        "print_request_id": "dinner:" + week,
+    }
+    if isinstance(plan, dict) and plan.get("weekStart"):
+        args["_plan"] = plan
+    slip = prepare_slip(conn, args, data_dir=data_dir)
+    return print_slip(conn, slip["slip_id"], data_dir=data_dir)
+
+
+def print_test_slip(conn, body: dict | None = None, *, data_dir: Path, now=None) -> dict:
+    """Render and send a small slip with the table name and the time."""
+    settings = get_settings(conn)
+    table = settings.get("table_name") or "Babette's Table"
+    instant = now or datetime.now(timezone.utc)
+    if instant.tzinfo is None:
+        instant = instant.replace(tzinfo=timezone.utc)
+    when = instant.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    slip = prepare_slip(
+        conn,
+        {
+            "kind": "note",
+            "title": "Printer test",
+            "text": table + "\n" + when,
+            "print_request_id": "test-slip:" + str(uuid.uuid4()),
+        },
+        data_dir=data_dir,
+    )
+    return print_slip(conn, slip["slip_id"], data_dir=data_dir)
 
 
 def print_recipe(conn, body: dict, *, data_dir: Path) -> dict:
@@ -481,7 +508,7 @@ def deliver_print(path: Path, wrapper: Path, slip_id: str, digest: str, settings
         return _local_tm20(wrapper)
     token = str((settings or {}).get("token") or "")
     if not token:
-        raise ValueError("Remote printing needs a print receiver token.")
+        raise ValueError("Print receiver token is not set.")
     body = json.dumps(
         {
             "job_id": slip_id,
@@ -540,3 +567,7 @@ def action_print_dinner(conn, body, *, data_dir, now=None):
 
 def action_print_recipe(conn, body, *, data_dir, now=None):
     return print_recipe(conn, body, data_dir=data_dir)
+
+
+def action_test_slip(conn, body, *, data_dir, now=None):
+    return print_test_slip(conn, body, data_dir=data_dir, now=now)

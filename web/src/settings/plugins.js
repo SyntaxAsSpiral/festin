@@ -58,6 +58,14 @@ export function fieldsFromSchema(schema) {
   return schema.map(fieldFromSchema).filter(Boolean)
 }
 
+/** True when the public settings say this secret is stored (never the value). */
+export function secretIsSet(settings, key) {
+  if (!settings || typeof settings !== 'object') return false
+  const flag = settings[key + 'Set']
+  if (typeof flag === 'boolean') return flag
+  return Boolean(String(settings[key] || '').length)
+}
+
 /** Local draft of settings values for editing (secrets start empty). */
 export function draftFromPlugin(plugin) {
   const settings = plugin?.settings && typeof plugin.settings === 'object' ? plugin.settings : {}
@@ -65,7 +73,7 @@ export function draftFromPlugin(plugin) {
   const secrets = {}
   for (const field of fieldsFromSchema(plugin?.schema)) {
     if (field.secret) {
-      secrets[field.key] = secretState(settings[field.key])
+      secrets[field.key] = secretIsSet(settings, field.key) ? 'set' : 'not set'
       draft[field.key] = ''
       continue
     }
@@ -124,10 +132,10 @@ export function readPluginSaveResult(status, body) {
   return { ok: true, conflict: false, error: null, body }
 }
 
-/** Printer has prepare/print/print-dinner/print-recipe — no test action on the host. */
+/** Printer exposes test-slip for the Settings panel button. */
 export function pluginTestAction(plugin) {
   if (!plugin || plugin.id !== 'printer') return null
-  return null
+  return 'test-slip'
 }
 
 export function pluginIcon(plugin) {

@@ -108,15 +108,31 @@ def _require(plugin_id: str):
     return plugin
 
 
+# PUT may send these in place of a secret; they mean "keep the stored value".
+_SECRET_PLACEHOLDERS = frozenset({"", "••••", "<set>"})
+
+
 def _public(conn, plugin) -> dict:
     stored = _stored(conn, plugin)
     return {
         "id": plugin.id,
         "name": plugin.name,
         "enabled": stored["enabled"],
-        "settings": stored["settings"],
+        "settings": _public_settings(plugin, stored["settings"]),
         "schema": plugin.settings_schema(),
     }
+
+
+def _public_settings(plugin, settings: dict) -> dict:
+    """Public settings never include secret values — only a <key>Set flag."""
+    out = {}
+    for field in plugin.settings_schema():
+        key = field["key"]
+        if field.get("secret"):
+            out[key + "Set"] = bool(str(settings.get(key) or "").strip())
+            continue
+        out[key] = settings.get(key, field.get("default"))
+    return out
 
 
 def _stored(conn, plugin) -> dict:
@@ -148,8 +164,20 @@ def _merge_settings(plugin, current: dict, incoming) -> dict:
         raise ValueError("Unknown plugin setting: " + sorted(unknown)[0])
     merged = dict(current)
     for key, value in incoming.items():
-        merged[key] = _clean_setting(schema[key], value)
+        field = schema[key]
+        if field.get("secret") and _secret_keep(value):
+            continue
+        merged[key] = _clean_setting(field, value)
     return merged
+
+
+def _secret_keep(value) -> bool:
+    """True when the client omitted a real secret (empty or a mask placeholder)."""
+    if value is None:
+        return True
+    if not isinstance(value, str):
+        return False
+    return value in _SECRET_PLACEHOLDERS
 
 
 def _clean_setting(field: dict, value):
@@ -158,9 +186,9 @@ def _clean_setting(field: dict, value):
             raise ValueError(field["key"] + " must be text")
         if field["key"] == "receiverUrl":
             return _clean_url(value)
-        if field["key"] == "token":
+        if field.get("secret") or field["key"] == "token":
             if len(value) > 500:
-                raise ValueError("token is too long")
+                raise ValueError(field["key"] + " is too long")
             return value
         if "enum" in field and value not in field["enum"]:
             raise ValueError("Unknown band art: " + value)

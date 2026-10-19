@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { putPlugin } from './api.js'
+import { toastForPrintResult } from '../meals/printToast.js'
+import { callPluginAction, putPlugin } from './api.js'
 import { draftFromPlugin, fieldsFromSchema, pluginIcon, pluginSaveBody, pluginTestAction } from './plugins.js'
 
 export function PluginPanel({ plugin, onUpdated }) {
@@ -179,18 +180,20 @@ export function PluginPanel({ plugin, onUpdated }) {
         {plugin.id === 'printer' && (
           <div className="snc">
             <p className={'fine' + (note && note !== 'Saved.' ? ' mo' : '')} id={'p-note-' + plugin.id}>
-              {note ||
-                (testAction
-                  ? 'Ready to print a test slip.'
-                  : 'No test action on this plugin yet (prepare / print / print-dinner / print-recipe only).')}
+              {note || (testAction ? 'Ready to print a test slip.' : 'No test action on this plugin yet.')}
             </p>
             <button
               type="button"
               id={'p-test-' + plugin.id}
               disabled={!enabled || busy || !testAction}
               title={testAction ? 'Print a test slip' : 'No test action on the printer plugin'}
-              onClick={() => {
-                /* testAction is null today; wire when the host exposes one */
+              onClick={async () => {
+                if (!testAction) return
+                setBusy(true)
+                setNote('Sending the test slip…')
+                const result = await callPluginAction(plugin.id, testAction, {})
+                setBusy(false)
+                setNote(toastForPrintResult(result))
               }}
             >
               Print test slip

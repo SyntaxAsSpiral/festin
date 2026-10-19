@@ -24,6 +24,20 @@ def model_key_is_set(data_dir: str | Path) -> bool:
         return False
 
 
+def model_key_source(data_dir: str | Path, base_url: str) -> str:
+    """Where the effective key comes from: 'env', 'file', or 'none'. Never the key."""
+    host = urlparse(base_url).hostname
+    if host == "openrouter.ai":
+        for name in ("OPENROUTER_API_KEY", "FESTIN_MODEL_KEY"):
+            if os.environ.get(name, "").strip():
+                return "env"
+    elif os.environ.get("FESTIN_MODEL_KEY", "").strip():
+        return "env"
+    if model_key_is_set(data_dir):
+        return "file"
+    return "none"
+
+
 def write_model_key(data_dir: str | Path, key: str) -> None:
     """Store one line in model.key at mode 0600, or delete the file when empty.
 

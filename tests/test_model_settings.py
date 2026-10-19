@@ -68,7 +68,12 @@ def test_model_url_name_and_key_file(kitchen):
     client = Client(kitchen.server_address[1])
     status, body = client.request("GET", "/api/settings")
     assert status == 200
-    assert body["model"] == {"baseUrl": DEFAULT_MODEL_BASE_URL, "name": "", "keySet": False}
+    assert body["model"] == {
+        "baseUrl": DEFAULT_MODEL_BASE_URL,
+        "name": "",
+        "keySet": False,
+        "keySource": "none",
+    }
 
     status, rejected = client.request(
         "POST",
@@ -91,6 +96,7 @@ def test_model_url_name_and_key_file(kitchen):
     assert saved["model"]["baseUrl"] == "http://127.0.0.1:1234/v1"
     assert saved["model"]["name"] == "cook-model"
     assert saved["model"]["keySet"] is False
+    assert saved["model"]["keySource"] == "none"
     assert saved["tableName"] == "Babette's Table"
 
     status, named = client.request("POST", "/api/settings", {"modelName": "other-model"})
@@ -110,12 +116,14 @@ def test_model_url_name_and_key_file(kitchen):
     status, stored = client.request("POST", "/api/settings/model-key", {"key": SECRET})
     assert status == 200
     assert stored["model"]["keySet"] is True
+    assert stored["model"]["keySource"] == "file"
     assert stored["model"]["name"] == "other-model"
     assert key_path.read_text(encoding="utf-8") == SECRET
     assert stat.S_IMODE(key_path.stat().st_mode) == 0o600
 
     status, fetched = client.request("GET", "/api/settings")
     assert fetched["model"]["keySet"] is True
+    assert fetched["model"]["keySource"] == "file"
 
     status, refused = client.request(
         "POST",
@@ -133,6 +141,7 @@ def test_model_url_name_and_key_file(kitchen):
     status, cleared = client.request("POST", "/api/settings/model-key", {"key": ""})
     assert status == 200
     assert cleared["model"]["keySet"] is False
+    assert cleared["model"]["keySource"] == "none"
     assert not key_path.exists()
 
     status, missing = client.request("POST", "/api/settings/model-key", {})
@@ -141,6 +150,16 @@ def test_model_url_name_and_key_file(kitchen):
     blob = "\n".join(client.seen)
     assert SECRET not in blob
     assert "should-not-land" not in blob
+
+
+def test_model_key_source_env(kitchen, monkeypatch):
+    client = Client(kitchen.server_address[1])
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-env-only-do-not-echo")
+    status, body = client.request("GET", "/api/settings")
+    assert status == 200
+    assert body["model"]["keySet"] is False
+    assert body["model"]["keySource"] == "env"
+    assert "sk-env-only-do-not-echo" not in json.dumps(body)
 
 
 class _Provider(BaseHTTPRequestHandler):
