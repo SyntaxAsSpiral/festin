@@ -231,6 +231,7 @@ export function recipeFields(draft) {
       .filter(Boolean),
     method: draft.method || '',
     notes: draft.notes || '',
+    context: draft.context || '',
   }
 }
 

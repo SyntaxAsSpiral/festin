@@ -47,7 +47,21 @@ RECIPE_FIELDS = {
         ),
     },
     "ingredients": {"type": "array", "items": {"type": "string"}},
-    "notes": {"type": "string"},
+    "notes": {
+        "type": "string",
+        "description": (
+            "The household's own notes, printed with the card. Never put your "
+            "inferences, assumptions or commentary here; those go in context."
+        ),
+    },
+    "context": {
+        "type": "string",
+        "description": (
+            "Your commentary: inferences, what you added or assumed, cooking "
+            "history. Shown in the recipe reader, never printed. Replaces the "
+            "whole field; use append_recipe_context to add a line."
+        ),
+    },
     "method": {"type": "string"},
     "voice": {
         "type": "string",

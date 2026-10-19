@@ -30,7 +30,6 @@ export function RecipePage({ recipe }) {
   const scan = served((recipe.ocrPhotos || [])[0])
   const photos = (recipe.photos || []).map(served)
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : []
-  const kitchen = [recipe.notes, recipe.context].filter((t) => String(t || '').trim())
   return (
     <article className="page page-recipe">
       <img className="frontis" src={plateFor(recipe.category)} alt="" />
@@ -73,15 +72,21 @@ export function RecipePage({ recipe }) {
           ))}
         </div>
       )}
-      {kitchen.length > 0 && (
+      {String(recipe.notes || '').trim() && (
         <section className="kitchen">
           <p className="fleuron" aria-hidden="true">
             ❦
           </p>
           <h2>In the kitchen</h2>
-          {kitchen.map((t, i) => (
-            <Paragraphs key={i} text={t} />
-          ))}
+          <Paragraphs text={recipe.notes} />
+        </section>
+      )}
+      {String(recipe.context || '').trim() && (
+        <section className="kitchen babble">
+          <h2>
+            Babette's babble <small>not printed</small>
+          </h2>
+          <Paragraphs text={recipe.context} />
         </section>
       )}
       {scanOpen && (
@@ -126,6 +131,12 @@ export function RecipeEditor({ draft, onDraft }) {
       <section className="kitchen">
         <h2>Notes</h2>
         <textarea className="page-area" aria-label="Notes" value={draft.notes} onChange={(e) => set('notes', e.target.value)} />
+      </section>
+      <section className="kitchen babble">
+        <h2>
+          Babette's babble <small>not printed</small>
+        </h2>
+        <textarea className="page-area" aria-label="Babette's babble" value={draft.context} onChange={(e) => set('context', e.target.value)} />
       </section>
     </article>
   )

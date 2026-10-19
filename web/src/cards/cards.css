@@ -347,6 +347,8 @@ button.danger { color: var(--bb-rose); }
 .cooked-photos { display: flex; gap: 8px; margin-top: 16px; overflow-x: auto; }
 .cooked-photos img { height: 120px; border: 1px solid var(--bb-tone-1); }
 .kitchen p { margin: 0 0 10px; max-width: 34em; }
+.babble { margin-top: 22px; color: var(--bb-sepia); }
+.babble h2 small { margin-left: 8px; font-size: 12px; font-style: italic; letter-spacing: 0; text-transform: none; color: var(--bb-tone-4); }
 .fleuron { text-align: center; color: var(--bb-rose); margin: 26px 0 0; font-size: 20px; }
 .scan-full {
   position: fixed;
