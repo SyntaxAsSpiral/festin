@@ -6,6 +6,7 @@ import argparse
 import base64
 import io
 import json
+import shutil
 import socket
 import threading
 from datetime import date, timedelta
@@ -16,35 +17,42 @@ import pytest
 
 from festin.schema import connect
 from festin.server import COOKIE, KitchenServer, main
+from tests.conftest import reset_db_file, start_kitchen, stop_kitchen
 
 
-@pytest.fixture
-def kitchen(tmp_path):
-    server = KitchenServer(
-        ("127.0.0.1", 0),
-        tmp_path / "store.sqlite",
+@pytest.fixture(scope="module")
+def _api_server(migrated_template, tmp_path_factory):
+    root = tmp_path_factory.mktemp("api")
+    db = root / "store.sqlite"
+    photos = root / "cooking-photos"
+    shutil.copy2(migrated_template, db)
+    server = start_kitchen(
+        db,
         origins=("http://kitchen.example",),
-        photos_dir=tmp_path / "cooking-photos",
+        photos_dir=photos,
     )
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
     try:
-        yield server
+        yield server, db, migrated_template
     finally:
-        server.shutdown()
-        server.server_close()
+        stop_kitchen(server)
 
 
 @pytest.fixture
-def lan_kitchen(tmp_path):
-    server = KitchenServer(("0.0.0.0", 0), tmp_path / "store.sqlite")
+def kitchen(_api_server):
+    server, db, template = _api_server
+    reset_db_file(db, template)
+    yield server
+
+
+@pytest.fixture
+def lan_kitchen(blank_db):
+    server = KitchenServer(("0.0.0.0", 0), blank_db)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
         yield server
     finally:
-        server.shutdown()
-        server.server_close()
+        stop_kitchen(server)
 
 
 class Client:

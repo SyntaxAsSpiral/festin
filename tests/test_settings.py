@@ -10,7 +10,7 @@ from urllib.error import URLError
 
 import pytest
 
-from festin.schema import apply, connect
+from festin.schema import connect
 from festin import settings as core
 
 
@@ -34,9 +34,8 @@ def _response(payload: dict):
 
 
 @pytest.fixture
-def conn(tmp_path):
-    db = connect(tmp_path / "store.sqlite")
-    apply(db)
+def conn(blank_db):
+    db = connect(blank_db)
     yield db
     db.close()
 

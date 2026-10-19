@@ -10,7 +10,7 @@ from http.client import HTTPConnection
 
 from festin.plugins import host
 from festin.plugins.printer import printing, weekly
-from festin.schema import apply, connect
+from festin.schema import connect
 from festin.server import KitchenServer
 from festin.settings import update_settings
 
@@ -87,11 +87,11 @@ class Client:
         return status, json.loads(payload.decode() or "null")
 
 
-def _kitchen(tmp_path):
+def _kitchen(blank_db):
     weekly.reset_attempts()
     server = KitchenServer(
         ("127.0.0.1", 0),
-        tmp_path / "store.sqlite",
+        blank_db,
         origins=("http://kitchen.example",),
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -132,8 +132,8 @@ def _wait_stored(conn, week, timeout=2.0):
     raise AssertionError("week pick was not stored")
 
 
-def test_weekly_pick_setting_defaults_off_and_round_trips(tmp_path):
-    server = _kitchen(tmp_path)
+def test_weekly_pick_setting_defaults_off_and_round_trips(blank_db):
+    server = _kitchen(blank_db)
     client = Client(server.server_address[1])
     try:
         status, body = client.request("GET", "/api/plugins")
@@ -165,12 +165,10 @@ def test_weekly_pick_setting_defaults_off_and_round_trips(tmp_path):
         server.server_close()
 
 
-def test_run_weekly_pick_stores_quote_and_plates(tmp_path):
+def test_run_weekly_pick_stores_quote_and_plates(blank_db, tmp_path):
     weekly.reset_attempts()
-    db = tmp_path / "store.sqlite"
     data_dir = tmp_path
-    conn = connect(db)
-    apply(conn)
+    conn = connect(blank_db)
     _enable_pick(conn)
     fake = FakePick([_valid_payload()])
     result = weekly.run_weekly_pick(
@@ -190,11 +188,9 @@ def test_run_weekly_pick_stores_quote_and_plates(tmp_path):
     conn.close()
 
 
-def test_run_weekly_pick_skips_week_already_set(tmp_path):
+def test_run_weekly_pick_skips_week_already_set(blank_db, tmp_path):
     weekly.reset_attempts()
-    db = tmp_path / "store.sqlite"
-    conn = connect(db)
-    apply(conn)
+    conn = connect(blank_db)
     _enable_pick(conn)
     printing.store_week_quote(conn, SAT, "Déjà choisi.")
     printing.store_week_plates(conn, SAT, _plates())
@@ -214,12 +210,10 @@ def test_run_weekly_pick_skips_week_already_set(tmp_path):
     conn.close()
 
 
-def test_run_weekly_pick_fills_only_the_missing_quote(tmp_path):
+def test_run_weekly_pick_fills_only_the_missing_quote(blank_db, tmp_path):
     # Imported weeks often carry plates already; the pick still writes the quote.
     weekly.reset_attempts()
-    db = tmp_path / "store.sqlite"
-    conn = connect(db)
-    apply(conn)
+    conn = connect(blank_db)
     _enable_pick(conn)
     kept = dict(_plates())
     printing.store_week_plates(conn, SAT, kept)
@@ -234,11 +228,9 @@ def test_run_weekly_pick_fills_only_the_missing_quote(tmp_path):
     conn.close()
 
 
-def test_run_weekly_pick_bad_response_leaves_fallbacks(tmp_path):
+def test_run_weekly_pick_bad_response_leaves_fallbacks(blank_db, tmp_path):
     weekly.reset_attempts()
-    db = tmp_path / "store.sqlite"
-    conn = connect(db)
-    apply(conn)
+    conn = connect(blank_db)
     _enable_pick(conn)
     fake = FakePick(["not-json{"])
     try:
@@ -259,8 +251,8 @@ def test_run_weekly_pick_bad_response_leaves_fallbacks(tmp_path):
     conn.close()
 
 
-def test_trigger_respects_toggle_and_runs_once(tmp_path):
-    server = _kitchen(tmp_path)
+def test_trigger_respects_toggle_and_runs_once(blank_db):
+    server = _kitchen(blank_db)
     client = Client(server.server_address[1])
     fake = FakePick([_valid_payload(), _valid_payload(quote="Second call")])
     server.chat_options = {"weekly_pick_completer": fake}
@@ -278,7 +270,7 @@ def test_trigger_respects_toggle_and_runs_once(tmp_path):
 
         status, _ = client.request("GET", "/api/session")
         assert status == 200
-        time.sleep(0.15)
+        time.sleep(0.05)
         assert fake.calls == 0
 
         conn = connect(server.db_path)
@@ -299,7 +291,7 @@ def test_trigger_respects_toggle_and_runs_once(tmp_path):
         assert status == 200
         status, _ = client.request("GET", f"/api/plans/{SAT}")
         assert status == 200
-        time.sleep(0.2)
+        time.sleep(0.05)
         assert fake.calls == 1
     finally:
         weekly.core_settings.today = real_today
@@ -307,8 +299,8 @@ def test_trigger_respects_toggle_and_runs_once(tmp_path):
         server.server_close()
 
 
-def test_trigger_skips_other_week_plan(tmp_path):
-    server = _kitchen(tmp_path)
+def test_trigger_skips_other_week_plan(blank_db):
+    server = _kitchen(blank_db)
     client = Client(server.server_address[1])
     fake = FakePick([_valid_payload()])
     server.chat_options = {"weekly_pick_completer": fake}
@@ -321,7 +313,7 @@ def test_trigger_skips_other_week_plan(tmp_path):
         next_week = "2026-10-24"
         status, _ = client.request("GET", f"/api/plans/{next_week}")
         assert status == 200
-        time.sleep(0.15)
+        time.sleep(0.05)
         assert fake.calls == 0
     finally:
         weekly.core_settings.today = real_today
@@ -329,11 +321,9 @@ def test_trigger_skips_other_week_plan(tmp_path):
         server.server_close()
 
 
-def test_accept_plates_rejects_last_week_repeat_in_pick(tmp_path):
+def test_accept_plates_rejects_last_week_repeat_in_pick(blank_db, tmp_path):
     weekly.reset_attempts()
-    db = tmp_path / "store.sqlite"
-    conn = connect(db)
-    apply(conn)
+    conn = connect(blank_db)
     _enable_pick(conn)
     last = _plates()
     printing.store_week_plates(conn, PREV, last)

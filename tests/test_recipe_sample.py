@@ -3,35 +3,30 @@
 from __future__ import annotations
 
 from festin import recipes as recipes_mod
-from festin.schema import apply, connect
+from festin.schema import connect
 
 
-def _kitchen(tmp_path, n):
-    conn = connect(tmp_path / "store.sqlite")
-    apply(conn)
-    for i in range(n):
+def test_sample_page_is_distinct_random_and_category_filtered(blank_db):
+    conn = connect(blank_db)
+    for i in range(40):
         recipes_mod.create_recipe(conn, {"title": f"Dish {i:03d}", "category": "casseroles"})
-    return conn
-
-
-def test_a_sample_is_one_page_of_distinct_recipes(tmp_path):
-    conn = _kitchen(tmp_path, 40)
     page = recipes_mod.list_recipes(conn, limit=10, sample=True)
     ids = [r["id"] for r in page["recipes"]]
     assert len(ids) == 10 and len(set(ids)) == 10
     assert page["nextCursor"] is None
 
-
-def test_a_sample_is_not_the_alphabetical_first_page(tmp_path):
-    conn = _kitchen(tmp_path, 60)
+    for i in range(40, 60):
+        recipes_mod.create_recipe(conn, {"title": f"Dish {i:03d}", "category": "casseroles"})
     first = [r["id"] for r in recipes_mod.list_recipes(conn, limit=10)["recipes"]]
-    # Twenty random draws of 10 from 60 all matching the first page is effectively impossible.
-    draws = [[r["id"] for r in recipes_mod.list_recipes(conn, limit=10, sample=True)["recipes"]] for _ in range(20)]
+    draws = [
+        [r["id"] for r in recipes_mod.list_recipes(conn, limit=10, sample=True)["recipes"]]
+        for _ in range(20)
+    ]
     assert any(d != first for d in draws)
 
-
-def test_a_sample_can_come_from_some_categories_only(tmp_path):
-    conn = _kitchen(tmp_path, 10)
     recipes_mod.create_recipe(conn, {"title": "Leek soup", "category": "soups-stews"})
-    page = recipes_mod.list_recipes(conn, limit=5, sample=True, categories=["soups-stews"])
-    assert [r["title"] for r in page["recipes"]] == ["Leek soup"]
+    filtered = recipes_mod.list_recipes(
+        conn, limit=5, sample=True, categories=["soups-stews"]
+    )
+    assert [r["title"] for r in filtered["recipes"]] == ["Leek soup"]
+    conn.close()

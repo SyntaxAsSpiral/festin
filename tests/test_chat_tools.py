@@ -10,7 +10,7 @@ import pytest
 
 from festin.chat.core_tools import build_core_registry
 from festin.chat.messages import append_message, ensure_chat
-from festin.schema import WEEKDAYS, apply, connect
+from festin.schema import WEEKDAYS, connect
 
 SAT = "2026-10-17"
 
@@ -24,9 +24,8 @@ class Ctx:
 
 
 @pytest.fixture
-def kit(tmp_path):
-    conn = connect(tmp_path / "store.sqlite")
-    apply(conn)
+def kit(blank_db, tmp_path):
+    conn = connect(blank_db)
     data_dir = tmp_path / "data"
     (data_dir / "photos").mkdir(parents=True)
     ensure_chat(conn, "chat-1")

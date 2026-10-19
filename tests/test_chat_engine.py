@@ -14,7 +14,7 @@ from festin.chat.exceptions import ChatCancelled, StaleState
 from festin.chat.flights import begin_flight, clear_flights, provider_cancelled, stop_request
 from festin.chat.messages import append_message, ensure_chat, load_messages, message_count
 from festin.chat.core_tools import build_core_registry
-from festin.schema import WEEKDAYS, apply, connect
+from festin.schema import WEEKDAYS, connect
 from festin.settings import update_settings
 
 
@@ -84,12 +84,11 @@ class FakeCompleter:
 
 
 @pytest.fixture
-def db(tmp_path):
+def db(blank_db, tmp_path):
     clear_flights()
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    conn = connect(tmp_path / "store.sqlite")
-    apply(conn)
+    conn = connect(blank_db)
     update_settings(conn, model_name="test-model")
     ensure_chat(conn, "chat-1")
     yield conn, data_dir
