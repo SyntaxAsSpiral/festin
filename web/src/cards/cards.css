@@ -255,7 +255,7 @@
 }
 .nlist-cards .nitem {
   border: 1px solid var(--bb-tone-1);
-  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background: var(--bb-card) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
   background-blend-mode: multiply;
   padding: 0 12px 12px;
 }
@@ -303,7 +303,7 @@
   flex-direction: column;
   width: min(44rem, 100%);
   max-height: calc(100dvh - var(--bar-h) - var(--pad-top) - var(--pad-bottom));
-  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background: var(--bb-card) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
   background-blend-mode: multiply;
   border: 1px solid var(--bb-tone-2);
   box-shadow: 0 1px 0 var(--bb-tone-1), 0 18px 40px -24px color-mix(in srgb, var(--bb-ink) 55%, transparent);
@@ -319,7 +319,22 @@
   right: 8px;
   z-index: 2;
 }
-.card-close { background: color-mix(in srgb, var(--bb-paper) 85%, transparent); }
+/* Close is an icon in the top bar's manner: a square, the light rule, a drawn cross. */
+.card-close {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--bb-tone-2);
+  background: color-mix(in srgb, var(--bb-card) 85%, transparent);
+  color: var(--bb-tone-4);
+  cursor: pointer;
+}
+.card-close:hover { color: var(--bb-rose); border-color: var(--bb-tone-3); }
+.card-close:focus-visible { outline: 2px solid var(--bb-rose); outline-offset: 2px; }
 .card-scroll { overflow: auto; overscroll-behavior: contain; }
 .card-foot {
   display: flex;
@@ -586,22 +601,23 @@ button.danger {
 .chat-read { padding-top: 14px; }
 
 /* Note colours (Catppuccin Latte, softened into the paper) */
-[data-color='rosewater'] { --note-swatch: #dc8a78; }
-[data-color='flamingo'] { --note-swatch: #dd7878; }
-[data-color='pink'] { --note-swatch: #ea76cb; }
-[data-color='mauve'] { --note-swatch: #8839ef; }
-[data-color='red'] { --note-swatch: #d20f39; }
-[data-color='maroon'] { --note-swatch: #e64553; }
-[data-color='peach'] { --note-swatch: #fe640b; }
-[data-color='yellow'] { --note-swatch: #df8e1d; }
-[data-color='green'] { --note-swatch: #40a02b; }
-[data-color='teal'] { --note-swatch: #179299; }
-[data-color='sky'] { --note-swatch: #04a5e5; }
-[data-color='sapphire'] { --note-swatch: #209fb5; }
-[data-color='blue'] { --note-swatch: #1e66f5; }
-[data-color='lavender'] { --note-swatch: #7287fd; }
-[data-color]:not([data-color='none']) { --note-tint: color-mix(in srgb, var(--note-swatch) 9%, var(--bb-paper)); }
-.nswatch[data-color]:not([data-color='none']) { background: color-mix(in srgb, var(--note-swatch) 45%, var(--bb-paper)); }
+[data-color='rosewater'] { --note-swatch: var(--acc-rosewater); }
+[data-color='flamingo'] { --note-swatch: var(--acc-flamingo); }
+[data-color='pink'] { --note-swatch: var(--acc-pink); }
+[data-color='mauve'] { --note-swatch: var(--acc-mauve); }
+[data-color='red'] { --note-swatch: var(--acc-red); }
+[data-color='maroon'] { --note-swatch: var(--acc-maroon); }
+[data-color='peach'] { --note-swatch: var(--acc-peach); }
+[data-color='yellow'] { --note-swatch: var(--acc-yellow); }
+[data-color='green'] { --note-swatch: var(--acc-green); }
+[data-color='teal'] { --note-swatch: var(--acc-teal); }
+[data-color='sky'] { --note-swatch: var(--acc-sky); }
+[data-color='sapphire'] { --note-swatch: var(--acc-sapphire); }
+[data-color='blue'] { --note-swatch: var(--acc-blue); }
+[data-color='lavender'] { --note-swatch: var(--acc-lavender); }
+/* Note colours are the sepia-washed accents, laid thin so the paper shows through. */
+[data-color]:not([data-color='none']) { --note-tint: color-mix(in srgb, var(--note-swatch) 22%, transparent); }
+.nswatch[data-color]:not([data-color='none']) { background: color-mix(in srgb, var(--note-swatch) 60%, transparent); }
 /* The box scans: references, a quiet strip at the foot of the recipe. */
 .scans .scan-strip { display: flex; flex-wrap: wrap; gap: 8px; }
 .scans .scan-strip button { padding: 0; border: 1px solid var(--bb-tone-2); background: none; cursor: zoom-in; }
