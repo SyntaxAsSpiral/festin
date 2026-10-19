@@ -26,6 +26,19 @@
   margin: 0 0 6px auto;
   border: 1px solid var(--bb-tone-2);
 }
+.msg-file {
+  display: inline-block;
+  margin: 0 0 6px 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--bb-tone-2);
+  border-radius: var(--btn-radius, 4px);
+  color: var(--bb-tone-5);
+  text-decoration: none;
+  font-size: 0.9em;
+  font-style: normal;
+}
+.msg-you .msg-file { margin-left: 0; margin-right: 0; }
+a.msg-file:hover { border-color: var(--bb-rose); color: var(--bb-rose); }
 .cbk {
   color: var(--bb-rose);
   font-variant: small-caps;
@@ -100,13 +113,35 @@
   list-style: none;
   margin: 0 0 6px;
   padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   font-size: 0.9em;
   color: var(--bb-tone-5);
+}
+.attachments li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+}
+.attachments .att-photo img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border: 1px solid var(--bb-tone-2);
+}
+.attachments .att-chip {
+  padding: 2px 8px;
+  border: 1px solid var(--bb-tone-2);
+  border-radius: var(--btn-radius, 4px);
 }
 .attachments button {
   border: none;
   background: none;
   padding: 0 4px;
+  cursor: pointer;
+  color: var(--bb-tone-5);
 }
 .markdown-body > :first-child { margin-top: 0; }
 .markdown-body p,

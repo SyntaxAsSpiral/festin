@@ -7,6 +7,7 @@ import sqlite3
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+from festin.chat.files import model_file_block
 from festin.chat.persona import persona
 from festin.chat.photos import model_image_parts
 from festin.settings import get_settings, today as household_today, week_start_for
@@ -243,16 +244,23 @@ def model_message(message: dict, data_dir: Path, image_support) -> dict:
         record = actions_record(message.get("trace"))
         if record:
             result["content"] = (message["content"] or "") + record
+    text = result["content"] or ""
+    files = message.get("files") or []
+    if isinstance(files, list) and files and data_dir is not None:
+        blocks = []
+        for item in files:
+            if isinstance(item, dict):
+                blocks.append(model_file_block(item, data_dir))
+        if blocks:
+            text = text + "\n\n" + "\n\n".join(blocks)
     photos = message.get("photos") or []
-    if photos and image_support is not False:
-        result["content"] = model_image_parts(message["content"], photos, data_dir)
+    if photos and image_support is not False and data_dir is not None:
+        result["content"] = model_image_parts(text, photos, data_dir)
     elif photos:
         # Text-only path still names the references.
-        result["content"] = (
-            message["content"]
-            + "\n\nPhoto references: "
-            + ", ".join(photos)
-        )
+        result["content"] = text + "\n\nPhoto references: " + ", ".join(photos)
+    else:
+        result["content"] = text
     return result
 
 
