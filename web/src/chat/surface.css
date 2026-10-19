@@ -180,3 +180,14 @@
   cursor: ew-resize;
   touch-action: none;
 }
+
+.surface-model-link {
+  all: unset;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.surface-model-link:hover { color: var(--bb-rose); text-decoration: underline dotted; text-underline-offset: 3px; }
+.surface-model-link:focus-visible { outline: 1px dashed var(--bb-rose); outline-offset: 2px; }

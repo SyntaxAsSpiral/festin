@@ -54,6 +54,25 @@ function FullscreenButton() {
   )
 }
 
+// The model's name in Babette's header opens the model settings.
+function ModelLink({ text }) {
+  const openSettings = useOpenSettings()
+  if (!text) return null
+  return (
+    <button
+      type="button"
+      className="surface-model-link"
+      title="Model settings"
+      onClick={(event) => {
+        event.stopPropagation()
+        openSettings('model')
+      }}
+    >
+      {text}
+    </button>
+  )
+}
+
 function Gear() {
   const openSettings = useOpenSettings()
   const settingsOpen = useSettingsOpen()
@@ -204,7 +223,7 @@ function ShellFrame({ boot }) {
           </LookingContext.Provider>
         </div>
       </div>
-      <Surface peekLine={peekLine(chat)} lookingAt={card?.title || LOOK[tab?.id] || 'the kitchen'} header={chatHeader(chat)}>
+      <Surface peekLine={peekLine(chat)} lookingAt={card?.title || LOOK[tab?.id] || 'the kitchen'} header={chatHeader(chat) ? <ModelLink text={chatHeader(chat)} /> : null}>
         <ChatPanel chat={chat} />
       </Surface>
       <SettingsSidebar />
