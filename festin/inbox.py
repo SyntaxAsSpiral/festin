@@ -306,7 +306,7 @@ class InboxHandler(BaseHTTPRequestHandler):
         try:
             with self._db() as conn:
                 settings = core_settings.get_settings(conn)
-                if not settings.get("inbox_enabled", True):
+                if not settings.get("inbox_enabled", False):
                     self._discard_body()
                     return self._send(503, {"error": "Incoming recipes are off."})
                 stored_hash = settings.get("inbox_key_hash") or ""

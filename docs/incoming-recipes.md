@@ -58,7 +58,7 @@ curl). Auth compares the bearer with a constant-time digest of that hash.
 
 ## Toggle
 
-Incoming recipes defaults to on. Off closes the listener. On binds it again.
+Incoming recipes starts off. Turning it on binds the listener; off closes it again.
 The listener always uses the kitchen's bind host; nothing is public until the
 host exposes the port.
 

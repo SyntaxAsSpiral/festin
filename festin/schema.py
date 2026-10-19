@@ -333,7 +333,7 @@ def _version_11(conn: sqlite3.Connection) -> None:
     """Incoming-recipes inbox: on/off toggle and sha256 of the bearer key."""
     conn.executescript(
         """
-        ALTER TABLE settings ADD COLUMN inbox_enabled INTEGER NOT NULL DEFAULT 1
+        ALTER TABLE settings ADD COLUMN inbox_enabled INTEGER NOT NULL DEFAULT 0
             CHECK (inbox_enabled IN (0, 1));
         ALTER TABLE settings ADD COLUMN inbox_key_hash TEXT NOT NULL DEFAULT '';
         """

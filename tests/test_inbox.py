@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import sqlite3
 import socket
 from http.client import HTTPConnection
 
@@ -35,7 +36,11 @@ def _inbox_server(migrated_template, tmp_path_factory):
 def kitchen(_inbox_server):
     server, db, template = _inbox_server
     reset_db_file(db, template)
-    # Inbox listener follows settings; ensure it is up after a blank reset.
+    # A fresh kitchen starts with the inbox off; these tests turn it on.
+    status, body = KitchenClient(server.server_address[1]).request(
+        "POST", "/api/settings", {"inboxEnabled": True}
+    )
+    assert status == 200 and body["inbox"]["enabled"] is True
     if server.inbox_bound_port() is None:
         server.start_inbox()
     yield server
@@ -259,6 +264,16 @@ def test_provenance_needs_review_and_log(kitchen):
     assert row["detail"] == "from grok-scout"
 
 
+def test_fresh_kitchen_starts_with_inbox_off(tmp_path, migrated_template):
+    db = tmp_path / "fresh.sqlite"
+    shutil.copy2(migrated_template, db)
+    conn = sqlite3.connect(db)
+    try:
+        assert conn.execute("SELECT inbox_enabled FROM settings").fetchone()[0] == 0
+    finally:
+        conn.close()
+
+
 def test_toggle_off_closes_listener(kitchen):
     key = _mint(kitchen)
     port = kitchen.inbox_bound_port()
@@ -320,7 +335,17 @@ def test_hash_key_constant_compare():
     assert not inbox_mod.key_matches("", digest)
 
 
+def _inbox_on(db) -> None:
+    conn = sqlite3.connect(db)
+    try:
+        conn.execute("UPDATE settings SET inbox_enabled = 1")
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def test_public_inbox_url_is_shown_to_settings_and_agents(blank_db):
+    _inbox_on(blank_db)
     server = KitchenServer(
         ("127.0.0.1", 0),
         blank_db,
@@ -335,6 +360,7 @@ def test_public_inbox_url_is_shown_to_settings_and_agents(blank_db):
 
 
 def test_plain_instructions_show_the_public_address(blank_db):
+    _inbox_on(blank_db)
     server = KitchenServer(
         ("127.0.0.1", 0), blank_db, inbox_port=0, inbox_url="https://kitchen.example.net:8443"
     )

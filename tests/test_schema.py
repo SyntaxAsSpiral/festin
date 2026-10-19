@@ -51,7 +51,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     inbox = conn.execute(
         "SELECT inbox_enabled, inbox_key_hash FROM settings WHERE id = 1"
     ).fetchone()
-    assert inbox["inbox_enabled"] == 1
+    assert inbox["inbox_enabled"] == 0
     assert inbox["inbox_key_hash"] == ""
     assert conn.execute("SELECT table_name FROM settings").fetchone()[0] == "Babette's Table"
     weather = conn.execute(

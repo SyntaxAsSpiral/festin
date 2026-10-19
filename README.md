@@ -10,7 +10,7 @@ Festin is a rebuild of a kitchen app that has been cooking every night for a whi
 - **Recipes.** The recipe box, searchable, with each card's ingredients, method, notes, photos from the kitchen and scans of the original card. Every card says where it came from.
 - **Notes.** Short notes on the kitchen, mostly for Babette to keep: what's running low, what to try, what someone said about Tuesday's soup.
 - **Babette.** A chat with a model of your choosing (any OpenAI-compatible endpoint, OpenRouter by default). She can read and edit the recipe box, plan the week, keep notes, and search the Log and past conversations.
-- **Incoming recipes.** An optional second listener where outside agents may post recipes for review. They can add, never edit. See [docs/incoming-recipes.md](docs/incoming-recipes.md).
+- **Incoming recipes.** An optional second listener, off until you switch it on, where outside agents may post recipes for review. They can add, never edit. See [docs/incoming-recipes.md](docs/incoming-recipes.md).
 
 ### Plugins
 
@@ -53,4 +53,4 @@ npm run build               # must pass
 
 ## Licence
 
-Not chosen yet. Until one is, the code and art are all rights reserved.
+[MIT](LICENSE).
