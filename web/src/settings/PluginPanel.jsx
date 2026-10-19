@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { toastForPrintResult } from '../meals/printToast.js'
+import { CloudAgents } from './CloudAgents.jsx'
 import { callPluginAction, putPlugin } from './api.js'
 import { draftFromPlugin, fieldsFromSchema, pluginIcon, pluginSaveBody, pluginTestAction } from './plugins.js'
 
@@ -24,7 +25,10 @@ export function PluginPanel({ plugin, onUpdated }) {
     enabledRef.current = next.enabled
   }, [plugin])
 
-  const fields = fieldsFromSchema(plugin.schema)
+  const fields =
+    plugin.id === 'outbound'
+      ? []
+      : fieldsFromSchema(plugin.schema).filter((field) => field.key !== 'defaultAgent')
   const testAction = pluginTestAction(plugin)
 
   async function save(partial) {
@@ -78,6 +82,9 @@ export function PluginPanel({ plugin, onUpdated }) {
           <h3 id={'sh-' + plugin.id}>{plugin.name || plugin.id}</h3>
           {plugin.id === 'printer' && (
             <p className="fine">Prints the weekly slip, recipe cards and shopping lists on a receipt printer.</p>
+          )}
+          {plugin.id === 'outbound' && (
+            <p className="fine">Send a notebook list to a named webhook when the cook asks.</p>
           )}
         </div>
         <label className="pltg">
@@ -201,7 +208,18 @@ export function PluginPanel({ plugin, onUpdated }) {
             </button>
           </div>
         )}
-        {plugin.id !== 'printer' && note && (
+        {plugin.id === 'outbound' && (
+          <CloudAgents
+            plugin={plugin}
+            enabled={enabled}
+            busy={busy}
+            setBusy={setBusy}
+            onUpdated={onUpdated}
+            note={note}
+            setNote={setNote}
+          />
+        )}
+        {plugin.id !== 'printer' && plugin.id !== 'outbound' && note && (
           <p className={'fine' + (note !== 'Saved.' ? ' mo' : '')} role="status">
             {note}
           </p>

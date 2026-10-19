@@ -14,9 +14,10 @@ from urllib.parse import urlparse
 from festin.chat.core_tools import register_core_tools
 from festin.chat.registry import ToolRegistry
 from festin.errors import NotFound
+from festin.plugins.outbound.plugin import PLUGIN as OUTBOUND
 from festin.plugins.printer.plugin import PLUGIN as PRINTER
 
-PLUGINS = (PRINTER,)
+PLUGINS = (PRINTER, OUTBOUND)
 _BY_ID = {plugin.id: plugin for plugin in PLUGINS}
 
 
@@ -185,6 +186,10 @@ def _clean_setting(field: dict, value):
         if type(value) is not bool:
             raise ValueError(field["key"] + " must be true or false")
         return value
+    if field["type"] == "agents":
+        from festin.plugins.outbound.webhooks import clean_destinations
+
+        return clean_destinations(value)
     if field["type"] == "string":
         if not isinstance(value, str):
             raise ValueError(field["key"] + " must be text")
@@ -194,6 +199,8 @@ def _clean_setting(field: dict, value):
             if len(value) > 500:
                 raise ValueError(field["key"] + " is too long")
             return value
+        if field["key"] == "defaultAgent" and len(value) > 80:
+            raise ValueError("defaultAgent is too long")
         if "enum" in field and value not in field["enum"]:
             if field["key"] == "band":
                 raise ValueError("Unknown band art: " + value)
