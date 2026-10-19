@@ -372,15 +372,39 @@ button.danger { color: var(--bb-rose); }
   width: min(42%, 220px);
   margin: 26px 0 12px 22px;
 }
-.from-box button { display: block; padding: 0; border: 1px solid var(--bb-tone-2); background: none; cursor: zoom-in; }
+.from-box .cooked-photo-open {
+  display: block;
+  padding: 0;
+  border: 1px solid var(--bb-tone-2);
+  background: none;
+  cursor: zoom-in;
+}
 .from-box img { display: block; width: 100%; height: auto; transform: rotate(-1.2deg); }
 .from-box figcaption { margin-top: 6px; font-style: italic; font-size: 13.5px; color: var(--bb-tone-4); text-align: center; }
+.from-box .photo-remove { margin-top: 6px; width: 100%; }
 @media (max-width: 560px) {
   .from-box { float: none; width: 100%; margin: 18px 0 0; }
   .from-box img { transform: none; }
 }
-.cooked-photos { display: flex; gap: 8px; margin-top: 16px; overflow-x: auto; }
+.cooked-photos { display: flex; gap: 10px; margin-top: 16px; overflow-x: auto; align-items: flex-start; }
+.cooked-photo { margin: 0; flex: none; }
+.cooked-photo .cooked-photo-open {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
 .cooked-photos img { height: 120px; border: 1px solid var(--bb-tone-1); }
+.photo-remove {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--bb-tone-2);
+  color: var(--bb-tone-4);
+}
 .kitchen p { margin: 0 0 10px; max-width: 34em; }
 .babble { margin-top: 22px; color: var(--bb-sepia); }
 .babble h2 small { margin-left: 8px; font-size: 12px; font-style: italic; letter-spacing: 0; text-transform: none; color: var(--bb-tone-4); }
@@ -498,4 +522,4 @@ button.danger { color: var(--bb-rose); }
 .scans .scan-strip { display: flex; flex-wrap: wrap; gap: 8px; }
 .scans .scan-strip button { padding: 0; border: 1px solid var(--bb-tone-2); background: none; cursor: zoom-in; }
 .scans .scan-strip img { display: block; height: 140px; width: auto; }
-.cooked-photos button { padding: 0; border: 0; background: none; cursor: zoom-in; }
+
