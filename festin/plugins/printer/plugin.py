@@ -11,7 +11,7 @@ _PREPARE = (
     "Prepare a PNG preview of a dinner plan, catalog recipe, praxis card, or note. "
     "Does not print. Returns rendered_text for content checks with text-only models. "
     "For recipes and praxis, pass recipe_id; kind=recipe is inferred if omitted. "
-    "Recipe and note band art follows Settings: Babette's choice uses the card category "
+    "Recipe and note band art follows Settings: Babette's pick uses the card category "
     "(and note band rules); a named band uses that band for every recipe and note slip. "
     "Dinner slips keep their own weekly plates either way. For plans pass kind=plan and "
     "week_start; matching draft takes precedence over saved plan. When the week has no "
@@ -59,7 +59,7 @@ class PrinterPlugin:
                 "default": printing.BABETTE_BAND,
                 "label": "Band art",
                 "help": (
-                    "Babette's choice picks recipe bands by category and note bands from "
+                    "Babette's pick chooses recipe bands by category and note bands from "
                     "the note or this week's pantry plate. A named band uses that art on "
                     "every recipe and note slip. Dinner slips keep their own weekly plates "
                     "either way."
@@ -68,7 +68,7 @@ class PrinterPlugin:
                 "choices": [
                     {
                         "id": printing.BABETTE_BAND,
-                        "description": "Babette's choice",
+                        "description": "Babette's pick",
                     },
                     *[
                         {

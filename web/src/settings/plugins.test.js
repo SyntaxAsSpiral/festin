@@ -22,7 +22,7 @@ const printerSchema = [
     help: "Dinner slips keep their own weekly plates either way.",
     enum: ['babette', 'scroll', 'rose'],
     choices: [
-      { id: 'babette', description: "Babette's choice" },
+      { id: 'babette', description: "Babette's pick" },
       { id: 'scroll', file: 'scroll.png', description: 'A quiet scroll' },
       { id: 'rose', file: 'rose.png', description: 'A small rose' },
     ],
@@ -41,7 +41,7 @@ describe('plugin schema mapping', () => {
       help: "Dinner slips keep their own weekly plates either way.",
       default: 'babette',
       options: [
-        { value: 'babette', label: "Babette's choice" },
+        { value: 'babette', label: "Babette's pick" },
         { value: 'scroll', label: 'A quiet scroll' },
         { value: 'rose', label: 'A small rose' },
       ],

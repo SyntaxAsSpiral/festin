@@ -1,4 +1,4 @@
-"""Babette's choice band setting and weekly slip plate picks (festin-3d6.25)."""
+"""Babette's pick band setting and weekly slip plate picks (festin-3d6.25)."""
 
 from __future__ import annotations
 

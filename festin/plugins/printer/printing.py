@@ -116,7 +116,7 @@ BABETTE_BAND = "babette"
 
 
 def fixed_band(settings=None):
-    """Named band for every recipe and note slip, or None for Babette's choice (dynamic)."""
+    """Named band for every recipe and note slip, or None for Babette's pick (dynamic)."""
     chosen = (settings or {}).get("band")
     if chosen in (None, "", BABETTE_BAND):
         return None
