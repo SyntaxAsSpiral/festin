@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { prefersReducedMotion } from '../useReducedMotion.js'
+import { ensureSeepStyles } from './ink/seep.js'
 import { readWritingSpeed } from './ink/speed.js'
 import { newId } from '../secure.js'
 import { loadKitchenChat, newChat, sendChat, stopChat } from './stream.js'
@@ -37,6 +38,12 @@ export function useChat(context = null) {
   // The context at the moment of sending, not at render: read through a ref.
   const looking = useRef(context)
   looking.current = context
+
+  // The seep masks and keyframes exist before the first reply, so trace steps
+  // that arrive while Babette thinks seep in as they land, not all at once later.
+  useEffect(() => {
+    void ensureSeepStyles()
+  }, [])
 
   useEffect(() => {
     let gone = false

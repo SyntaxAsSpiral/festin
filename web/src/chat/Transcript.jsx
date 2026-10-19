@@ -44,22 +44,29 @@ function toolBody(step) {
   return ''
 }
 
+// Trace steps under a reply. Thinking starts collapsed; while the reply is live,
+// tool steps are open and each new step seeps onto the page as a whole (the
+// letters' seep masks, larger pools), so traces arrive softly instead of popping.
 function Trace({ steps, open }) {
-  return (steps || []).map((step, i) => (
-    <details key={i} className="chat-trace" open={open || undefined}>
-      {step.kind === 'thinking' ? (
-        <>
-          <summary>Thinking</summary>
-          <div className="trace-thinking">{step.text || ''}</div>
-        </>
-      ) : (
-        <>
-          <summary>{toolSummary(step)}</summary>
-          {toolBody(step) && <div className="trace-tool">{toolBody(step)}</div>}
-        </>
-      )}
-    </details>
-  ))
+  return (steps || []).map((step, i) => {
+    const thinking = step.kind === 'thinking'
+    const seep = open ? { '--mx': `${(i * 37) % 100}%`, '--my': `${(i * 61) % 100}%` } : undefined
+    return (
+      <details key={i} className={'chat-trace' + (open ? ' seep-in' : '')} style={seep} open={(open && !thinking) || undefined}>
+        {thinking ? (
+          <>
+            <summary>Thinking</summary>
+            <div className="trace-thinking">{step.text || ''}</div>
+          </>
+        ) : (
+          <>
+            <summary>{toolSummary(step)}</summary>
+            {toolBody(step) && <div className="trace-tool">{toolBody(step)}</div>}
+          </>
+        )}
+      </details>
+    )
+  })
 }
 
 function Markdown({ text }) {
@@ -115,12 +122,19 @@ export function Transcript({ messages, turn }) {
           <Message key={m.submission_id || i} message={m} />
         ))}
       {live && turn.sent && !stored && <Message message={{ role: 'user', content: turn.sent.text }} />}
-      {turn.phase === 'thinking' && <p className="progress">{traceLine(turn.trace) || 'Babette is reading…'}</p>}
-      {(turn.phase === 'revealing' || turn.phase === 'settled') && (
+      {/* One live reply from the first moment: trace steps seep in as they arrive
+          while Babette thinks, then the text takes over the body. */}
+      {(turn.phase === 'thinking' || turn.phase === 'revealing' || turn.phase === 'settled') && (
         <Message
           message={{ role: 'assistant', content: '', trace: turn.trace }}
           live
-          body={<InkReply text={turn.text} shown={shownCount} plain={reduced} />}
+          body={
+            turn.phase === 'thinking' ? (
+              <p className="progress">{traceLine(turn.trace) || 'Babette is reading…'}</p>
+            ) : (
+              <InkReply text={turn.text} shown={shownCount} plain={reduced} />
+            )
+          }
         />
       )}
       <div ref={end} />

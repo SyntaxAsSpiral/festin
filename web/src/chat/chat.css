@@ -116,3 +116,27 @@
   color: var(--bb-rose);
   font-style: italic;
 }
+
+/* A trace step in the live reply seeps in as a whole: the letters' seep masks
+   (keyframes from ink/seep.js) with larger pools, no typing. */
+.chat-trace.seep-in {
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  -webkit-mask-size: 9em 9em;
+  mask-size: 9em 9em;
+  -webkit-mask-position: var(--mx) var(--my);
+  mask-position: var(--mx) var(--my);
+  animation: ink-seep 700ms linear both;
+}
+.app[data-motion='off'] .chat-trace.seep-in {
+  animation: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-trace.seep-in {
+    animation: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
