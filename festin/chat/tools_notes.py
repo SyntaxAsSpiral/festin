@@ -1,4 +1,4 @@
-"""Note tools over the SQLite notes table (journal, preference, context lanes)."""
+"""Note tools over the SQLite notes table (journal and preference notes)."""
 
 from __future__ import annotations
 
@@ -10,12 +10,13 @@ from typing import Any
 from festin import log as kitchen_log
 from festin.chat.schemas import (
     CONTEXT_LANES,
-    CONTEXT_LIMITS,
     NOTE_COLOR_CHOICES,
     OPEN_NOTE_CAP,
 )
 from festin.chat.tools_recipes import ctx_get, ctx_today, stamp_now
 from festin.schema import NOTE_COLORS, PRIORITIES
+
+_CONTEXT_IDS = frozenset(f"context-{lane}" for lane in CONTEXT_LANES)
 
 
 def _clean_kind(value) -> str:
@@ -80,95 +81,20 @@ def note_for_model(row, today: date) -> dict:
         note["band"] = row["band"]
     if row["id"]:
         note["id"] = row["id"]
-    if kind in CONTEXT_LANES:
-        note["context"] = kind
     return note
 
 
 def all_notes(conn, today: date | None = None) -> list[dict]:
     today = today or date.today()
     rows = conn.execute("SELECT * FROM notes").fetchall()
-    # Context lanes first in a stable order, then the rest.
-    by_id = {row["id"]: row for row in rows}
-    notes = []
-    for lane in CONTEXT_LANES:
-        row = by_id.get(f"context-{lane}")
-        if row is None:
-            notes.append(
-                note_for_model(
-                    {
-                        "id": f"context-{lane}",
-                        "kind": lane,
-                        "text": "",
-                        "color": "none",
-                        "priority": None,
-                        "open": 0,
-                        "written_on": None,
-                        "updated_on": None,
-                        "band": None,
-                    },
-                    today,
-                )
-            )
-        else:
-            notes.append(note_for_model(row, today))
-    for row in rows:
-        if row["id"] in {f"context-{lane}" for lane in CONTEXT_LANES}:
-            continue
-        notes.append(note_for_model(row, today))
-    return notes
-
-
-def _context_text(conn, lane: str) -> str:
-    row = conn.execute("SELECT text FROM notes WHERE id = ?", (f"context-{lane}",)).fetchone()
-    return row["text"] if row else ""
-
-
-def save_context(args: dict, ctx: Any) -> dict:
-    name = args.get("context")
-    if name not in CONTEXT_LANES:
-        raise ValueError("Choose household, preferences, or restrictions.")
-    text = str(args.get("text") or "").strip()
-    conn = ctx_get(ctx, "conn")
-    cards = {lane: _context_text(conn, lane) for lane in CONTEXT_LANES}
-    if name == "restrictions" and args.get("append"):
-        current = cards.get(name, "")
-        if text and text.casefold() not in current.casefold():
-            text = (current + ("\n" if current else "") + text).strip()
-        else:
-            text = current
-    elif "original" in args and cards.get(name, "") != args["original"]:
-        raise ValueError("That card changed. Refresh before editing it.")
-    if len(text) > CONTEXT_LIMITS[name]:
-        raise ValueError(f"The {name} section holds at most {CONTEXT_LIMITS[name]:,} characters.")
-    cards[name] = text
-    note_id = f"context-{name}"
-    stamp = stamp_now(ctx)
-    existing = conn.execute("SELECT id FROM notes WHERE id = ?", (note_id,)).fetchone()
-    if existing:
-        conn.execute(
-            """
-            UPDATE notes SET text = ?, updated_on = ?, updated_at = ?
-            WHERE id = ?
-            """,
-            (text, ctx_today(ctx).isoformat(), stamp, note_id),
-        )
-    else:
-        conn.execute(
-            """
-            INSERT INTO notes (
-                id, kind, text, color, priority, open, written_on, updated_on, band, updated_at
-            ) VALUES (?, ?, ?, 'none', NULL, 0, NULL, NULL, NULL, ?)
-            """,
-            (note_id, name, text, stamp),
-        )
-    conn.commit()
-    return {"context": cards}
+    return [
+        note_for_model(row, today)
+        for row in rows
+        if row["id"] not in _CONTEXT_IDS and row["kind"] not in CONTEXT_LANES
+    ]
 
 
 def keep_note(args: dict, ctx: Any) -> dict:
-    if args.get("context") in CONTEXT_LANES:
-        return {"saved": save_context(args, ctx)}
     text = str(args.get("text") or "").strip()
     if not text or len(text) > 16000:
         raise ValueError("Write a note under 16,000 characters.")
@@ -238,15 +164,6 @@ def keep_note(args: dict, ctx: Any) -> dict:
 
 
 def edit_note(args: dict, ctx: Any, *, delete: bool = False) -> dict:
-    if args.get("context") in CONTEXT_LANES:
-        if delete:
-            raise ValueError("Context sections are cleared by editing them to empty text.")
-        save_context(args, ctx)
-        return {
-            "status": "saved",
-            "kind": args.get("context"),
-            "message": "Notebook entry updated.",
-        }
     kind = args.get("kind") or args.get("type")
     old_text = args["original"]
     if not isinstance(old_text, str) or (not delete and not isinstance(args.get("text"), str)):
@@ -432,7 +349,6 @@ def analyze_notes(args: dict, ctx: Any) -> dict:
                 for label in {note["type"] for note in notes if note["type"] != "preference"}
             },
         },
-        "context": {name: _context_text(conn, name) for name in CONTEXT_LANES},
         "pressing": [clip(note) for note in pressing[:16]],
         "stale_open": [clip(note) for note in pressing if (note.get("days_since_update") or 0) >= 14][:8],
         "recent": [clip(note) for note in recent],

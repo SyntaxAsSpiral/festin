@@ -336,7 +336,11 @@ def _derived_note_entries(conn: sqlite3.Connection) -> list[dict]:
     }
     items = []
     for row in conn.execute(
-        "SELECT id, kind, text, written_on, updated_at FROM notes"
+        """
+        SELECT id, kind, text, written_on, updated_at FROM notes
+        WHERE id NOT IN ('context-household', 'context-preferences', 'context-restrictions')
+          AND kind NOT IN ('household', 'preferences', 'restrictions')
+        """
     ).fetchall():
         if row["id"] in recorded:
             continue

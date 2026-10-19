@@ -12,13 +12,14 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert SCHEMA_VERSION == 12
+    assert SCHEMA_VERSION == 13
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "sessions" in tables
     assert "kitchen_log_events" in tables
     assert "plugin_settings" in tables
     assert "slips" in tables
+    assert "household_context" in tables
     recipe_columns = {row["name"] for row in conn.execute("PRAGMA table_info(recipes)")}
     assert "favourite" in recipe_columns
     week_columns = {row["name"] for row in conn.execute("PRAGMA table_info(weeks)")}
@@ -243,4 +244,57 @@ def test_v10_moves_slip_title_into_slip_quote(tmp_path):
         "SELECT slip_title, slip_quote FROM weeks WHERE start_date = '2026-10-24'"
     ).fetchone()
     assert (default["slip_title"], default["slip_quote"]) == ("", "")
+    conn.close()
+
+
+def test_v13_moves_context_notes_into_household_context(tmp_path):
+    conn = connect(tmp_path / "store.sqlite")
+    for step in MIGRATIONS[:12]:
+        step(conn)
+    conn.execute("PRAGMA user_version = 12")
+    stamp = "2026-10-19T12:00:00.000000Z"
+    conn.execute(
+        """
+        INSERT INTO notes (
+            id, kind, text, color, priority, open, written_on, updated_on, band, updated_at
+        ) VALUES
+            ('context-household', 'household', 'Three at the table.', 'none', NULL, 0, NULL, NULL, NULL, ?),
+            ('context-preferences', 'preferences', 'Likes soup.', 'none', NULL, 0, NULL, NULL, NULL, NULL),
+            ('context-restrictions', 'restrictions', 'No shellfish.', 'none', NULL, 0, NULL, NULL, NULL, NULL),
+            ('note-1', 'shopping', 'cream', 'green', NULL, 1, '2026-10-18', NULL, NULL, ?)
+        """,
+        (stamp, stamp),
+    )
+    conn.execute(
+        """
+        INSERT INTO kitchen_log_events (kind, at, ref_id, title, detail, extra_json)
+        VALUES ('note_created', ?, 'context-household', 'Three at the table.', 'household', '{}')
+        """,
+        (stamp,),
+    )
+    conn.commit()
+
+    apply(conn)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+    rows = {
+        row["section"]: row
+        for row in conn.execute("SELECT section, text, updated_at FROM household_context")
+    }
+    assert rows["household"]["text"] == "Three at the table."
+    assert rows["household"]["updated_at"] == stamp
+    assert rows["preferences"]["text"] == "Likes soup."
+    assert rows["restrictions"]["text"] == "No shellfish."
+    assert (
+        conn.execute(
+            "SELECT count(*) FROM notes WHERE id LIKE 'context-%'"
+        ).fetchone()[0]
+        == 0
+    )
+    assert conn.execute("SELECT count(*) FROM notes").fetchone()[0] == 1
+    assert (
+        conn.execute(
+            "SELECT count(*) FROM kitchen_log_events WHERE ref_id LIKE 'context-%'"
+        ).fetchone()[0]
+        == 0
+    )
     conn.close()

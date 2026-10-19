@@ -469,11 +469,13 @@ def _assert_live_notes(conn):
         assert row["priority"] == expected_priority
     preference = stored["755a1503-80d2-4802-aff9-b0f85f97703d"]
     assert preference["kind"] == "preference"
+    assert not any(note_id.startswith("context-") for note_id in stored)
+    context_rows = {
+        row["section"]: row
+        for row in conn.execute("SELECT section, text FROM household_context")
+    }
     for lane in ("household", "preferences", "restrictions"):
-        row = stored[f"context-{lane}"]
-        assert row["kind"] == lane
-        assert row["text"] == memory["context"][lane]
-        assert row["open"] == 0
+        assert context_rows[lane]["text"] == memory["context"][lane]
     assert stored["REQ-0001"]["kind"] == "dinner"
 
 

@@ -12,9 +12,9 @@ export const WEEK_STARTS = [
   { value: 'fri', label: 'Friday' },
 ]
 export const CONTEXT_LANES = [
-  { id: 'context-household', key: 'household', label: 'Household' },
-  { id: 'context-preferences', key: 'preferences', label: 'Preferences' },
-  { id: 'context-restrictions', key: 'restrictions', label: 'Restrictions' },
+  { key: 'household', label: 'Household' },
+  { key: 'preferences', label: 'Preferences' },
+  { key: 'restrictions', label: 'Restrictions' },
 ]
 
 const DEFAULT_TABLE = "Babette's Table"

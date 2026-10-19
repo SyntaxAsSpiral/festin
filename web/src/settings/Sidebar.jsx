@@ -263,7 +263,7 @@ export function SettingsSidebar() {
 
   async function commitLane(key) {
     const laneMeta = CONTEXT_LANES.find((item) => item.key === key)
-    const lane = lanes[key] || { id: laneMeta.id, text: '', updatedAt: null, missing: true }
+    const lane = lanes[key] || { section: laneMeta.key, text: '', updatedAt: null, missing: true }
     setBusy(true)
     const result = await saveContextLane({ ...lane, key: laneMeta.key }, editText, lane.updatedAt)
     setBusy(false)
@@ -274,7 +274,7 @@ export function SettingsSidebar() {
     setLanes((current) => ({
       ...current,
       [key]: {
-        id: result.body.id,
+        section: result.body.section || key,
         text: result.body.text,
         updatedAt: result.body.updatedAt,
         missing: false,
