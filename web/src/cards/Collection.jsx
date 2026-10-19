@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { KINDS, loadItems, matches, plateFor } from './kinds.js'
+import { CATEGORY_LABELS, KINDS, loadItems, matches, plateFor } from './kinds.js'
 import { rememberOrigin } from './origin.js'
+import {
+  DEFAULT_CHOICE,
+  applySortFilter,
+  isDefaultChoice,
+  readStoredChoice,
+  summarizeChoice,
+  writeStoredChoice,
+} from './sortfilter.js'
 
 const PAGE = 60
 const CARD_MIN = 230 // narrowest card column, px
@@ -42,13 +50,17 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
   const [failed, setFailed] = useState(false)
   const [query, setQuery] = useState('')
   const [layout, setLayout] = useState(() => storedLayout(kind))
+  const [choice, setChoice] = useState(() => (kind === 'recipes' ? readStoredChoice(kind) : { ...DEFAULT_CHOICE }))
+  const [sortOpen, setSortOpen] = useState(false)
   const [cursor, setCursor] = useState(-1)
   const [shown, setShown] = useState(PAGE)
   const search = useRef(null)
   const list = useRef(null)
+  const sortWrap = useRef(null)
   const cardColumns = useColumns(list, layout === 'cards')
   const columnCount = layout === 'cards' ? cardColumns : 1
   const more = useRef(null)
+  const canSort = kind === 'recipes'
 
   // Chats search on the server (the list row has no transcript). Recipes and notes
   // come back with their text, so the filter stays on this page.
@@ -80,15 +92,25 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
     }
   }, [kind, layout])
 
+  useEffect(() => {
+    if (!canSort) return
+    writeStoredChoice(kind, choice)
+  }, [kind, choice, canSort])
+
+  useEffect(() => {
+    setChoice(canSort ? readStoredChoice(kind) : { ...DEFAULT_CHOICE })
+    setSortOpen(false)
+  }, [kind, canSort])
+
   const results = useMemo(() => {
     if (!items) return []
-    if (kind === 'chats' || !query.trim()) return items
-    return items.filter((it) => matches(it, query))
-  }, [items, query, kind])
+    const matched = kind === 'chats' || !query.trim() ? items : items.filter((it) => matches(it, query))
+    return canSort ? applySortFilter(matched, choice) : matched
+  }, [items, query, kind, choice, canSort])
   useEffect(() => {
     setShown(PAGE)
     setCursor(-1)
-  }, [query])
+  }, [query, choice])
 
   // Render more as the end of the list scrolls into view.
   useEffect(() => {
@@ -109,6 +131,11 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
     if (cardOpen) return undefined
     function onKey(event) {
       if (event.metaKey || event.ctrlKey || event.altKey) return
+      if (sortOpen && event.key === 'Escape') {
+        event.preventDefault()
+        setSortOpen(false)
+        return
+      }
       if (event.key === '/' && !typing(event.target)) {
         event.preventDefault()
         search.current?.focus()
@@ -131,9 +158,33 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
   })
 
   useEffect(() => {
+    if (!sortOpen) return undefined
+    function onPointer(event) {
+      if (sortWrap.current && !sortWrap.current.contains(event.target)) setSortOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointer)
+    return () => document.removeEventListener('pointerdown', onPointer)
+  }, [sortOpen])
+
+  useEffect(() => {
     list.current?.querySelector('[data-cursor="true"]')?.scrollIntoView({ block: 'nearest' })
     if (cursor >= shown - 5) setShown((n) => n + PAGE)
   }, [cursor, shown])
+
+  const summary = canSort ? summarizeChoice(choice) : ''
+
+  function setSort(sort) {
+    setChoice((c) => ({ ...c, sort }))
+  }
+
+  function setCategory(category) {
+    setChoice((c) => ({ ...c, category }))
+  }
+
+  function clearChoice() {
+    setChoice({ ...DEFAULT_CHOICE })
+    setSortOpen(false)
+  }
 
   return (
     <section className={'collection collection-' + kind} aria-label={spec.searchLabel.replace('Search ', '')}>
@@ -146,25 +197,90 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
           aria-label={spec.searchLabel}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => event.key === 'Escape' && (setQuery(''), event.currentTarget.blur())}
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape') return
+            if (sortOpen) {
+              setSortOpen(false)
+              return
+            }
+            setQuery('')
+            event.currentTarget.blur()
+          }}
         />
-        {spec.canCreate && (
-          <button type="button" className="lnew" onClick={(event) => (rememberOrigin(event.currentTarget), navigate('/' + kind + '/new', { state: { fromList: true } }))}>
-            + new
-          </button>
+        {summary && (
+          <span className="lsort-sum">
+            <span>{summary}</span>
+            <button type="button" className="lsort-clear" aria-label="Clear sort and filter" title="Clear" onClick={clearChoice}>
+              ×
+            </button>
+          </span>
         )}
-        <div className="llayout" role="group" aria-label="Layout">
-          <button type="button" aria-pressed={layout === 'list'} onClick={() => setLayout('list')} title="List">
-            ☰
-          </button>
-          <button type="button" aria-pressed={layout === 'cards'} onClick={() => setLayout('cards')} title="Cards">
-            ▦
-          </button>
+        <div className="lbar-tools">
+          {spec.canCreate && (
+            <button type="button" className="lnew" onClick={(event) => (rememberOrigin(event.currentTarget), navigate('/' + kind + '/new', { state: { fromList: true } }))}>
+              + new
+            </button>
+          )}
+          {canSort && (
+            <div className="lsort" ref={sortWrap}>
+              <button
+                type="button"
+                className="lsort-btn"
+                aria-expanded={sortOpen}
+                aria-controls="lsort-panel"
+                aria-haspopup="dialog"
+                aria-pressed={!isDefaultChoice(choice)}
+                title="Sort and filter"
+                onClick={() => setSortOpen((o) => !o)}
+              >
+                ⇅
+              </button>
+              {sortOpen && (
+                <div id="lsort-panel" className="lsort-panel" role="dialog" aria-label="Sort and filter">
+                  <fieldset className="lsort-field">
+                    <legend>Sort</legend>
+                    <label className="lsort-opt">
+                      <input type="radio" name="lsort-sort" checked={choice.sort === 'name'} onChange={() => setSort('name')} />
+                      Name (A–Z)
+                    </label>
+                    <label className="lsort-opt">
+                      <input type="radio" name="lsort-sort" checked={choice.sort === 'id-newest'} onChange={() => setSort('id-newest')} />
+                      ID, newest first
+                    </label>
+                    <label className="lsort-opt">
+                      <input type="radio" name="lsort-sort" checked={choice.sort === 'id-oldest'} onChange={() => setSort('id-oldest')} />
+                      ID, oldest first
+                    </label>
+                  </fieldset>
+                  <label className="lsort-cat">
+                    <span>Category</span>
+                    <select value={choice.category} onChange={(event) => setCategory(event.target.value)} aria-label="Filter by category">
+                      <option value="">All</option>
+                      {Object.entries(CATEGORY_LABELS).map(([id, label]) => (
+                        <option key={id} value={id}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="llayout" role="group" aria-label="Layout">
+            <button type="button" aria-pressed={layout === 'list'} onClick={() => setLayout('list')} title="List">
+              ☰
+            </button>
+            <button type="button" aria-pressed={layout === 'cards'} onClick={() => setLayout('cards')} title="Cards">
+              ▦
+            </button>
+          </div>
         </div>
       </div>
       {failed && <p className="lstate">The kitchen did not answer. Try again in a moment.</p>}
       {!failed && !items && <p className="lstate">Opening the box…</p>}
       {items && !results.length && query.trim() && <p className="lstate">Nothing by that name. Ask Babette.</p>}
+      {items && !results.length && !query.trim() && items.length > 0 && summary && <p className="lstate">Nothing in that category.</p>}
       {items && !items.length && !query.trim() && <p className="lstate">{spec.empty}</p>}
       <div ref={list} className={'nlist nlist-' + layout}>
         {/* Cards are dealt round-robin into columns, so they read left to right and
