@@ -7,6 +7,9 @@
 
 /* The tucked desktop rail, as in the mock: Babette's B above her name. */
 .surface-rail {
+  /* Above an open card's backdrop (30), like the top bar; below the open panel (36). */
+  position: relative;
+  z-index: 31;
   display: flex;
   flex-direction: column;
   align-items: center;
