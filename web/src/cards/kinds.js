@@ -43,11 +43,17 @@ export function plateFor(category) {
   return '/plates/' + (CATEGORY_LABELS[category] ? category : 'uncategorized') + '.jpg'
 }
 
-// "Casseroles, from Quita's Recipe box" — category plus whoever the card came from.
+// "Casseroles, from Quita's recipe box": the category and the card's From.
 export function provenance(recipe) {
   const label = CATEGORY_LABELS[recipe.category] || 'Uncategorized'
-  const from = [recipe.source, recipe.voice].map((v) => String(v || '').trim()).find((v) => !PLACEHOLDER.test(v))
-  return from ? label + ', from ' + from : label
+  const from = String(recipe.voice || '').trim()
+  return PLACEHOLDER.test(from) ? label : label + ', from ' + from
+}
+
+// What the card itself credits, or '' when it credits nothing.
+export function sourceOf(recipe) {
+  const source = String(recipe.source || '').trim()
+  return PLACEHOLDER.test(source) ? '' : source
 }
 
 function lines(text) {

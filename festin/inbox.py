@@ -138,9 +138,10 @@ def parse_recipe(body: dict, agent: str) -> dict:
         "ingredients": ingredients,
         "method": method,
         "notes": notes,
-        "voice": voice,
-        "source": source or agent,
-        "provenance": agent,
+        # From is always the Web; an author the agent names joins the source credit.
+        "voice": "Web",
+        "source": ", ".join(part for part in (voice if voice != "unknown" else "", source) if part),
+        "provenance": "documented",
         "status": "confirmed",
         "needsPracticeReview": True,
         "category": None,

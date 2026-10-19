@@ -637,8 +637,8 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
     if creating:
         changes = args
         row = {
-            "voice": "unknown",
-            "source": "unknown",
+            "voice": "Babette",
+            "source": "",
             "provenance": "generated",
             "status": "draft",
             "photos": [],

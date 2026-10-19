@@ -152,7 +152,7 @@ def test_auth_missing_wrong_and_right(kitchen):
     assert status == 201
     body = json.loads(data.decode())
     assert body["id"].startswith("CBK-")
-    assert body["provenance"] == "test-agent"
+    assert body["provenance"] == "documented"
     assert body["needsPracticeReview"] is True
 
 
@@ -225,7 +225,8 @@ def test_provenance_needs_review_and_log(kitchen):
     kitchen_client = KitchenClient(kitchen.server_address[1])
     status, recipe = kitchen_client.request("GET", f"/api/recipes/{recipe_id}")
     assert status == 200
-    assert recipe["provenance"] == "grok-scout"
+    assert recipe["provenance"] == "documented"
+    assert recipe["voice"] == "Web"
     assert recipe["needsPracticeReview"] is True
     assert recipe["category"] in (None, "")
     assert recipe["source"] == "https://example.com/broth"

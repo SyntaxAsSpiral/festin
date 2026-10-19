@@ -17,7 +17,7 @@ import {
 
 describe('recipe provenance', () => {
   it('names the category and where the card came from', () => {
-    expect(provenance({ category: 'casseroles', source: "Quita's Recipe box", voice: 'grandma' })).toBe("Casseroles, from Quita's Recipe box")
+    expect(provenance({ category: 'casseroles', source: 'Family Circle', voice: "Quita's recipe box" })).toBe("Casseroles, from Quita's recipe box")
   })
   it('skips placeholder sources and falls back to the voice', () => {
     expect(provenance({ category: 'breads', source: 'unknown', voice: 'grandma' })).toBe('Breads, from grandma')
@@ -67,8 +67,7 @@ describe('items and search', () => {
     id: 'CBK-0044',
     title: 'Tamale Joe',
     category: 'casseroles',
-    source: "Quita's Recipe box",
-    voice: 'grandma',
+    voice: "Quita's recipe box",
     ingredients: ['1 cup milk'],
     searchDescription: 'A baked tamale',
     updatedAt: '2026-10-18T00:00:00.000000Z',
@@ -78,7 +77,7 @@ describe('items and search', () => {
 
   it('maps a Festin recipe, note and chat onto one item shape', () => {
     const r = recipeItem(recipe)
-    expect(r).toMatchObject({ id: 'CBK-0044', title: 'Tamale Joe', line: "Casseroles, from Quita's Recipe box", tip: 'A baked tamale' })
+    expect(r).toMatchObject({ id: 'CBK-0044', title: 'Tamale Joe', line: "Casseroles, from Quita's recipe box", tip: 'A baked tamale' })
     expect(r.raw).toBe(recipe)
     const n = noteItem(note)
     expect(n.title).toBe('Oven runs hot')
@@ -119,14 +118,14 @@ describe('list paging and the 409 path', () => {
         })
       }
       return jsonResponse(200, {
-        recipes: [{ id: 'CBK-0001', title: 'Cake', category: 'cakes', source: "Quita's Recipe box", ingredients: ['1/2 cup milk'] }],
+        recipes: [{ id: 'CBK-0001', title: 'Cake', category: 'cakes', voice: "Quita's recipe box", ingredients: ['1/2 cup milk'] }],
         nextCursor: 'abc',
       })
     })
     vi.stubGlobal('fetch', fetch)
     const items = await loadItems('recipes')
     expect(items.map((item) => item.id)).toEqual(['CBK-0001', 'CBK-0002'])
-    expect(items[0].line).toBe("Cakes, from Quita's Recipe box")
+    expect(items[0].line).toBe("Cakes, from Quita's recipe box")
     expect(items[0].search).toContain('1/2 cup milk')
     expect(fetch).toHaveBeenCalledTimes(2)
   })

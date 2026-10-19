@@ -67,20 +67,21 @@ RECIPE_FIELDS = {
         "type": "string",
         "minLength": 1,
         "description": (
-            "Contributor or collection, e.g. zk, grandma, or another person. "
-            "Does not imply authorship. Use unknown when unspecified."
+            "From: who brought the recipe to this kitchen. Quita's recipe box for "
+            "cards from the box, a family member when the card names one, zk for "
+            "what zk brings in, Babette for recipes you compose, Web for the inbox. "
+            "Never unknown."
         ),
     },
     "source": {
         "type": "string",
-        "minLength": 1,
         "description": (
-            "Free-text origin or citation: book title, author, edition and page; "
-            "clipping publication/date; website URL; personal recipe; or unknown. "
-            "Record only known details. A grandma collection recipe may originate "
-            "in a clipping or book."
+            "What the card itself credits: a publication, a store's series, a "
+            "person, a book with page, or a website. Empty when nothing is "
+            "credited; never unknown. Not where the card lives (that is From)."
         ),
     },
+
     "provenance": {
         "type": "string",
         "enum": ["documented", "reconstructed", "mentioned", "ocr-draft", "confirmed", "generated"],
