@@ -178,8 +178,7 @@ export function KitchenLog() {
                         </li>
                       ))}
                     {chats.map((chat) => (
-                      <li key={'chat-' + chat.id}>
-                        <span>{chat.title || 'Conversation'}</span>
+                      <li key={'chat-' + chat.id} className="twc">
                         <button
                           type="button"
                           className="link"
@@ -188,7 +187,7 @@ export function KitchenLog() {
                             openKind('chat', chat.id, e.currentTarget)
                           }}
                         >
-                          open
+                          {chat.title || 'Conversation'}
                         </button>
                       </li>
                     ))}

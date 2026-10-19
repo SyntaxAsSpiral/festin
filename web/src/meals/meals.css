@@ -707,6 +707,11 @@
   color: var(--bb-rose);
   font-size: 13px;
 }
+/* A folded conversation: its title is the link, in the chat accent. */
+.kl .twb li.twc button.link {
+  font-size: 14px;
+  color: var(--acc-pink-ink);
+}
 .kl .tl-more {
   list-style: none;
   text-align: center;
