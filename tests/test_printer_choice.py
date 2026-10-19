@@ -205,6 +205,37 @@ def test_accept_plates_unit_and_existing_named_band_stays_valid():
     assert printing.configured_default({"band": "babette"}) == "scroll"
 
 
+def test_dinner_passes_week_slip_title_into_render(tmp_path, monkeypatch):
+    """render.py must not hard-code LE FESTIN; the week's slip_title is the heading."""
+    seen = {}
+
+    def fake_render(days, week_text, output, closing_quote, plates=None, slip_title="Le Festin"):
+        seen["slip_title"] = slip_title
+        seen["closing_quote"] = closing_quote
+        Path(output).write_bytes(b"PNG")
+
+    monkeypatch.setattr(printing.feast, "render", fake_render)
+    plan = {
+        "weekStart": SAT,
+        "days": [
+            {"day": day, "title": "Soup" if day == "sat" else "", "recipe": None}
+            for day in ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+        ],
+        "slipTitle": "Autumn table",
+        "slipQuote": "Que la table rassemble.",
+    }
+    printing.dinner(plan, {}, tmp_path / "out.png")
+    assert seen["slip_title"] == "Autumn table"
+    assert seen["closing_quote"] == "Que la table rassemble."
+
+    seen.clear()
+    plan["slipTitle"] = ""
+    plan["slipQuote"] = ""
+    printing.dinner(plan, {}, tmp_path / "out2.png")
+    assert seen["slip_title"] == printing.DEFAULT_SLIP_TITLE
+    assert seen["closing_quote"] == printing.DEFAULT_SLIP_QUOTE
+
+
 def test_prepare_slip_quote_stored_and_default_when_absent(tmp_path):
     server = _kitchen(tmp_path)
     try:
