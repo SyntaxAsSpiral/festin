@@ -19,13 +19,17 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 from festin import recipes as recipes_mod
+from festin.chat.schemas import PLATE_SLUGS
 from festin import settings as core_settings
 from festin.schema import connect
 
 BODY_LIMIT = 64 * 1024
 RATE_LIMIT = 30
 RATE_WINDOW_S = 3600
-ALLOWED_FIELDS = frozenset({"title", "ingredients", "notes", "method", "voice", "source"})
+ALLOWED_FIELDS = frozenset({"title", "category", "ingredients", "notes", "method", "voice", "source"})
+# The two whose slugs read oddly to an outside agent.
+CATEGORY_HINTS = {"chicken": "chicken (all poultry)", "meats": "meats (meat and game)"}
+CATEGORY_TEXT = ", ".join(CATEGORY_HINTS.get(slug, slug) for slug in PLATE_SLUGS)
 
 _INSTRUCTIONS_TEXT = """Festin incoming recipes
 
@@ -37,6 +41,7 @@ Auth
 
 Fields (text only; no images, files, or fetched links)
   title         required, <= 200 characters
+  category      required, one of: {categories}
   ingredients   required, 1–80 lines, each <= 240 characters
                 (JSON array of strings, or one string with newlines)
   method        optional, <= 4000 characters (steps)
@@ -59,7 +64,7 @@ Example
     -H "Authorization: Bearer $FESTIN_INBOX_KEY" \\
     -H "X-Agent-Name: my-agent" \\
     -H "Content-Type: application/json" \\
-    -d '{"title":"Agent broth","ingredients":["water","salt"],"method":"1. Simmer.\\n2. Season.","source":"https://example.com/broth"}'
+    -d '{"title":"Agent broth","category":"soups-stews","ingredients":["water","salt"],"method":"1. Simmer.\\n2. Season.","source":"https://example.com/broth"}'
 
 The kitchen host must expose this port (Tailscale Funnel, Cloudflare tunnel, or
 router port-forward). Festin only binds the kitchen's host; it does not put the
@@ -128,6 +133,9 @@ def parse_recipe(body: dict, agent: str) -> dict:
     if not isinstance(title, str) or not title.strip() or len(title.strip()) > 200:
         raise ValueError("Recipes require a title.")
     title = " ".join(title.split())
+    category = body.get("category")
+    if category not in PLATE_SLUGS:
+        raise ValueError("Recipes require a category, one of: " + ", ".join(PLATE_SLUGS))
     ingredients = _ingredients(body.get("ingredients"))
     method = _optional(body, "method", 4000)
     notes = _optional(body, "notes", 4000)
@@ -144,7 +152,7 @@ def parse_recipe(body: dict, agent: str) -> dict:
         "provenance": "documented",
         "status": "confirmed",
         "needsPracticeReview": True,
-        "category": None,
+        "category": category,
         "stub": False,
     }
 
@@ -172,6 +180,7 @@ def instructions_payload(address: str) -> dict:
         },
         "fields": {
             "title": "required, <= 200 characters",
+            "category": "required, one of: " + CATEGORY_TEXT,
             "ingredients": "required, 1–80 lines, each <= 240 (array or newline string)",
             "method": "optional, <= 4000 characters",
             "notes": "optional, <= 4000 characters",
@@ -198,6 +207,7 @@ def instructions_payload(address: str) -> dict:
             },
             "body": {
                 "title": "Agent broth",
+                "category": "soups-stews",
                 "ingredients": ["water", "salt"],
                 "method": "1. Simmer.\n2. Season.",
                 "source": "https://example.com/broth",
@@ -218,7 +228,7 @@ def example_curl(address: str, key: str) -> str:
         f'  -H "Authorization: Bearer {key}" \\\n'
         f'  -H "X-Agent-Name: my-agent" \\\n'
         f'  -H "Content-Type: application/json" \\\n'
-        f"""  -d '{{"title":"Agent broth","ingredients":["water","salt"],"""
+        f"""  -d '{{"title":"Agent broth","category":"soups-stews","ingredients":["water","salt"],"""
         f""""method":"1. Simmer.\\n2. Season.","source":"https://example.com/broth"}}'"""
     )
 
@@ -268,7 +278,11 @@ class InboxHandler(BaseHTTPRequestHandler):
         payload = instructions_payload(self.server.public_address)
         if "application/json" in accept:
             return self._send(200, payload)
-        body = _INSTRUCTIONS_TEXT.replace("{address}", self.server.public_address).encode("utf-8")
+        body = (
+            _INSTRUCTIONS_TEXT.replace("{address}", self.server.public_address)
+            .replace("{categories}", CATEGORY_TEXT)
+            .encode("utf-8")
+        )
         self.send_response(200)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))

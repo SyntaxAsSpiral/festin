@@ -117,6 +117,7 @@ def _mint(kitchen) -> str:
 def _recipe(**overrides):
     body = {
         "title": "Agent broth",
+        "category": "soups-stews",
         "ingredients": ["water", "salt"],
         "method": "1. Simmer.\n2. Season.",
         "source": "https://example.com/broth",
@@ -238,7 +239,7 @@ def test_provenance_needs_review_and_log(kitchen):
     assert recipe["provenance"] == "documented"
     assert recipe["voice"] == "Web"
     assert recipe["needsPracticeReview"] is True
-    assert recipe["category"] in (None, "")
+    assert recipe["category"] == "soups-stews"
     assert recipe["source"] == "https://example.com/broth"
 
     status, log = kitchen_client.request("GET", "/api/log")
@@ -344,3 +345,13 @@ def test_plain_instructions_show_the_public_address(blank_db):
         assert "127.0.0.1" not in text
     finally:
         server.server_close()
+
+
+def test_inbox_requires_a_known_category(tmp_path):
+    from festin.inbox import parse_recipe
+
+    with pytest.raises(ValueError, match="category"):
+        parse_recipe({"title": "Soup", "ingredients": ["water"]}, "agent")
+    with pytest.raises(ValueError, match="category"):
+        parse_recipe({"title": "Soup", "category": "soup", "ingredients": ["water"]}, "agent")
+    assert parse_recipe({"title": "Soup", "category": "soups-stews", "ingredients": ["water"]}, "agent")["category"] == "soups-stews"
