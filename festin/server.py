@@ -34,6 +34,7 @@ from festin.chat.keys import model_key_is_set, model_key_source, resolve_model_k
 from festin.chat.model_probe import probe_model
 from festin.errors import NotFound, StaleState
 from festin.plugins import host as plugins_host
+from festin.plugins.printer import weekly as weekly_pick
 from festin.schema import apply, connect
 
 DEFAULT_INBOX_PORT = 8889
@@ -221,8 +222,11 @@ class Handler(BaseHTTPRequestHandler):
                 with self._db() as conn:
                     return self._send(200, chats_mod.get_chat(conn, _id_after(path, "/api/chats/")))
             if path.startswith("/api/plans/"):
+                week = _id_after(path, "/api/plans/")
                 with self._db() as conn:
-                    return self._send(200, plans_mod.get_plan(conn, _id_after(path, "/api/plans/")))
+                    plan = plans_mod.get_plan(conn, week)
+                self._maybe_weekly_pick(for_week=week)
+                return self._send(200, plan)
             if path == "/api/log":
                 with self._db() as conn:
                     return self._send(
@@ -520,6 +524,16 @@ class Handler(BaseHTTPRequestHandler):
         key = resolve_model_key(self.server.data_dir, raw["model_base_url"])
         return probe_model(raw["model_base_url"], raw["model_name"], key)
 
+    def _maybe_weekly_pick(self, *, for_week: str | None = None) -> None:
+        """Kick Babette's weekly slip pick without blocking the request."""
+        options = self.server.chat_options or {}
+        weekly_pick.trigger_weekly_pick(
+            db_path=self.server.db_path,
+            data_dir=self.server.data_dir,
+            completer=options.get("weekly_pick_completer"),
+            for_week=for_week,
+        )
+
     def _session(self, changes):
         token = _cookie(self.headers.get("Cookie"))
         conn = connect(self.server.db_path)
@@ -533,6 +547,7 @@ class Handler(BaseHTTPRequestHandler):
                 conn.commit()
                 row = conn.execute("SELECT * FROM sessions WHERE id = ?", (row["id"],)).fetchone()
                 self._send(200, _public_session(row), row["id"])
+                self._maybe_weekly_pick()
                 return
             guard = _guard(row["id"])
             with guard:

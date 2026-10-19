@@ -80,11 +80,14 @@ def test_plugins_over_http_and_tools_follow_the_switch(tmp_path):
         assert printer["enabled"] is False
         assert printer["settings"]["receiverUrl"] == ""
         assert printer["settings"]["band"] == "babette"
+        assert printer["settings"]["weeklyPick"] is False
         assert printer["name"] == "Thermal printer"
         band_field = next(f for f in printer["schema"] if f["key"] == "band")
         assert band_field["default"] == "babette"
         assert band_field["enum"][0] == "babette"
         assert "Dinner slips keep their own weekly plates" in (band_field.get("help") or "")
+        pick_field = next(f for f in printer["schema"] if f["key"] == "weeklyPick")
+        assert pick_field["type"] == "boolean" and pick_field["default"] is False
 
 
         status, weather = client.request("GET", "/api/weather")
