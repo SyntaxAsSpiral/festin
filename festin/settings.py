@@ -1,7 +1,9 @@
-"""Shared core settings: table name, weather location, dinner hour, week start.
+"""Shared core settings: table name, weather location, week start.
 
-'today' and week bounds use the stored weather timezone. With no location yet,
-or with 'auto' / an unknown zone, they fall back to the server's local zone.
+Dinner hour lives on the tattva plugin (settings.dinner_hour remains as a
+legacy column for import). 'today' and week bounds use the stored weather
+timezone. With no location yet, or with 'auto' / an unknown zone, they fall
+back to the server's local zone.
 """
 
 from __future__ import annotations

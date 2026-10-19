@@ -79,6 +79,11 @@ export function PluginPanel({ plugin, onUpdated }) {
           {plugin.id === 'printer' && (
             <p className="fine">Prints the weekly slip, recipe cards and shopping lists on a receipt printer.</p>
           )}
+          {plugin.id === 'tattva' && (
+            <p className="fine">
+              Names the element at the dinner hour for planning and colours each week in the Kitchen Log.
+            </p>
+          )}
         </div>
         <label className="pltg">
           <input
@@ -165,7 +170,8 @@ export function PluginPanel({ plugin, onUpdated }) {
             {(field.type === 'string' || (!['enum', 'boolean', 'number', 'secret'].includes(field.type))) && (
               <input
                 id={'p-' + plugin.id + '-' + field.key}
-                type="text"
+                type={field.key === 'dinnerHour' || field.input === 'time' ? 'time' : 'text'}
+                step={field.key === 'dinnerHour' || field.input === 'time' ? 900 : undefined}
                 value={draft[field.key] ?? ''}
                 disabled={busy || !enabled}
                 spellCheck={false}

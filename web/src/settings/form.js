@@ -55,7 +55,6 @@ export function draftFromSettings(body) {
   const inbox = body?.inbox && typeof body.inbox === 'object' ? body.inbox : {}
   return {
     tableName: String(body?.tableName || body?.table_name || DEFAULT_TABLE).trim() || DEFAULT_TABLE,
-    dinnerHour: normalizeHour(body?.dinnerHour || body?.dinner_hour || '17:30'),
     weekStart: cleanWeek(body?.weekStart || body?.week_start_day || 'sat'),
     weatherLocation: String(weather.location || body?.weatherLocation || '').trim(),
     modelName: String(modelName).trim(),
@@ -80,7 +79,6 @@ export function keySourceMessage(source, keySet) {
 export function settingsSaveBody(draft, expectedUpdatedAt) {
   const body = {
     tableName: String(draft.tableName || '').trim() || DEFAULT_TABLE,
-    dinnerHour: normalizeHour(draft.dinnerHour),
     weekStart: cleanWeek(draft.weekStart),
     weatherLocation: String(draft.weatherLocation || '').trim(),
     modelName: String(draft.modelName || '').trim(),
@@ -157,13 +155,4 @@ function cleanKeySource(value) {
   return source === 'file' || source === 'env' || source === 'none' ? source : 'none'
 }
 
-function normalizeHour(value) {
-  const text = String(value || '').trim()
-  const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(text)
-  if (!match) return '17:30'
-  const hour = Math.min(23, Math.max(0, Number(match[1])))
-  let minute = Math.min(59, Math.max(0, Number(match[2])))
-  minute = Math.round(minute / 15) * 15
-  if (minute === 60) return String((hour + 1) % 24).padStart(2, '0') + ':00'
-  return String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0')
-}
+

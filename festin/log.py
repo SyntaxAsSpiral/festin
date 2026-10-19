@@ -77,8 +77,15 @@ def snapshot_weather(settings: dict) -> str | None:
 
 
 def week_tattva(conn: sqlite3.Connection, week_start: str):
-    """Hook for the tattva plugin. Returns None until a plugin is registered."""
-    return None
+    """Hook for the tattva plugin. Returns None while the plugin is off."""
+    from festin.plugins import host
+    from festin.plugins.tattva.plugin import PLUGIN_ID, PLUGIN
+
+    if PLUGIN_ID not in host._BY_ID:
+        return None
+    if not host.enabled(conn, PLUGIN_ID):
+        return None
+    return PLUGIN.week_tattva(conn, week_start)
 
 
 def list_log(

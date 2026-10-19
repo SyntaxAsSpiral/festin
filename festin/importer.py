@@ -187,6 +187,47 @@ def _import_settings(conn: sqlite3.Connection, settings: dict) -> None:
             model_name,
         ),
     )
+    # Dinner hour lives on the tattva plugin; seed its row (off) from the live copy.
+    _seed_tattva_dinner_hour(conn, dinner)
+
+
+# Stable stamp so a second import of the same copy writes the same plugin row.
+_TATTVA_IMPORT_STAMP = "1970-01-01T00:00:00.000000Z"
+
+
+def _seed_tattva_dinner_hour(conn: sqlite3.Connection, dinner: str) -> None:
+    """Write dinnerHour into plugin_settings for tattva without turning the plugin on."""
+    from festin.plugins.tattva.compute import clean_dinner_hour
+
+    hour = clean_dinner_hour(dinner)
+    row = conn.execute(
+        "SELECT enabled, settings_json FROM plugin_settings WHERE plugin_id = ?",
+        ("tattva",),
+    ).fetchone()
+    settings = {"dinnerHour": hour, "sideriodUrl": ""}
+    enabled = 0
+    if row is not None:
+        enabled = 1 if row["enabled"] else 0
+        raw = json.loads(row["settings_json"] or "{}")
+        if isinstance(raw, dict):
+            settings = dict(raw)
+            settings["dinnerHour"] = hour
+            settings.setdefault("sideriodUrl", "")
+    conn.execute(
+        """
+        INSERT INTO plugin_settings (plugin_id, enabled, settings_json, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT (plugin_id) DO UPDATE SET
+            settings_json = excluded.settings_json,
+            updated_at = excluded.updated_at
+        """,
+        (
+            "tattva",
+            enabled,
+            json.dumps(settings, ensure_ascii=False, sort_keys=True),
+            _TATTVA_IMPORT_STAMP,
+        ),
+    )
 
 
 def _optional_float(value):

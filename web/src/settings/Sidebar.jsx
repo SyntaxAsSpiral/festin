@@ -487,34 +487,21 @@ export function SettingsSidebar() {
                   disabled={busy}
                 />
               </div>
-              <div className="sfr">
-                <div className="sf">
-                  <label htmlFor="s-weather">Weather location</label>
-                  <input
-                    id="s-weather"
-                    value={draft.weatherLocation}
-                    maxLength={120}
-                    placeholder="City or postal code"
-                    onChange={(e) => setDraft({ ...draftRef.current, weatherLocation: e.target.value })}
-                    onBlur={() => persist(draftRef.current)}
-                    disabled={busy}
-                  />
-                </div>
-                <div className="sf">
-                  <label htmlFor="s-dinner">Dinner hour</label>
-                  <input
-                    id="s-dinner"
-                    type="time"
-                    step={900}
-                    value={draft.dinnerHour}
-                    onChange={(e) => patch({ dinnerHour: e.target.value })}
-                    disabled={busy}
-                  />
-                </div>
+              <div className="sf">
+                <label htmlFor="s-weather">Weather location</label>
+                <input
+                  id="s-weather"
+                  value={draft.weatherLocation}
+                  maxLength={120}
+                  placeholder="City or postal code"
+                  onChange={(e) => setDraft({ ...draftRef.current, weatherLocation: e.target.value })}
+                  onBlur={() => persist(draftRef.current)}
+                  disabled={busy}
+                />
               </div>
               <p className="fine" style={{ marginTop: 6 }}>
-                The forecast follows this location; the household time zone comes with it. Each night&apos;s tattva is
-                read at the dinner hour when that plugin is on.
+                The forecast follows this location; the household time zone comes with it. Dinner hour and each
+                night&apos;s tattva live on the Dinner tattva plugin.
               </p>
               <div className="sf">
                 <label htmlFor="s-wk">Week starts on</label>
