@@ -253,7 +253,7 @@ export function KitchenLog() {
               <span className="tdot" aria-hidden="true" />
               <button
                 type="button"
-                className={'tlk ' + meta.rowClass}
+                className={'tlk ' + meta.rowClass + (meta.modClass ? ' ' + meta.modClass : '')}
                 onClick={(e) => openKind(entry.kind, entry.id, e.currentTarget)}
               >
                 {showPlate && entry.category ? <img src={plateFor(entry.category)} alt="" draggable={false} /> : null}
