@@ -196,7 +196,7 @@ def keep_note(args: dict, ctx: Any) -> dict:
     label = _clean_kind(args.get("type"))
     leaving_open = bool(args.get("open"))
     if leaving_open and _open_count(conn) >= OPEN_NOTE_CAP:
-        raise ValueError("Twenty-five notes are already open. Close one before opening another.")
+        raise ValueError("Twenty-five notes are already pinned. Archive one before pinning another.")
     existing = conn.execute(
         "SELECT * FROM notes WHERE kind = ? AND text = ?",
         (label, text),
@@ -321,7 +321,7 @@ def edit_note(args: dict, ctx: Any, *, delete: bool = False) -> dict:
         if "open" in args:
             opening = bool(args["open"])
             if opening and not row["open"] and _open_count(conn) >= OPEN_NOTE_CAP:
-                raise ValueError("Twenty-five notes are already open. Close one before opening another.")
+                raise ValueError("Twenty-five notes are already pinned. Archive one before pinning another.")
             open_note = opening
         priority = row["priority"]
         if args.get("priority") in ("high", "normal", "low"):

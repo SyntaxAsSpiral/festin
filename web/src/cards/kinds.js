@@ -250,12 +250,20 @@ export function saveNote(note, fields) {
       text: fields.text,
       type: 'note',
       color: fields.color || 'none',
+      // New notes from the UI are pinned so they appear in the default list.
+      open: true,
     })
   }
   const body = { expected_updated_at: note.updatedAt }
   if (fields.text !== undefined) body.text = fields.text
   if (fields.color !== undefined) body.color = fields.color
   return send('POST', '/api/notes/' + encodeURIComponent(note.id), body)
+}
+
+export function toggleNote(note) {
+  return send('POST', '/api/notes/' + encodeURIComponent(note.id) + '/toggle', {
+    expected_updated_at: note.updatedAt,
+  })
 }
 
 export function removeItem(kind, raw) {

@@ -1,4 +1,7 @@
-"""Shared notes by stable id: list, read, create, edit, delete, toggle open."""
+"""Shared notes by stable id: list, read, create, edit, delete, toggle pin/archive.
+
+The store column remains `open`: true is pinned, false is archived.
+"""
 
 from __future__ import annotations
 
@@ -65,7 +68,7 @@ def create_note(conn: sqlite3.Connection, body: dict, *, now: datetime | None = 
         raise ValueError("Unknown priority")
     leaving_open = bool(body.get("open"))
     if leaving_open and _open_count(conn) >= OPEN_NOTE_CAP:
-        raise ValueError("Twenty-five notes are already open. Close one before opening another.")
+        raise ValueError("Twenty-five notes are already pinned. Archive one before pinning another.")
     instant = now or datetime.now(timezone.utc)
     day = instant.astimezone(timezone.utc).date().isoformat()
     stamp = _stamp(instant)
@@ -131,7 +134,7 @@ def edit_note(conn: sqlite3.Connection, note_id: str, body: dict, *, now: dateti
     if "open" in body:
         open_note = bool(body["open"])
         if open_note and not row["open"] and _open_count(conn) >= OPEN_NOTE_CAP:
-            raise ValueError("Twenty-five notes are already open. Close one before opening another.")
+            raise ValueError("Twenty-five notes are already pinned. Archive one before pinning another.")
     band = row["band"]
     if "band" in body:
         band = _clean_band(body["band"])
@@ -173,7 +176,7 @@ def toggle_note(conn: sqlite3.Connection, note_id: str, body: dict | None = None
         raise StaleState("This note changed. Refresh before editing it.")
     opening = not bool(row["open"])
     if opening and _open_count(conn) >= OPEN_NOTE_CAP:
-        raise ValueError("Twenty-five notes are already open. Close one before opening another.")
+        raise ValueError("Twenty-five notes are already pinned. Archive one before pinning another.")
     stamp = _stamp(now)
     conn.execute(
         "UPDATE notes SET open = ?, updated_at = ? WHERE id = ?",

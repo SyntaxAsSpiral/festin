@@ -5,10 +5,14 @@ export const STORAGE_KEY = 'festin.sortfilter.'
 
 export const SORT_IDS = ['name', 'id-newest', 'id-oldest']
 
-export const DEFAULT_CHOICE = Object.freeze({ sort: 'name', category: '' })
+export const DEFAULT_CHOICE = Object.freeze({ sort: 'name', category: '', showArchived: false })
 
 export function isDefaultChoice(choice) {
-  return (!choice || !choice.category) && (!choice || !choice.sort || choice.sort === 'name')
+  if (!choice) return true
+  const sortOk = !choice.sort || choice.sort === 'name'
+  const catOk = !choice.category
+  const archOk = !choice.showArchived
+  return sortOk && catOk && archOk
 }
 
 export function cbkNumber(id) {
@@ -28,6 +32,10 @@ function byIdDesc(a, b) {
   return cbkNumber(b.id) - cbkNumber(a.id) || byTitle(a, b)
 }
 
+function isPinned(item) {
+  return Boolean(item?.raw?.open)
+}
+
 export function filterByCategory(items, category) {
   if (!category) return items
   return items.filter((it) => it.raw && it.raw.category === category)
@@ -41,15 +49,42 @@ export function sortItems(items, sort) {
   return out
 }
 
-export function applySortFilter(items, choice) {
-  const sort = choice && SORT_IDS.includes(choice.sort) ? choice.sort : 'name'
-  const category = choice && CATEGORY_LABELS[choice.category] ? choice.category : ''
-  return sortItems(filterByCategory(items, category), sort)
+/** Pinned notes first; within each group keep the sort already applied. */
+export function pinThenArchived(items) {
+  const pinned = []
+  const archived = []
+  for (const it of items) {
+    if (isPinned(it)) pinned.push(it)
+    else archived.push(it)
+  }
+  return pinned.concat(archived)
 }
 
-export function summarizeChoice(choice) {
+export function applySortFilter(items, choice, kind = 'recipes') {
+  const sort = choice && SORT_IDS.includes(choice.sort) ? choice.sort : 'name'
+  const category = choice && CATEGORY_LABELS[choice.category] ? choice.category : ''
+  const showArchived = Boolean(choice && choice.showArchived)
+
+  let list = items
+  if (kind === 'notes') {
+    if (!showArchived) list = list.filter(isPinned)
+    list = sortItems(list, sort)
+    if (showArchived) list = pinThenArchived(list)
+    return list
+  }
+
+  return sortItems(filterByCategory(list, category), sort)
+}
+
+export function summarizeChoice(choice, kind = 'recipes') {
   if (isDefaultChoice(choice)) return ''
   const parts = []
+  if (kind === 'notes') {
+    if (choice.sort === 'id-newest') parts.push('by ID, newest first')
+    else if (choice.sort === 'id-oldest') parts.push('by ID, oldest first')
+    if (choice.showArchived) parts.push('Show archived')
+    return parts.join(', ')
+  }
   if (choice.category && CATEGORY_LABELS[choice.category]) parts.push(CATEGORY_LABELS[choice.category])
   if (choice.sort === 'id-newest') parts.push('by ID, newest first')
   else if (choice.sort === 'id-oldest') parts.push('by ID, oldest first')
@@ -60,12 +95,15 @@ function normalizeChoice(raw) {
   if (!raw || typeof raw !== 'object') return { ...DEFAULT_CHOICE }
   const sort = SORT_IDS.includes(raw.sort) ? raw.sort : 'name'
   const category = CATEGORY_LABELS[raw.category] ? raw.category : ''
-  // Unknown sort with a bad category → treat as default when both bad.
-  if (!SORT_IDS.includes(raw.sort) && raw.category && !CATEGORY_LABELS[raw.category]) return { ...DEFAULT_CHOICE }
-  if (!SORT_IDS.includes(raw.sort) && !raw.category) return { ...DEFAULT_CHOICE }
-  // If sort was bogus but category ok, keep category with default sort.
-  if (!SORT_IDS.includes(raw.sort) && category) return { sort: 'name', category }
-  return { sort, category }
+  const showArchived = Boolean(raw.showArchived)
+  if (!SORT_IDS.includes(raw.sort) && raw.category && !CATEGORY_LABELS[raw.category] && !raw.showArchived) {
+    return { ...DEFAULT_CHOICE }
+  }
+  if (!SORT_IDS.includes(raw.sort) && !raw.category && !raw.showArchived) return { ...DEFAULT_CHOICE }
+  if (!SORT_IDS.includes(raw.sort) && (category || showArchived)) {
+    return { sort: 'name', category, showArchived }
+  }
+  return { sort, category, showArchived }
 }
 
 export function readStoredChoice(kind) {
