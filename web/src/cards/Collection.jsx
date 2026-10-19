@@ -377,7 +377,6 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                     onClick={(event) => open(item, event.currentTarget)}
                   >
                     {layout === 'cards' && kind === 'notes' && <span className="nswatch" data-color={item.raw.color || 'none'} />}
-                    {layout === 'cards' && kind === 'recipes' && <span className="ntrim-rule" aria-hidden="true" />}
                     {layout === 'cards' && kind === 'chats' && (
                       <span className="ntrim-fleuron" aria-hidden="true">
                         {fleuronFor(item.id)}

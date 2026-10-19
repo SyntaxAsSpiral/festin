@@ -638,17 +638,7 @@ button.danger {
 }
 html[data-motion='off'] .card-layer { transition: none; }
 
-/* Recipe cards: a gilt index-card rule (a heavier line over a hairline) across the
-   top, the same on every recipe; the category in sepia small caps. No accent hue:
-   accents already mean something on notes and in the Log. */
-.ntrim-rule {
-  display: block;
-  height: 5px;
-  margin: 0 -12px 10px;
-  background:
-    linear-gradient(var(--bb-gold), var(--bb-gold)) top / 100% 2px no-repeat,
-    linear-gradient(color-mix(in srgb, var(--bb-gold) 60%, transparent), color-mix(in srgb, var(--bb-gold) 60%, transparent)) bottom / 100% 1px no-repeat;
-}
+/* Recipe cards: the category in sepia small caps. */
 .ncat {
   font-style: normal;
   font-variant: small-caps;
@@ -674,8 +664,8 @@ html[data-motion='off'] .card-layer { transition: none; }
   height: 1px;
   background: color-mix(in srgb, var(--acc-pink-glyph) 55%, transparent);
 }
-/* In card view the heart sits beside the title, below the gilt rule. */
-.nlist-cards li .nfav { top: 26px; right: 4px; }
+/* In card view the heart sits beside the title. */
+.nlist-cards li .nfav { top: 10px; right: 4px; }
 /* A favourite recipe card takes a faint wash of the red that means "favourited" in the Log. */
 .nlist-cards .nitem.nitem-fav {
   background-color: color-mix(in srgb, var(--acc-red) 16%, var(--bb-card));
