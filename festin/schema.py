@@ -281,8 +281,41 @@ def _version_8(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_9(conn: sqlite3.Connection) -> None:
+    """Widen kitchen_log_events kinds: first cook, archive, favourite, photos."""
+    conn.executescript(
+        """
+        CREATE TABLE kitchen_log_events_v9 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kind TEXT NOT NULL
+                CHECK (kind IN (
+                    'recipe_added', 'recipe_edited', 'note_created',
+                    'recipe_cooked', 'note_archived', 'recipe_favourited', 'photo_added'
+                )),
+            at TEXT NOT NULL,
+            ref_id TEXT NOT NULL,
+            title TEXT NOT NULL DEFAULT '',
+            detail TEXT NOT NULL DEFAULT '',
+            extra_json TEXT NOT NULL DEFAULT '{}'
+        );
+
+        INSERT INTO kitchen_log_events_v9
+            (id, kind, at, ref_id, title, detail, extra_json)
+        SELECT id, kind, at, ref_id, title, detail, extra_json
+        FROM kitchen_log_events;
+
+        DROP TABLE kitchen_log_events;
+        ALTER TABLE kitchen_log_events_v9 RENAME TO kitchen_log_events;
+
+        CREATE INDEX IF NOT EXISTS kitchen_log_events_by_at
+            ON kitchen_log_events (at DESC, id DESC);
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
 # v6 is the Kitchen Log. Plugin tables are v7. Shared favourites are v8.
+# v9 widens the kitchen log event kinds CHECK.
 MIGRATIONS = (
     _version_1,
     _version_2,
@@ -292,6 +325,7 @@ MIGRATIONS = (
     _version_6,
     _version_7,
     _version_8,
+    _version_9,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

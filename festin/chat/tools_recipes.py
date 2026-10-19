@@ -10,6 +10,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from festin import log as kitchen_log
 from festin.chat.schemas import (
     CONTEXT_CAP,
     DINNER_HISTORY_DAYS,
@@ -533,6 +534,30 @@ def _apply_changes_to_public(row: dict, changes: dict) -> dict:
     return merged
 
 
+def _tool_edit_log_kind(original: dict, changes: dict) -> str | None:
+    """One log line per Babette edit: first cook wins, then favourite, else edit."""
+    was_review = bool(original.get("needsPracticeReview"))
+    if (
+        "needsPracticeReview" in changes
+        and was_review
+        and changes.get("needsPracticeReview") is False
+    ):
+        return "recipe_cooked"
+    was_favourite = bool(original.get("favourite"))
+    if "favourite" in changes and not was_favourite and changes.get("favourite") is True:
+        return "recipe_favourited"
+    if set(changes) <= {"favourite", "needsPracticeReview"}:
+        favourite_noop = "favourite" not in changes or bool(changes.get("favourite")) == was_favourite or (
+            was_favourite and changes.get("favourite") is False
+        )
+        review_noop = "needsPracticeReview" not in changes or bool(
+            changes.get("needsPracticeReview")
+        ) == was_review
+        if favourite_noop and review_noop:
+            return None
+    return "recipe_edited"
+
+
 def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
     columns = (
         public["id"],
@@ -674,6 +699,7 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
             if row.get("stub") is False:
                 raise ValueError("A finished recipe needs ingredients.")
             row["stub"] = True
+    original = None
     if not creating:
         original = recipe_public(_recipe_row(conn, row["id"]))
         if original.get("provenance") == "ocr-draft" and row.get("provenance") != "ocr-draft":
@@ -684,9 +710,27 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
         row["createdAt"] = stamp
         row["updatedAt"] = stamp
         _write_public(conn, row, creating=True, stamp=stamp)
+        kitchen_log.record_event(
+            conn,
+            "recipe_added",
+            ref_id=row["id"],
+            at=stamp,
+            title=row.get("title") or "",
+            extra={"category": row.get("category")},
+        )
     else:
         row["updatedAt"] = stamp
         _write_public(conn, row, creating=False, stamp=stamp)
+        log_kind = _tool_edit_log_kind(original, changes)
+        if log_kind:
+            kitchen_log.record_event(
+                conn,
+                log_kind,
+                ref_id=row["id"],
+                at=stamp,
+                title=row.get("title") or "",
+                extra={"category": row.get("category")},
+            )
     conn.commit()
     saved = recipe_public(_recipe_row(conn, row["id"]))
     return {"status": "saved", "id": saved["id"], "title": saved["title"], "recipe": saved}
@@ -762,6 +806,7 @@ def attach_recipe_photos(args: dict, ctx: Any) -> dict:
         raise ValueError("Choose one to four shared photos.")
     shared = _shared_chat_photos(conn)
     photos = list(row.get("photos") or [])
+    before_count = len(photos)
     for path in paths:
         name = Path(path).name
         expected = "/photos/" + name
@@ -779,6 +824,17 @@ def attach_recipe_photos(args: dict, ctx: Any) -> dict:
         "UPDATE recipes SET photos_json = ?, updated_at = ? WHERE id = ?",
         (json.dumps(photos, ensure_ascii=False), stamp, row["id"]),
     )
+    added = len(photos) - before_count
+    if added > 0:
+        kitchen_log.record_event(
+            conn,
+            "photo_added",
+            ref_id=row["id"],
+            at=stamp,
+            title=row.get("title") or "",
+            detail=str(added),
+            extra={"category": row.get("category"), "count": added},
+        )
     conn.commit()
     result = {"ok": True, "status": "saved", "recipe_id": row["id"], "photos": photos}
     if row.get("needsPracticeReview"):

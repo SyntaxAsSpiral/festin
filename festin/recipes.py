@@ -204,14 +204,16 @@ def edit_recipe(
         if not merged.get("ingredients") and merged.get("stub") is False:
             conn.rollback()
             raise ValueError("A finished recipe needs ingredients.")
-    kitchen_log.record_event(
-        conn,
-        "recipe_edited",
-        ref_id=recipe_id,
-        at=stamp,
-        title=merged["title"],
-        extra={"category": merged.get("category")},
-    )
+    kind = _edit_log_kind(row, fields)
+    if kind:
+        kitchen_log.record_event(
+            conn,
+            kind,
+            ref_id=recipe_id,
+            at=stamp,
+            title=merged["title"],
+            extra={"category": merged.get("category")},
+        )
     conn.commit()
     return get_recipe(conn, recipe_id)
 
@@ -273,6 +275,7 @@ def update_photos(
     if expected != row["updated_at"]:
         raise StaleState("Recipe changed. Refresh before changing its photos.")
     photos = list(json.loads(row["photos_json"] or "[]"))
+    before_count = len(photos)
     if "remove" in body:
         path = body["remove"]
         if not isinstance(path, str) or path not in photos:
@@ -301,6 +304,17 @@ def update_photos(
         "UPDATE recipes SET photos_json = ?, updated_at = ? WHERE id = ?",
         (json.dumps(photos, ensure_ascii=False), stamp, recipe_id),
     )
+    added = len(photos) - before_count
+    if added > 0:
+        kitchen_log.record_event(
+            conn,
+            "photo_added",
+            ref_id=recipe_id,
+            at=stamp,
+            title=row["title"] or "",
+            detail=str(added),
+            extra={"category": row["category"], "count": added},
+        )
     conn.commit()
     result = get_recipe(conn, recipe_id)
     return {"ok": True, "status": "saved", "recipe_id": recipe_id, "photos": result["photos"], "recipe": result}
@@ -475,6 +489,29 @@ def _decode_cursor(cursor: str) -> tuple[str, str]:
     if not isinstance(title, str) or not isinstance(recipe_id, str):
         raise ValueError("Bad cursor")
     return title, recipe_id
+
+
+def _edit_log_kind(row, fields: dict) -> str | None:
+    """One log line per save: first cook wins, then favourite, else a plain edit.
+
+    Repeat saves of the same cook/favourite state, and unfavouriting alone, stay quiet.
+    """
+    was_review = bool(row["needs_practice_review"])
+    if "needs_practice_review" in fields and was_review and not fields["needs_practice_review"]:
+        return "recipe_cooked"
+    was_favourite = bool(row["favourite"])
+    if "favourite" in fields and not was_favourite and fields["favourite"]:
+        return "recipe_favourited"
+    if set(fields) <= {"favourite", "needs_practice_review"}:
+        favourite_noop = "favourite" not in fields or bool(fields["favourite"]) == was_favourite or (
+            was_favourite and not fields["favourite"]
+        )
+        review_noop = "needs_practice_review" not in fields or bool(
+            fields["needs_practice_review"]
+        ) == was_review
+        if favourite_noop and review_noop:
+            return None
+    return "recipe_edited"
 
 
 def _stamp(now: datetime | None) -> str:

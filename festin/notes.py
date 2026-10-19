@@ -130,10 +130,11 @@ def edit_note(conn: sqlite3.Connection, note_id: str, body: dict, *, now: dateti
         priority = body["priority"]
         if priority not in (None, *PRIORITIES):
             raise ValueError("Unknown priority")
-    open_note = bool(row["open"])
+    was_open = bool(row["open"])
+    open_note = was_open
     if "open" in body:
         open_note = bool(body["open"])
-        if open_note and not row["open"] and _open_count(conn) >= OPEN_NOTE_CAP:
+        if open_note and not was_open and _open_count(conn) >= OPEN_NOTE_CAP:
             raise ValueError("Twenty-five notes are already pinned. Archive one before pinning another.")
     band = row["band"]
     if "band" in body:
@@ -150,6 +151,19 @@ def edit_note(conn: sqlite3.Connection, note_id: str, body: dict, *, now: dateti
         """,
         (kind, text, color, priority, 1 if open_note else 0, day, band, stamp, note_id),
     )
+    if was_open and not open_note:
+        title = " ".join((text or "").split())
+        if len(title) > 80:
+            title = title[:79] + "…"
+        kitchen_log.record_event(
+            conn,
+            "note_archived",
+            ref_id=note_id,
+            at=stamp,
+            title=title,
+            detail=kind,
+            extra={"type": kind},
+        )
     conn.commit()
     return get_note(conn, note_id)
 
@@ -174,7 +188,8 @@ def toggle_note(conn: sqlite3.Connection, note_id: str, body: dict | None = None
     expected = body.get("expected_updated_at", body.get("expectedUpdatedAt"))
     if expected is not None and expected != row["updated_at"]:
         raise StaleState("This note changed. Refresh before editing it.")
-    opening = not bool(row["open"])
+    was_open = bool(row["open"])
+    opening = not was_open
     if opening and _open_count(conn) >= OPEN_NOTE_CAP:
         raise ValueError("Twenty-five notes are already pinned. Archive one before pinning another.")
     stamp = _stamp(now)
@@ -182,6 +197,19 @@ def toggle_note(conn: sqlite3.Connection, note_id: str, body: dict | None = None
         "UPDATE notes SET open = ?, updated_at = ? WHERE id = ?",
         (1 if opening else 0, stamp, note_id),
     )
+    if was_open and not opening:
+        title = " ".join((row["text"] or "").split())
+        if len(title) > 80:
+            title = title[:79] + "…"
+        kitchen_log.record_event(
+            conn,
+            "note_archived",
+            ref_id=note_id,
+            at=stamp,
+            title=title,
+            detail=row["kind"] or "",
+            extra={"type": row["kind"]},
+        )
     conn.commit()
     return get_note(conn, note_id)
 

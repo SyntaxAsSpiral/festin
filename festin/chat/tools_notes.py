@@ -7,6 +7,7 @@ import secrets
 from datetime import date
 from typing import Any
 
+from festin import log as kitchen_log
 from festin.chat.schemas import (
     CONTEXT_LANES,
     CONTEXT_LIMITS,
@@ -317,10 +318,11 @@ def edit_note(args: dict, ctx: Any, *, delete: bool = False) -> dict:
         band = row["band"]
         if "band" in args:
             band = _clean_band(args["band"])
-        open_note = bool(row["open"])
+        was_open = bool(row["open"])
+        open_note = was_open
         if "open" in args:
             opening = bool(args["open"])
-            if opening and not row["open"] and _open_count(conn) >= OPEN_NOTE_CAP:
+            if opening and not was_open and _open_count(conn) >= OPEN_NOTE_CAP:
                 raise ValueError("Twenty-five notes are already pinned. Archive one before pinning another.")
             open_note = opening
         priority = row["priority"]
@@ -345,6 +347,19 @@ def edit_note(args: dict, ctx: Any, *, delete: bool = False) -> dict:
                 row["id"],
             ),
         )
+        if was_open and not open_note:
+            title = " ".join(text.split())
+            if len(title) > 80:
+                title = title[:79] + "…"
+            kitchen_log.record_event(
+                conn,
+                "note_archived",
+                ref_id=row["id"],
+                at=stamp,
+                title=title,
+                detail=new_kind,
+                extra={"type": new_kind},
+            )
         conn.commit()
         return {"status": "saved", "kind": new_kind, "message": "Notebook entry updated."}
     raise ValueError("Choose the note to change.")

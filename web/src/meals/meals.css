@@ -494,7 +494,11 @@
 }
 .kl .tl-r small,
 .kl .tl-c small,
-.kl .tl-chat small {
+.kl .tl-chat small,
+.kl .tl-cooked small,
+.kl .tl-fav small,
+.kl .tl-photo small,
+.kl .tl-archived small {
   display: block;
   font-variant: small-caps;
   letter-spacing: 0.06em;
@@ -503,7 +507,11 @@
 }
 .kl .tl-r,
 .kl .tl-c,
-.kl .tl-chat {
+.kl .tl-chat,
+.kl .tl-cooked,
+.kl .tl-fav,
+.kl .tl-photo,
+.kl .tl-archived {
   display: flex;
   gap: 9px;
   align-items: center;
@@ -533,7 +541,11 @@
 }
 .kl .tl-r b,
 .kl .tl-c b,
-.kl .tl-chat b {
+.kl .tl-chat b,
+.kl .tl-cooked b,
+.kl .tl-fav b,
+.kl .tl-photo b,
+.kl .tl-archived b {
   font-weight: 600;
   background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
   transition: background-size 0.3s;
@@ -548,7 +560,11 @@
   background-size: 100% 1px;
 }
 .kl .tl-r i,
-.kl .tl-c i {
+.kl .tl-c i,
+.kl .tl-cooked i,
+.kl .tl-fav i,
+.kl .tl-photo i,
+.kl .tl-archived i {
   color: var(--bb-tone-4);
   font-size: 13px;
 }
@@ -824,9 +840,36 @@ html[data-motion='off'] .kl .tcar {
 .kl .tl-r.tl-a { --ec-ink: var(--acc-green-ink); --ec-glyph: var(--acc-green-glyph); }
 .kl .tl-c { --ec-ink: var(--acc-teal-ink); --ec-glyph: var(--acc-teal-glyph); }
 .kl .tl-chat { --ec-ink: var(--acc-pink-ink); --ec-glyph: var(--acc-pink-glyph); }
+.kl .tl-cooked { --ec-ink: var(--acc-yellow-ink); --ec-glyph: var(--acc-yellow-glyph); }
+.kl .tl-fav { --ec-ink: var(--acc-red-ink); --ec-glyph: var(--acc-red-glyph); }
+.kl .tl-photo { --ec-ink: var(--acc-sapphire-ink); --ec-glyph: var(--acc-sapphire-glyph); }
+.kl .tl-archived { --ec-ink: var(--acc-sky-ink); --ec-glyph: var(--acc-sky-glyph); }
 .kl .tl-r > .tdot,
-.kl .tl-c > .tdot { border-color: var(--ec-glyph); }
+.kl .tl-c > .tdot,
+.kl .tl-cooked > .tdot,
+.kl .tl-fav > .tdot,
+.kl .tl-photo > .tdot,
+.kl .tl-archived > .tdot { border-color: var(--ec-glyph); }
 .kl .tl-a > .tdot { background: var(--ec-glyph); }
+.kl .tl-cooked > .tdot,
+.kl .tl-fav > .tdot,
+.kl .tl-photo > .tdot {
+  border: 1px solid var(--ec-glyph);
+  border-radius: 50%;
+  width: 7px;
+  height: 7px;
+  left: -18px;
+  background: var(--ec-glyph);
+}
+.kl .tl-archived > .tdot {
+  border: 1px solid var(--ec-glyph);
+  width: 8px;
+  height: 8px;
+  left: -19px;
+  top: 14px;
+  transform: rotate(45deg);
+  border-radius: 0 50% 0 50%;
+}
 .kl .tl-chat > .tdot {
   border: 1.5px solid var(--ec-glyph);
   border-radius: 50%;
@@ -837,9 +880,17 @@ html[data-motion='off'] .kl .tcar {
 .kl .tn.tl-r small,
 .kl .tn.tl-c small,
 .kl .tn.tl-chat small,
+.kl .tn.tl-cooked small,
+.kl .tn.tl-fav small,
+.kl .tn.tl-photo small,
+.kl .tn.tl-archived small,
 .kl .tl-r small,
 .kl .tl-c small,
-.kl .tl-chat small { color: var(--ec-ink); }
+.kl .tl-chat small,
+.kl .tl-cooked small,
+.kl .tl-fav small,
+.kl .tl-photo small,
+.kl .tl-archived small { color: var(--ec-ink); }
 
 /* Ultrawide: the slip and Log sit to the left, leaving the right for the chat. */
 @media (min-width: 1800px) {

@@ -1,9 +1,9 @@
 """Kitchen Log: timeline of weeks, recipe/note events, and chats.
 
 GET /api/log?before= pages newest first. Week rows come from saved plans.
-Recipe adds/edits and note creates are written into kitchen_log_events when
-they happen through the API; imported history is derived from recipes, notes,
-and chats. Babette has no log tool and writes no entries of her own.
+Recipe and note transitions are written into kitchen_log_events when they
+happen through the API or Babette's tools; imported history is derived from
+recipes, notes, and chats. Approximate imported chats fold into their week.
 
 Weather on a week is the forecast snapshot stored when that plan was saved.
 Imported weeks leave weather empty. Tattva is a hook only until a plugin lands.
@@ -19,7 +19,17 @@ from datetime import date, datetime, timedelta, timezone
 from festin.settings import today as household_today, week_start_for, get_settings
 
 PAGE_SIZE = 20
-EVENT_KINDS = frozenset({"recipe_added", "recipe_edited", "note_created"})
+EVENT_KINDS = frozenset(
+    {
+        "recipe_added",
+        "recipe_edited",
+        "note_created",
+        "recipe_cooked",
+        "note_archived",
+        "recipe_favourited",
+        "photo_added",
+    }
+)
 
 
 def record_event(
@@ -106,6 +116,7 @@ def _week_entries(conn: sqlite3.Connection) -> list[dict]:
     current_start = week_start_for(
         household_today(conn), settings["week_start_day"]
     ).isoformat()
+    approx_by_week = _approx_chats_by_week(conn)
     rows = conn.execute("SELECT * FROM weeks ORDER BY start_date DESC").fetchall()
     items = []
     for week in rows:
@@ -140,12 +151,50 @@ def _week_entries(conn: sqlite3.Connection) -> list[dict]:
                 "weekStart": week["start_date"],
                 "slipTitle": week["slip_title"] or "",
                 "nights": nights,
+                "conversations": approx_by_week.get(week["start_date"], []),
                 "weather": weather,
                 "tattva": week_tattva(conn, week["start_date"]),
                 "updatedAt": week["updated_at"],
             }
         )
     return items
+
+
+def _approx_chats_by_week(conn: sqlite3.Connection) -> dict[str, list[dict]]:
+    """Imported chats (date_approx=1) keyed by the plan weekStart they were dated to."""
+    rows = conn.execute(
+        """
+        SELECT id, title, created_at, updated_at
+        FROM chats
+        WHERE created_at IS NOT NULL AND date_approx = 1
+        ORDER BY created_at DESC, id
+        """
+    ).fetchall()
+    by_week: dict[str, list[dict]] = {}
+    for row in rows:
+        week = str(row["created_at"] or "")[:10]
+        if len(week) != 10:
+            continue
+        preview = ""
+        first = conn.execute(
+            """
+            SELECT content FROM chat_messages
+            WHERE chat_id = ? AND role = 'user' ORDER BY position LIMIT 1
+            """,
+            (row["id"],),
+        ).fetchone()
+        if first and isinstance(first["content"], str):
+            preview = " ".join(first["content"].split())[:120]
+        by_week.setdefault(week, []).append(
+            {
+                "id": row["id"],
+                "title": row["title"] or preview or "Conversation",
+                "at": _as_at(row["created_at"]),
+                "createdAt": row["created_at"],
+                "updatedAt": row["updated_at"],
+            }
+        )
+    return by_week
 
 def _event_entries(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute(
@@ -176,10 +225,16 @@ def _derived_recipe_entries(conn: sqlite3.Connection) -> list[dict]:
             "SELECT ref_id FROM kitchen_log_events WHERE kind = 'recipe_added'"
         ).fetchall()
     }
+    # Any recorded recipe event at that stamp covers the update (cooked/favourite/photo too).
     recorded_edits = {
         (row[0], row[1])
         for row in conn.execute(
-            "SELECT ref_id, at FROM kitchen_log_events WHERE kind = 'recipe_edited'"
+            """
+            SELECT ref_id, at FROM kitchen_log_events
+            WHERE kind IN (
+                'recipe_edited', 'recipe_cooked', 'recipe_favourited', 'photo_added'
+            )
+            """
         ).fetchall()
     }
     items = []
@@ -254,6 +309,10 @@ def _derived_note_entries(conn: sqlite3.Connection) -> list[dict]:
 
 
 def _chat_entries(conn: sqlite3.Connection) -> list[dict]:
+    """Dated chats only. Approximate imports ride inside their week entry."""
+    week_starts = {
+        row[0] for row in conn.execute("SELECT start_date FROM weeks").fetchall()
+    }
     rows = conn.execute(
         """
         SELECT id, title, created_at, date_approx, updated_at
@@ -263,6 +322,10 @@ def _chat_entries(conn: sqlite3.Connection) -> list[dict]:
     ).fetchall()
     items = []
     for row in rows:
+        if row["date_approx"]:
+            week = str(row["created_at"] or "")[:10]
+            if week in week_starts:
+                continue
         preview = ""
         first = conn.execute(
             """
@@ -298,6 +361,7 @@ def _public(item: dict) -> dict:
             "weekStart": item["weekStart"],
             "slipTitle": item["slipTitle"],
             "nights": item["nights"],
+            "conversations": item.get("conversations") or [],
             "weather": item["weather"],
             "tattva": item["tattva"],
             "updatedAt": item["updatedAt"],
@@ -323,7 +387,7 @@ def _public(item: dict) -> dict:
     extra = item.get("extra") or {}
     if "category" in extra and extra["category"] is not None:
         out["category"] = extra["category"]
-    if kind == "note_created" and extra.get("type"):
+    if kind in ("note_created", "note_archived") and extra.get("type"):
         out["type"] = extra["type"]
     return out
 
