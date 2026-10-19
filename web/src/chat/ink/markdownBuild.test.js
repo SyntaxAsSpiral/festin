@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createInkBuilder } from './markdownBuild.js'
 
 describe('incremental markdown builder', () => {
@@ -70,5 +70,23 @@ describe('incremental markdown builder', () => {
     b.setTyped('Stock pot')
     expect(host.querySelector('.ink-c').dataset.mark).toBe('keep')
     expect([...host.querySelectorAll('.ink-c')].map((s) => s.textContent).join('')).toBe('Stock pot')
+  })
+})
+
+describe('a rebuild does not restart lit letters', () => {
+  it('lets each lit letter resume at its own age after a Markdown boundary', () => {
+    const now = vi.spyOn(performance, 'now')
+    const host = document.createElement('div')
+    const b = createInkBuilder(host)
+    now.mockReturnValue(1000)
+    b.setTyped('Bread')
+    for (let i = 0; i < b.length; i++) b.light(i, { durationMs: 360 })
+    now.mockReturnValue(1500)
+    // A new paragraph is a structural change: the builder rebuilds the tree.
+    b.setTyped('Bread\n\nRise')
+    const first = host.querySelector('.ink-c')
+    expect(first.textContent).toBe('B')
+    expect(first.style.animationDelay).toBe('-500ms')
+    now.mockRestore()
   })
 })

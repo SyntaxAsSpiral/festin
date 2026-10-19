@@ -94,6 +94,13 @@ export function createInkBuilder(host) {
       .map((n) => cloneShell(n, takeChar, false))
       .filter(Boolean)
     host.replaceChildren(...kids)
+    // Moving a span restarts its CSS animation. Give each lit letter a negative
+    // delay equal to its age, so it resumes where it was instead of seeping in again.
+    const now = performance.now()
+    for (const span of spans) {
+      const at = Number(span.dataset.at)
+      if (at) span.style.animationDelay = `-${Math.round(now - at)}ms`
+    }
   }
 
   function fullRebuild(src) {
@@ -150,6 +157,8 @@ export function createInkBuilder(host) {
       if (mx != null) el.style.setProperty('--mx', mx)
       if (my != null) el.style.setProperty('--my', my)
       if (durationMs != null) el.style.setProperty('--d', durationMs + 'ms')
+      el.dataset.at = String(performance.now())
+      el.style.animationDelay = '0ms'
       el.classList.add('on')
       return el
     },
