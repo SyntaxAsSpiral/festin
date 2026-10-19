@@ -271,8 +271,18 @@ def _version_7(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_8(conn: sqlite3.Connection) -> None:
+    """Shared household favourite flag on recipes."""
+    conn.execute(
+        """
+        ALTER TABLE recipes ADD COLUMN favourite INTEGER NOT NULL DEFAULT 0
+            CHECK (favourite IN (0, 1))
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
-# v6 is the Kitchen Log. Plugin tables are v7.
+# v6 is the Kitchen Log. Plugin tables are v7. Shared favourites are v8.
 MIGRATIONS = (
     _version_1,
     _version_2,
@@ -281,6 +291,7 @@ MIGRATIONS = (
     _version_5,
     _version_6,
     _version_7,
+    _version_8,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

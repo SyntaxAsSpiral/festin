@@ -5,14 +5,15 @@ export const STORAGE_KEY = 'festin.sortfilter.'
 
 export const SORT_IDS = ['name', 'id-newest', 'id-oldest']
 
-export const DEFAULT_CHOICE = Object.freeze({ sort: 'name', category: '', showArchived: false })
+export const DEFAULT_CHOICE = Object.freeze({ sort: 'name', category: '', showArchived: false, favouritesOnly: false })
 
 export function isDefaultChoice(choice) {
   if (!choice) return true
   const sortOk = !choice.sort || choice.sort === 'name'
   const catOk = !choice.category
   const archOk = !choice.showArchived
-  return sortOk && catOk && archOk
+  const favOk = !choice.favouritesOnly
+  return sortOk && catOk && archOk && favOk
 }
 
 export function cbkNumber(id) {
@@ -39,6 +40,11 @@ function isPinned(item) {
 export function filterByCategory(items, category) {
   if (!category) return items
   return items.filter((it) => it.raw && it.raw.category === category)
+}
+
+export function filterFavourites(items, favouritesOnly) {
+  if (!favouritesOnly) return items
+  return items.filter((it) => it.raw && it.raw.favourite)
 }
 
 export function sortItems(items, sort) {
@@ -73,7 +79,8 @@ export function applySortFilter(items, choice, kind = 'recipes') {
     return list
   }
 
-  return sortItems(filterByCategory(list, category), sort)
+  const favouritesOnly = Boolean(choice && choice.favouritesOnly)
+  return sortItems(filterFavourites(filterByCategory(list, category), favouritesOnly), sort)
 }
 
 export function summarizeChoice(choice, kind = 'recipes') {
@@ -85,25 +92,22 @@ export function summarizeChoice(choice, kind = 'recipes') {
     if (choice.showArchived) parts.push('Show archived')
     return parts.join(', ')
   }
+  if (choice.favouritesOnly) parts.push('Favourites only')
   if (choice.category && CATEGORY_LABELS[choice.category]) parts.push(CATEGORY_LABELS[choice.category])
   if (choice.sort === 'id-newest') parts.push('by ID, newest first')
   else if (choice.sort === 'id-oldest') parts.push('by ID, oldest first')
   return parts.join(', ')
 }
 
+// Anything unknown falls back to its default, field by field.
 function normalizeChoice(raw) {
   if (!raw || typeof raw !== 'object') return { ...DEFAULT_CHOICE }
-  const sort = SORT_IDS.includes(raw.sort) ? raw.sort : 'name'
-  const category = CATEGORY_LABELS[raw.category] ? raw.category : ''
-  const showArchived = Boolean(raw.showArchived)
-  if (!SORT_IDS.includes(raw.sort) && raw.category && !CATEGORY_LABELS[raw.category] && !raw.showArchived) {
-    return { ...DEFAULT_CHOICE }
+  return {
+    sort: SORT_IDS.includes(raw.sort) ? raw.sort : 'name',
+    category: CATEGORY_LABELS[raw.category] ? raw.category : '',
+    showArchived: Boolean(raw.showArchived),
+    favouritesOnly: Boolean(raw.favouritesOnly),
   }
-  if (!SORT_IDS.includes(raw.sort) && !raw.category && !raw.showArchived) return { ...DEFAULT_CHOICE }
-  if (!SORT_IDS.includes(raw.sort) && (category || showArchived)) {
-    return { sort: 'name', category, showArchived }
-  }
-  return { sort, category, showArchived }
 }
 
 export function readStoredChoice(kind) {

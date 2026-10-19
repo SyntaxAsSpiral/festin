@@ -186,6 +186,14 @@
 .nitem-archived:hover { opacity: 0.78; }
 /* Title line: the title, and a recipe's ID right-aligned and quiet. */
 .nhead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.nheart {
+  display: inline-block;
+  margin-right: 0.35em;
+  font-size: 0.85em;
+  line-height: 1;
+  color: var(--acc-red-glyph);
+  vertical-align: 0.05em;
+}
 .nid {
   flex: none;
   font-size: 12.5px;
@@ -193,6 +201,8 @@
   font-variant-numeric: lining-nums tabular-nums;
   color: var(--bb-tone-3);
 }
+.card-fav { color: var(--acc-red-ink); border-color: color-mix(in srgb, var(--acc-red-glyph) 45%, transparent); }
+.card-fav.on { color: var(--acc-red-ink); background: color-mix(in srgb, var(--acc-red) 18%, var(--bb-paper)); }
 .nline { font-style: italic; font-size: 13.5px; color: var(--bb-tone-4); }
 .ntip { font-size: 14.5px; color: var(--bb-tone-5); }
 

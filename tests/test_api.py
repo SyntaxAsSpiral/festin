@@ -478,6 +478,7 @@ def test_recipe_photos_and_mark_cooked(kitchen):
     )
     assert status == 201
     assert recipe["needsPracticeReview"] is True
+    assert recipe["favourite"] is False
     png = base64.b64encode(
         b"\x89PNG\r\n\x1a\n" + b"\x00" * 30
     ).decode()
@@ -498,6 +499,46 @@ def test_recipe_photos_and_mark_cooked(kitchen):
     )
     assert status == 200
     assert cooked["needsPracticeReview"] is False
+
+
+def test_recipe_favourite_toggle_and_stale(kitchen):
+    client = Client(kitchen.server_address[1])
+    status, recipe = client.request(
+        "POST",
+        "/api/recipes",
+        {"title": "Venison Stroganoff", "ingredients": ["venison", "cream"]},
+    )
+    assert status == 201
+    assert recipe["favourite"] is False
+
+    status, loved = client.request(
+        "POST",
+        f"/api/recipes/{recipe['id']}",
+        {"expected_updated_at": recipe["updatedAt"], "favourite": True},
+    )
+    assert status == 200
+    assert loved["favourite"] is True
+    assert loved["updatedAt"] != recipe["updatedAt"]
+
+    status, listed = client.request("GET", "/api/recipes")
+    assert status == 200
+    row = next(item for item in listed["recipes"] if item["id"] == recipe["id"])
+    assert row["favourite"] is True
+
+    status, conflict = client.request(
+        "POST",
+        f"/api/recipes/{recipe['id']}",
+        {"expected_updated_at": recipe["updatedAt"], "favourite": False},
+    )
+    assert status == 409
+
+    status, cleared = client.request(
+        "POST",
+        f"/api/recipes/{recipe['id']}",
+        {"expected_updated_at": loved["updatedAt"], "favourite": False},
+    )
+    assert status == 200
+    assert cleared["favourite"] is False
 
 
 def _non_loopback_ipv4():

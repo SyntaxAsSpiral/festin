@@ -244,6 +244,13 @@ export function saveRecipe(recipe, draft) {
   })
 }
 
+export function setRecipeFavourite(recipe, favourite) {
+  return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id), {
+    expected_updated_at: recipe.updatedAt,
+    favourite: Boolean(favourite),
+  })
+}
+
 export function saveNote(note, fields) {
   if (!note) {
     return send('POST', '/api/notes', {

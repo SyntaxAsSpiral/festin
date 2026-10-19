@@ -195,6 +195,10 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
     setChoice((c) => ({ ...c, showArchived }))
   }
 
+  function setFavouritesOnly(favouritesOnly) {
+    setChoice((c) => ({ ...c, favouritesOnly }))
+  }
+
   function clearChoice() {
     setChoice({ ...DEFAULT_CHOICE })
     setSortOpen(false)
@@ -283,6 +287,12 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                       </select>
                     </label>
                   )}
+                  {kind === 'recipes' && (
+                    <label className="lsort-opt">
+                      <input type="checkbox" checked={Boolean(choice.favouritesOnly)} onChange={(event) => setFavouritesOnly(event.target.checked)} />
+                      Favourites only
+                    </label>
+                  )}
                   {kind === 'notes' && (
                     <label className="lsort-opt">
                       <input type="checkbox" checked={Boolean(choice.showArchived)} onChange={(event) => setShowArchived(event.target.checked)} />
@@ -307,7 +317,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
       {!failed && !items && <p className="lstate">Opening the box…</p>}
       {items && !results.length && query.trim() && <p className="lstate">Nothing by that name. Ask Babette.</p>}
       {items && !results.length && !query.trim() && items.length > 0 && summary && kind === 'recipes' && (
-        <p className="lstate">Nothing in that category.</p>
+        <p className="lstate">Nothing matches that filter.</p>
       )}
       {items && !results.length && !query.trim() && items.length > 0 && kind === 'notes' && !choice.showArchived && (
         <p className="lstate">Nothing pinned. Show archived, or write a note.</p>
@@ -335,6 +345,11 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                     <span className="nhead">
                       <span className="ntitle">
                         {kind === 'notes' && item.raw?.open && <PinMark />}
+                        {kind === 'recipes' && item.raw?.favourite ? (
+                          <span className="nheart" aria-label="Favourite" title="Favourite">
+                            ♥
+                          </span>
+                        ) : null}
                         {face.title}
                       </span>
                       {kind === 'recipes' && <span className="nid">{item.id}</span>}

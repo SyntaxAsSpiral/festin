@@ -104,6 +104,36 @@ def test_recipe_tools(kit):
     assert deleted["status"] == "deleted"
 
 
+def test_edit_recipe_favourite_and_search(kit):
+    conn, registry, ctx = kit
+    loved = registry.dispatch(
+        "edit_recipe",
+        {
+            "recipe_id": "CBK-0001",
+            "expected_updated_at": "2026-01-01T00:00:00+00:00",
+            "changes": {"favourite": True},
+        },
+        ctx,
+    )
+    assert loved["status"] == "saved"
+    assert loved["recipe"]["favourite"] is True
+
+    found = registry.dispatch("search_cookbook", {"query": "Soup", "favourite": True}, ctx)
+    assert found["total"] == 1
+    assert found["results"][0]["id"] == "CBK-0001"
+    assert found["results"][0]["favourite"] is True
+
+    empty = registry.dispatch("search_cookbook", {"query": "Soup", "favourite": False}, ctx)
+    assert empty["total"] == 0
+
+    full = registry.dispatch(
+        "search_cookbook",
+        {"query": "Soup", "favourite": True, "full": True},
+        ctx,
+    )
+    assert full["results"][0]["favourite"] is True
+
+
 def test_attach_recipe_photos(kit):
     conn, registry, ctx = kit
     photo = ctx.data_dir / "photos" / "dish.jpg"
