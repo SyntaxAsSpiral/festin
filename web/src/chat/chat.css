@@ -60,8 +60,28 @@
   justify-content: flex-end;
   margin-top: 6px;
 }
+/* The composer's buttons are the soft action family (tokens in index.css), as on
+   the card foot: Send in ink, Stop in the quiet danger style. */
+.composer-bar button {
+  box-sizing: border-box;
+  height: var(--btn-h);
+  min-width: var(--btn-min-w);
+  padding: 0 var(--btn-px);
+  border: var(--btn-border);
+  border-radius: var(--btn-radius);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font: inherit;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.composer-bar button:disabled { opacity: 0.45; cursor: default; }
+.composer-bar button:focus-visible { outline: 1px dashed var(--bb-rose); outline-offset: 2px; }
 .composer .send { color: var(--bb-ink); }
-.composer .stop { color: var(--bb-rose); border-color: var(--bb-rose); }
+.composer .stop { color: var(--btn-danger-fg); border: var(--btn-danger-border); }
 .composer-note,
 .failed p {
   margin: 0 0 6px;
