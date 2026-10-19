@@ -341,11 +341,23 @@ def _mark_line(line):
     return "".join(parts)
 
 
+PLACEHOLDERS = {"", "unknown", "zk-chat"}
+
+
+def _known(value) -> str:
+    text = " ".join(str(value or "").split())
+    return "" if text.casefold() in PLACEHOLDERS else text
+
+
 def recipe_slip_text(recipe):
     """Plain slip body, and the same body with light **bold** for the raster."""
-    head = recipe["id"] + " · " + (recipe.get("voice") or "") + " · " + (recipe.get("provenance") or "")
-    if recipe.get("source"):
-        head += "\nSource: " + recipe["source"]
+    # Placeholders ("unknown", the chat stamp) never print; provenance is bookkeeping.
+    head = recipe["id"]
+    voice, source = _known(recipe.get("voice")), _known(recipe.get("source"))
+    if voice:
+        head += " · from " + voice
+    if source and source != voice:
+        head += "\nSource: " + source
     if recipe.get("stub"):
         head += "\nUnfinished recipe"
     plain, marked = [head], [head]

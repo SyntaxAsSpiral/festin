@@ -303,3 +303,17 @@ def test_prepare_slip_quote_stored_and_default_when_absent(tmp_path):
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_recipe_slip_skips_placeholder_voice_and_source():
+    from festin.plugins.printer.printing import recipe_slip_text
+
+    plain, _ = recipe_slip_text(
+        {"id": "CBK-1414", "voice": "unknown", "source": "unknown", "provenance": "Claude", "ingredients": ["eggs"]}
+    )
+    assert plain.splitlines()[0] == "CBK-1414"
+    assert "unknown" not in plain and "Claude" not in plain
+    named, _ = recipe_slip_text(
+        {"id": "CBK-0001", "voice": "grandma", "source": "Quita's Recipe box", "provenance": "ocr-draft", "ingredients": ["eggs"]}
+    )
+    assert named.startswith("CBK-0001 · from grandma\nSource: Quita's Recipe box")
