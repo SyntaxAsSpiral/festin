@@ -7,6 +7,7 @@ import { Placeholder } from './Placeholder.jsx'
 import { CardTab } from './cards/CardTab.jsx'
 import { LookingContext } from './cards/looking.js'
 import { useReducedMotion } from './useReducedMotion.js'
+import { PullRefresh } from './PullRefresh.jsx'
 import Surface, { SurfaceProvider } from './chat/Surface.jsx'
 import { ChatPanel, chatHeader, peekLine } from './chat/ChatPanel.jsx'
 import { useChat } from './chat/useChat.js'
@@ -156,6 +157,7 @@ function ShellFrame({ boot }) {
   const { pathname } = useLocation()
   const tab = tabFromPath(pathname)
   const [card, setCard] = useState(null)
+  const [stageEl, setStageEl] = useState(null)
   // Each message carries what the cook is looking at: the tab plus a pointer to the open card.
   const chat = useChat({ tab: tab?.id || null, card: card?.id ? { kind: card.kind, id: card.id } : null })
   const trouble = boot.phase === 'trouble'
@@ -210,7 +212,8 @@ function ShellFrame({ boot }) {
           <FullscreenButton />
           <Gear />
         </header>
-        <div className="stage">
+        <PullRefresh root={stageEl} reduced={reduced} />
+        <div className="stage" ref={setStageEl}>
           <LookingContext.Provider value={setCard}>
           <Routes>
             <Route index element={<Navigate to="/meals" replace />} />

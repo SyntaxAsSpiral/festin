@@ -283,6 +283,40 @@ kbd {
   padding: var(--stage-pt) var(--stage-px) var(--stage-pb);
   background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
   background-blend-mode: multiply;
+  touch-action: pan-x pan-y;
+}
+
+/* Phone pull-to-refresh: quiet paper line above the stage. */
+.pull-refresh {
+  flex: none;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 0;
+  background: color-mix(in srgb, var(--bb-tone-1) 55%, var(--bb-paper));
+  color: var(--bb-tone-4);
+  font-size: 13px;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid transparent;
+  pointer-events: none;
+}
+.pull-refresh.ready {
+  color: var(--bb-tone-5);
+  border-bottom-color: var(--bb-tone-2);
+}
+.pull-refresh.spring {
+  transition: height var(--drawer-ms) var(--ease-drawer);
+}
+.pull-refresh-line {
+  display: block;
+  padding: 0 8px 6px;
+  white-space: nowrap;
+}
+html[data-motion="off"] .pull-refresh.spring,
+.app[data-motion="off"] .pull-refresh.spring {
+  transition: none;
 }
 .placeholder h1 {
   font-weight: 400;
