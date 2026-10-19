@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { CATEGORY_LABELS, KINDS, loadItems, matches, plateFor } from './kinds.js'
+import { CATEGORY_LABELS, KINDS, loadItems, matches, plateFor, setRecipeFavourite } from './kinds.js'
 import { rememberOrigin } from './origin.js'
 import {
   DEFAULT_CHOICE,
@@ -72,6 +72,18 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
   const more = useRef(null)
   const canSort = kind === 'recipes' || kind === 'notes'
 
+  // The row's heart toggles in place; a stale row (changed elsewhere) reloads the list.
+  const [reload, setReload] = useState(0)
+  function toggleFavourite(item) {
+    setRecipeFavourite(item.raw, !item.raw.favourite).then(
+      (saved) =>
+        setItems((cur) =>
+          cur.map((it) => (it.id === item.id ? { ...it, raw: { ...it.raw, favourite: saved.favourite, updatedAt: saved.updatedAt } } : it)),
+        ),
+      () => setReload((n) => n + 1),
+    )
+  }
+
   // Chats search on the server (the list row has no transcript). Recipes and notes
   // come back with their text, so the filter stays on this page.
   const serverQuery = kind === 'chats' ? query.trim() : ''
@@ -92,7 +104,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
       gone = true
       clearTimeout(timer)
     }
-  }, [kind, serverQuery, revision])
+  }, [kind, serverQuery, revision, reload])
 
   useEffect(() => {
     try {
@@ -345,11 +357,6 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                     <span className="nhead">
                       <span className="ntitle">
                         {kind === 'notes' && item.raw?.open && <PinMark />}
-                        {kind === 'recipes' && item.raw?.favourite ? (
-                          <span className="nheart" aria-label="Favourite" title="Favourite">
-                            ♥
-                          </span>
-                        ) : null}
                         {face.title}
                       </span>
                       {kind === 'recipes' && <span className="nid">{item.id}</span>}
@@ -357,6 +364,17 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                     <span className="nline">{face.line}</span>
                     {face.tip && <span className="ntip">{face.tip}</span>}
                   </button>
+                  {kind === 'recipes' && (
+                    <button
+                      type="button"
+                      className={'nfav' + (item.raw?.favourite ? ' on' : '')}
+                      aria-pressed={Boolean(item.raw?.favourite)}
+                      aria-label={(item.raw?.favourite ? 'Unfavourite ' : 'Favourite ') + item.title}
+                      onClick={() => toggleFavourite(item)}
+                    >
+                      {item.raw?.favourite ? '♥' : '♡'}
+                    </button>
+                  )}
                 </li>
               )
             })}

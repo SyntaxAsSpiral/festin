@@ -186,14 +186,25 @@
 .nitem-archived:hover { opacity: 0.78; }
 /* Title line: the title, and a recipe's ID right-aligned and quiet. */
 .nhead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.nheart {
-  display: inline-block;
-  margin-right: 0.35em;
-  font-size: 0.85em;
+/* A recipe row's heart: a toggle beside the ID, faint until loved. */
+.nlist li:has(> .nfav) { position: relative; }
+.nlist li:has(> .nfav) .nhead { padding-right: 26px; }
+.nfav {
+  position: absolute;
+  top: 6px;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 15px;
   line-height: 1;
-  color: var(--acc-red-glyph);
-  vertical-align: 0.05em;
+  color: var(--bb-tone-2);
+  cursor: pointer;
 }
+.nfav:hover { color: var(--acc-red-glyph); }
+.nfav.on { color: var(--acc-red-glyph); }
 .nid {
   flex: none;
   font-size: 12.5px;
