@@ -82,6 +82,16 @@ class PrinterPlugin:
                     ],
                 ],
             },
+            {
+                "key": "weeklyPick",
+                "type": "boolean",
+                "default": False,
+                "label": "Babette's weekly pick",
+                "help": (
+                    "One model call a week to choose the dinner slip's art and "
+                    "closing quote. Off uses rotation art and the default quote."
+                ),
+            },
         ]
 
     def register(self, registry) -> None:

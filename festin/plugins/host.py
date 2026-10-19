@@ -181,6 +181,10 @@ def _secret_keep(value) -> bool:
 
 
 def _clean_setting(field: dict, value):
+    if field["type"] == "boolean":
+        if type(value) is not bool:
+            raise ValueError(field["key"] + " must be true or false")
+        return value
     if field["type"] == "string":
         if not isinstance(value, str):
             raise ValueError(field["key"] + " must be text")
@@ -191,7 +195,9 @@ def _clean_setting(field: dict, value):
                 raise ValueError(field["key"] + " is too long")
             return value
         if "enum" in field and value not in field["enum"]:
-            raise ValueError("Unknown band art: " + value)
+            if field["key"] == "band":
+                raise ValueError("Unknown band art: " + value)
+            raise ValueError("Unknown " + field["key"] + ": " + value)
         return value
     raise ValueError("Unknown plugin setting: " + field["key"])
 
