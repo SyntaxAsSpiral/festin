@@ -329,10 +329,22 @@ def _version_10(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_11(conn: sqlite3.Connection) -> None:
+    """Incoming-recipes inbox: on/off toggle and sha256 of the bearer key."""
+    conn.executescript(
+        """
+        ALTER TABLE settings ADD COLUMN inbox_enabled INTEGER NOT NULL DEFAULT 1
+            CHECK (inbox_enabled IN (0, 1));
+        ALTER TABLE settings ADD COLUMN inbox_key_hash TEXT NOT NULL DEFAULT '';
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
 # v6 is the Kitchen Log. Plugin tables are v7. Shared favourites are v8.
 # v9 widens the kitchen log event kinds CHECK.
 # v10 splits weeks.slip_quote from weeks.slip_title.
+# v11 is the incoming-recipes inbox toggle and key hash.
 MIGRATIONS = (
     _version_1,
     _version_2,
@@ -344,6 +356,7 @@ MIGRATIONS = (
     _version_8,
     _version_9,
     _version_10,
+    _version_11,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

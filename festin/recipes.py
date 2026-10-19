@@ -98,7 +98,13 @@ def get_recipe(conn: sqlite3.Connection, recipe_id: str) -> dict:
     return _public(row)
 
 
-def create_recipe(conn: sqlite3.Connection, body: dict, *, now: datetime | None = None) -> dict:
+def create_recipe(
+    conn: sqlite3.Connection,
+    body: dict,
+    *,
+    now: datetime | None = None,
+    log_detail: str = "",
+) -> dict:
     if not isinstance(body, dict):
         raise ValueError("JSON object required")
     stamp = _stamp(now)
@@ -155,6 +161,7 @@ def create_recipe(conn: sqlite3.Connection, body: dict, *, now: datetime | None 
         ref_id=recipe_id,
         at=stamp,
         title=columns["title"],
+        detail=log_detail or "",
         extra={"category": columns.get("category")},
     )
     conn.commit()

@@ -12,7 +12,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert SCHEMA_VERSION == 10
+    assert SCHEMA_VERSION == 11
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "sessions" in tables
@@ -44,7 +44,14 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
         "weather_timezone",
         "model_base_url",
         "model_name",
+        "inbox_enabled",
+        "inbox_key_hash",
     }
+    inbox = conn.execute(
+        "SELECT inbox_enabled, inbox_key_hash FROM settings WHERE id = 1"
+    ).fetchone()
+    assert inbox["inbox_enabled"] == 1
+    assert inbox["inbox_key_hash"] == ""
     assert conn.execute("SELECT table_name FROM settings").fetchone()[0] == "Babette's Table"
     weather = conn.execute(
         "SELECT weather_location, weather_latitude, weather_timezone FROM settings WHERE id = 1"
@@ -221,9 +228,12 @@ def test_v10_moves_slip_title_into_slip_quote(tmp_path):
     assert "slip_quote" not in {row["name"] for row in conn.execute("PRAGMA table_info(weeks)")}
 
     apply(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 10
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     week_columns = {row["name"] for row in conn.execute("PRAGMA table_info(weeks)")}
     assert "slip_quote" in week_columns
+    assert "inbox_enabled" in {
+        row["name"] for row in conn.execute("PRAGMA table_info(settings)")
+    }
     row = conn.execute(
         "SELECT slip_title, slip_quote FROM weeks WHERE start_date = '2026-10-17'"
     ).fetchone()
