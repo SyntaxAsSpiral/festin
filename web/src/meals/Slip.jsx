@@ -6,9 +6,9 @@ import {
   DEFAULT_SLIP_TITLE,
   SLIP_TITLE_MAX,
   dayLabel,
+  dayName,
   displayRecipeId,
   fetchPlan,
-  formatDinnerHour,
   formatWeekLabel,
   isoDate,
   parseRecipeId,
@@ -21,7 +21,30 @@ import { SlipBanner } from './SlipBanner.jsx'
 
 const SAVE_MS = 450
 
-function todayIso(zone) {
+// The kitchen's clock, read twice a minute: the today marker moves at midnight
+// and its time stays current without a reload.
+function useNow(ms = 30000) {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), ms)
+    return () => window.clearInterval(timer)
+  }, [ms])
+  return now
+}
+
+// "19 October, 4:32 am" in the kitchen's time zone.
+function nowLabel(now, zone) {
+  const at = (opts) => {
+    try {
+      return now.toLocaleString('en-GB', zone ? { ...opts, timeZone: zone } : opts)
+    } catch {
+      return now.toLocaleString('en-GB', opts)
+    }
+  }
+  return at({ day: 'numeric', month: 'long' }) + ', ' + at({ hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+function todayIso(zone, now = new Date()) {
   try {
     if (zone) {
       const parts = new Intl.DateTimeFormat('en-CA', {
@@ -29,17 +52,17 @@ function todayIso(zone) {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
-      }).formatToParts(new Date())
+      }).formatToParts(now)
       const get = (t) => parts.find((p) => p.type === t)?.value
       return `${get('year')}-${get('month')}-${get('day')}`
     }
   } catch {
     /* fall through */
   }
-  return isoDate(new Date())
+  return isoDate(now)
 }
 
-function NightRow({ night, i, today, thisWeek, week, dinnerHour, recipesById, recipesByTitle, patchDays, openRecipe }) {
+function NightRow({ night, i, today, thisWeek, week, clock, recipesById, recipesByTitle, patchDays, openRecipe }) {
   const [eid, setEid] = useState(displayRecipeId(night.recipe))
   useEffect(() => {
     setEid(displayRecipeId(night.recipe))
@@ -49,7 +72,7 @@ function NightRow({ night, i, today, thisWeek, week, dinnerHour, recipesById, re
   const isToday = night.date === today && week === thisWeek
 
   return (
-    <div className={'row' + (night.cooked ? ' cooked' : '') + (linked ? ' linked' : '')}>
+    <div className={'row' + (night.cooked ? ' cooked' : '') + (linked ? ' linked' : '') + (isToday ? ' is-today' : '')}>
       <div className="d">
         <button
           type="button"
@@ -58,9 +81,9 @@ function NightRow({ night, i, today, thisWeek, week, dinnerHour, recipesById, re
           aria-pressed={night.cooked}
           onClick={() => patchDays(i, { cooked: !night.cooked })}
         >
-          {dayLabel(night.date)}
+          {dayName(night.date)}
         </button>
-        {isToday && <span className="today">· tonight, {formatDinnerHour(dinnerHour)}</span>}
+        {isToday && <span className="today">{clock}</span>}
       </div>
       <span className="n">
         <input
@@ -130,10 +153,11 @@ function NightRow({ night, i, today, thisWeek, week, dinnerHour, recipesById, re
 
 export function Slip({ settings, recipesById, recipesByTitle }) {
   const navigate = useNavigate()
-  const dinnerHour = settings?.dinnerHour || '17:30'
   const startDay = settings?.weekStart || 'sat'
   const zone = settings?.weather?.timezone
-  const today = todayIso(zone)
+  const now = useNow()
+  const today = todayIso(zone, now)
+  const clock = nowLabel(now, zone)
   const thisWeek = isoDate(weekStartFor(today, startDay))
 
   const [week, setWeek] = useState(thisWeek)
@@ -356,7 +380,7 @@ export function Slip({ settings, recipesById, recipesByTitle }) {
             today={today}
             thisWeek={thisWeek}
             week={week}
-            dinnerHour={dinnerHour}
+            clock={clock}
             recipesById={recipesById}
             recipesByTitle={recipesByTitle}
             patchDays={patchDays}

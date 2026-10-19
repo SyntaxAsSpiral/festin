@@ -42,6 +42,12 @@ export function dayLabel(iso) {
   return WEEKDAY_LABEL[(d.getDay() + 6) % 7]
 }
 
+const WEEKDAY_NAME = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+export function dayName(iso) {
+  return WEEKDAY_NAME[(asDate(iso).getDay() + 6) % 7]
+}
+
 export function dayKey(iso) {
   return WEEKDAY_KEYS[(asDate(iso).getDay() + 6) % 7]
 }
