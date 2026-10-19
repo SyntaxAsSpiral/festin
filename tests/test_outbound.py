@@ -86,7 +86,7 @@ def test_outbound_plugin_lists_and_tools_follow_the_switch(blank_db):
         status, body = client.request("GET", "/api/plugins")
         assert status == 200
         ids = [item["id"] for item in body["plugins"]]
-        assert ids == ["printer", "tattva", "outbound"]
+        assert ids == ["printer", "tattva", "outbound", "voice"]
         plug = _outbound(body["plugins"])
         assert plug["enabled"] is False
         assert plug["name"] == "Cloud agents"

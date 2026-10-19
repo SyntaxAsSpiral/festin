@@ -177,6 +177,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_file(self.server.cards_dir, path[len("/cards/"):])
             if path.startswith("/slips/"):
                 return self._send_file(self.server.data_dir / "slips", path[len("/slips/"):])
+            if path.startswith("/api/speak/"):
+                return self._speak_get(path)
             if path == "/api/plugins" or path.startswith("/api/plugins/"):
                 return self._plugins_get(path)
             if path == "/api/session":
@@ -271,6 +273,8 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/stop":
             return self._send(200, stop_request(request_id=body.get("request_id"), submission_id=body.get("submission_id")))
         try:
+            if path == "/api/speak":
+                return self._speak_post(body)
             if path == "/api/settings/model-key":
                 return self._send(200, self._save_model_key(body))
             if path == "/api/settings/model-test":
@@ -454,6 +458,48 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(404, {"error": str(exc) or "Not found"})
         except ValueError as exc:
             return self._send(400, {"error": str(exc)})
+
+    def _speak_post(self, body: dict):
+        from festin.plugins.voice import speak as voice_speak
+
+        with self._db() as conn:
+            if not plugins_host.enabled(conn, "voice"):
+                raise NotFound("That plugin is off.")
+            stored = plugins_host._stored(conn, plugins_host._require("voice"))
+            result = voice_speak.speak(
+                body.get("text", ""),
+                data_dir=self.server.data_dir,
+                settings=stored["settings"],
+            )
+        status = 202 if result.get("status") == "rendering" else 200
+        return self._send(status, result)
+
+    def _speak_get(self, path: str):
+        from festin.plugins.voice import speak as voice_speak
+
+        with self._db() as conn:
+            if not plugins_host.enabled(conn, "voice"):
+                return self._send(404, {"error": "That plugin is off."})
+        key = path[len("/api/speak/") :]
+        if "/" in key or not key:
+            return self._send(404, {"error": "Reading not found."})
+        query = parse_qs(urlparse(self.path).query)
+        status, value = voice_speak.speech_result(key, data_dir=self.server.data_dir)
+        if status == "rendering":
+            return self._send(202, {"status": "rendering"})
+        if status == "error":
+            return self._send(400, {"error": value or "The voice could not be rendered."})
+        if status == "missing":
+            return self._send(404, {"error": "Reading not found."})
+        if _q(query, "status") == "1":
+            return self._send(200, {"status": "ready", "url": "/api/speak/" + key})
+        data = value if isinstance(value, (bytes, bytearray)) else b""
+        self.send_response(200)
+        self.send_header("Content-Type", "audio/wav")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(data)
 
     def _plugins_get(self, path: str):
         with self._db() as conn:

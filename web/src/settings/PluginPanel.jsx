@@ -105,6 +105,12 @@ export function PluginPanel({ plugin, onUpdated }) {
           {plugin.id === 'outbound' && (
             <p className="fine">Send a notebook list to a named webhook when the cook asks.</p>
           )}
+          {plugin.id === 'voice' && (
+            <p className="fine">
+              Adds a Listen control on Babette&apos;s finished replies. Choose a TTS provider below;
+              API keys stay on the host (model key / ELEVENLABS_API_KEY), never in Settings.
+            </p>
+          )}
         </div>
         <label className="pltg">
           <input

@@ -231,7 +231,7 @@ def test_plugins_list_includes_tattva_off_by_default(blank_db):
     conn = connect(blank_db)
     listed = host.list_plugins(conn)
     ids = [item["id"] for item in listed]
-    assert ids == ["printer", "tattva", "outbound"]
+    assert ids == ["printer", "tattva", "outbound", "voice"]
     tattva = next(item for item in listed if item["id"] == "tattva")
     assert tattva["enabled"] is False
     assert tattva["settings"]["dinnerHour"] == "17:30"

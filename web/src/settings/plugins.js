@@ -163,6 +163,7 @@ export function pluginIcon(plugin) {
   if (plugin?.id === 'printer') return '⎙'
   if (plugin?.id === 'tattva') return '🜂'
   if (plugin?.id === 'outbound') return '⇢'
+  if (plugin?.id === 'voice') return '♪'
   return '·'
 }
 

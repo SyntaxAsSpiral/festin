@@ -17,8 +17,9 @@ from festin.errors import NotFound
 from festin.plugins.outbound.plugin import PLUGIN as OUTBOUND
 from festin.plugins.printer.plugin import PLUGIN as PRINTER
 from festin.plugins.tattva.plugin import PLUGIN as TATTVA
+from festin.plugins.voice.plugin import PLUGIN as VOICE
 
-PLUGINS = (PRINTER, TATTVA, OUTBOUND)
+PLUGINS = (PRINTER, TATTVA, OUTBOUND, VOICE)
 _BY_ID = {plugin.id: plugin for plugin in PLUGINS}
 
 
@@ -141,6 +142,14 @@ def _public_settings(plugin, settings: dict) -> dict:
                 mode = ""
             out[key] = mode
             continue
+        if key == "provider" and plugin.id == "voice":
+            from festin.plugins.voice import speak as voice_speak
+
+            value = settings.get(key, field.get("default"))
+            if value == "local" and not voice_speak.local_tts_configured():
+                value = "openrouter"
+            out[key] = value
+            continue
         out[key] = settings.get(key, field.get("default"))
     return out
 
@@ -221,6 +230,8 @@ def _clean_setting(field: dict, value):
                 raise ValueError("Unknown band art: " + value)
             if field["key"] == "deliveryMode":
                 raise ValueError("Unknown delivery mode: " + value)
+            if field["key"] == "provider":
+                raise ValueError("Unknown voice provider: " + value)
             raise ValueError("Unknown " + field["key"] + ": " + value)
         return value
     raise ValueError("Unknown plugin setting: " + field["key"])
