@@ -169,7 +169,10 @@ def preview(conn, data_dir: Path, week=None, draft=None):
 
 
 def note_slip_band(conn, args, settings):
-    """Chosen band, else the saved note's band when no band was passed, else this week's pantry plate."""
+    """Fixed setting wins; else chosen band, else the saved note's band, else this week's pantry plate."""
+    locked = printing.fixed_band(settings)
+    if locked:
+        return locked
     raw = args.get("band")
     if raw not in (None, ""):
         return clean_note_band(raw) or printing.week_note_band(conn, settings)
@@ -290,6 +293,12 @@ def prepare_slip(conn: sqlite3.Connection, args: dict, *, data_dir: Path, chat_i
             week = str(args.get("week_start") or "").strip()
             if not week:
                 raise ValueError("weekStart must be an ISO date.")
+            raw_plates = args.get("plates")
+            if isinstance(raw_plates, dict):
+                chosen = printing.accept_plates(
+                    raw_plates, week, printing.last_week_plates(conn, week)
+                )
+                printing.store_week_plates(conn, week, chosen)
             draft = args.get("_plan")
             result = preview(
                 conn,

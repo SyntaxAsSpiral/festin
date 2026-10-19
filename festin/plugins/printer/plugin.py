@@ -11,13 +11,16 @@ _PREPARE = (
     "Prepare a PNG preview of a dinner plan, catalog recipe, praxis card, or note. "
     "Does not print. Returns rendered_text for content checks with text-only models. "
     "For recipes and praxis, pass recipe_id; kind=recipe is inferred if omitted. "
-    "The band follows the card category. For plans pass kind=plan and week_start; "
-    "matching draft takes precedence over saved plan. For notes pass kind=note with "
-    "the title and the text to print; both are required. To print a saved note, read "
-    "it and write a print-friendly title and text yourself. Saved notes are not written "
-    "for reading and do not need to be. You may use **bold** sparingly. Pass note_id "
-    "only to take that note’s band when you omit band. Inspect the supplied preview "
-    "before printing. "
+    "Recipe and note band art follows Settings: Babette's choice uses the card category "
+    "(and note band rules); a named band uses that band for every recipe and note slip. "
+    "Dinner slips keep their own weekly plates either way. For plans pass kind=plan and "
+    "week_start; matching draft takes precedence over saved plan. When the week has no "
+    "plates stored, pass plates {top,bottom,header,pantry} chosen for the season and "
+    "dinners. For notes pass kind=note with the title and the text to print; both are "
+    "required. To print a saved note, read it and write a print-friendly title and text "
+    "yourself. Saved notes are not written for reading and do not need to be. You may "
+    "use **bold** sparingly. Pass note_id only to take that note’s band when you omit "
+    "band. Inspect the supplied preview before printing. "
     + slips.SLIP_SENTENCE
 )
 
@@ -53,12 +56,28 @@ class PrinterPlugin:
             {
                 "key": "band",
                 "type": "string",
-                "default": printing.band_catalog()["default"],
+                "default": printing.BABETTE_BAND,
                 "label": "Band art",
-                "enum": [row["id"] for row in bands],
+                "help": (
+                    "Babette's choice picks recipe bands by category and note bands from "
+                    "the note or this week's pantry plate. A named band uses that art on "
+                    "every recipe and note slip. Dinner slips keep their own weekly plates "
+                    "either way."
+                ),
+                "enum": [printing.BABETTE_BAND] + [row["id"] for row in bands],
                 "choices": [
-                    {"id": row["id"], "file": row["file"], "description": row["description"]}
-                    for row in bands
+                    {
+                        "id": printing.BABETTE_BAND,
+                        "description": "Babette's choice",
+                    },
+                    *[
+                        {
+                            "id": row["id"],
+                            "file": row["file"],
+                            "description": row["description"],
+                        }
+                        for row in bands
+                    ],
                 ],
             },
         ]
@@ -85,6 +104,7 @@ class PrinterPlugin:
                     "band": printing.band_property(
                         "Note slips only. Omit to use a saved note’s band, or this week’s pantry plate."
                     ),
+                    "plates": printing.plates_property(),
                 },
             },
             _prepare,

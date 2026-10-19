@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -112,21 +112,36 @@ def band_file(ident):
     raise KeyError(ident)
 
 
-def configured_default(settings=None):
-    """The plugin's band-art setting, or the catalog default."""
-    body = band_catalog()
+BABETTE_BAND = "babette"
+
+
+def fixed_band(settings=None):
+    """Named band for every recipe and note slip, or None for Babette's choice (dynamic)."""
     chosen = (settings or {}).get("band")
+    if chosen in (None, "", BABETTE_BAND):
+        return None
     if chosen in band_ids():
         return chosen
-    return body["default"]
+    return None
+
+
+def configured_default(settings=None):
+    """Fallback band when dynamic rules miss. Never returns babette."""
+    locked = fixed_band(settings)
+    if locked:
+        return locked
+    return band_catalog()["default"]
 
 
 def band_for_category(category, settings=None):
-    """Recipe and praxis slips. A missing or unknown category uses the default band."""
+    """Recipe and praxis slips. A fixed setting overrides; else the category map, else the catalog default."""
+    locked = fixed_band(settings)
+    if locked:
+        return locked
     body = band_catalog()
     ident = body["categories"].get(category) if isinstance(category, str) else None
     if ident not in band_ids():
-        ident = configured_default(settings)
+        ident = body["default"]
     return ident
 
 
@@ -175,21 +190,64 @@ def kitchen_week(today=None):
     return (today - timedelta(days=(today.weekday() - 5) % 7)).isoformat()
 
 
-def week_slip_plates(conn: sqlite3.Connection, week: str):
+def stored_week_plates(conn: sqlite3.Connection, week: str) -> dict | None:
+    """Raw plates_json for a week, or None when unset."""
     row = conn.execute("SELECT plates_json FROM weeks WHERE start_date = ?", (week,)).fetchone()
-    stored = None
-    if row is not None and row["plates_json"]:
-        parsed = json.loads(row["plates_json"])
-        stored = parsed if isinstance(parsed, dict) else None
-    return resolve_print_plates(stored, week)
+    if row is None or not row["plates_json"]:
+        return None
+    parsed = json.loads(row["plates_json"])
+    return parsed if isinstance(parsed, dict) else None
+
+
+def week_slip_plates(conn: sqlite3.Connection, week: str):
+    return resolve_print_plates(stored_week_plates(conn, week), week)
+
+
+def last_week_plates(conn: sqlite3.Connection, week: str) -> dict:
+    """Resolved plates for the Saturday before week (rotation when that week had none)."""
+    previous = (date.fromisoformat(week) - timedelta(days=7)).isoformat()
+    return resolve_print_plates(stored_week_plates(conn, previous), previous)
+
+
+def store_week_plates(conn: sqlite3.Connection, week: str, plates: dict, *, now=None) -> dict:
+    """Persist accepted plates on the week row (insert a blank week when missing)."""
+    payload = json.dumps(plates, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") if now is None else now
+    row = conn.execute("SELECT start_date FROM weeks WHERE start_date = ?", (week,)).fetchone()
+    if row is None:
+        conn.execute(
+            "INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at) VALUES (?, '', '', ?, ?)",
+            (week, payload, stamp),
+        )
+    else:
+        conn.execute(
+            "UPDATE weeks SET plates_json = ?, updated_at = ? WHERE start_date = ?",
+            (payload, stamp, week),
+        )
+    return plates
+
+
+def plate_tool_listing() -> str:
+    """Compact id (phrase) lines for prepare_slip — short labels, not full catalog prose."""
+    chunks = []
+    for slot in SLOTS:
+        bits = []
+        for ident in plate_ids(slot):
+            phrase = ident.removeprefix(slot + "-").replace("-", " ")
+            bits.append(ident + " (" + phrase + ")")
+        chunks.append(slot + ": " + ", ".join(bits))
+    return "; ".join(chunks)
 
 
 def week_note_band(conn: sqlite3.Connection, settings=None, today=None):
     """pantry-X on this kitchen week's plates is band X. Anything else uses the default."""
+    locked = fixed_band(settings)
+    if locked:
+        return locked
     pantry = week_slip_plates(conn, kitchen_week(today)).get("pantry") or ""
     ident = pantry.removeprefix("pantry-")
     if ident not in band_ids():
-        return configured_default(settings)
+        return band_catalog()["default"]
     return ident
 
 
@@ -200,6 +258,20 @@ def band_property(purpose: str) -> dict:
         "type": "string",
         "enum": [row["id"] for row in rows],
         "description": purpose + " " + listing,
+    }
+
+
+def plates_property() -> dict:
+    return {
+        "type": "object",
+        "description": (
+            "Dinner-slip plates for kind=plan: {top,bottom,header,pantry}. "
+            "When the week has none stored, choose for the season and dinners from "
+            + plate_tool_listing()
+            + ". Omit when plates are already stored unless asked to change them. "
+            "A repeat of last week's set is replaced by the weekly rotation."
+        ),
+        "properties": {slot: {"type": "string"} for slot in SLOTS},
     }
 
 
