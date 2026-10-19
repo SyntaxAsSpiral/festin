@@ -82,6 +82,11 @@
   display: block;
   border: 0;
 }
+/* A zoned scene is sized and placed by cropFor (scenes.js), not by object-fit. */
+.slip .vig img.zoned {
+  max-width: none;
+  object-fit: fill;
+}
 
 .slip h2.slipT {
   text-align: center;

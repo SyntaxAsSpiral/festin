@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { transition } from '../motion.js'
-import { SCENES } from '../scenes.js'
+import { SCENES, cropFor } from '../scenes.js'
 import { useReducedMotion } from '../useReducedMotion.js'
 
 function rnd(lo, hi) {
@@ -13,6 +13,19 @@ export function SlipBanner() {
   const reduced = useReducedMotion()
   const [index, setIndex] = useState(() => Math.floor(Math.random() * SCENES.length))
   const scene = SCENES[index]
+  // The banner's size, so a zoned scene can be cropped to it.
+  const vigRef = useRef(null)
+  const [box, setBox] = useState(null)
+  useLayoutEffect(() => {
+    const el = vigRef.current
+    if (!el) return undefined
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight })
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const crop = scene.zone && box?.w && box?.h ? cropFor(box.w, box.h, scene.zone) : null
 
   useEffect(() => {
     if (document.hidden) return undefined
@@ -45,14 +58,19 @@ export function SlipBanner() {
   }, [])
 
   return (
-    <div className="vig banner-slide" data-art="top" aria-hidden="true">
+    <div className="vig banner-slide" data-art="top" aria-hidden="true" ref={vigRef}>
       <AnimatePresence initial={false}>
         <motion.img
           key={scene.id}
           src={scene.src}
           alt=""
           draggable={false}
-          style={{ '--scene-position': scene.position }}
+          className={crop ? 'zoned' : undefined}
+          style={
+            crop
+              ? { width: crop.width, height: crop.height, left: crop.left, top: crop.top }
+              : { '--scene-position': scene.position }
+          }
           initial={reduced ? false : { x: '100%' }}
           animate={{ x: '0%' }}
           exit={reduced ? { opacity: 1 } : { x: '-100%' }}
