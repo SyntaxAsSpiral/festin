@@ -27,7 +27,7 @@ _PREPARE = (
 )
 
 _PRINT = (
-    "Print ONE copy of a prepared slip through the Epson. Only call when the user "
+    "Print ONE copy of a prepared slip on the kitchen printer. Only call when the user "
     "requested physical printing, after checking prepare_slip preview (rendered_text "
     "for text-only models). Repeated calls for the same slip will not print again. "
     "If status is uncertain, report it and do not create a replacement automatically. "

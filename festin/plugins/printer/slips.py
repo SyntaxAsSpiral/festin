@@ -395,9 +395,9 @@ def _slip_path(data_dir: Path, image: str) -> Path:
 
 def print_message(status: str) -> str:
     if status == "printed":
-        return "Print command completed."
+        return "Printed."
     return (
-        "Print command failed or timed out. Check the printer before requesting another copy; "
+        "The printer did not confirm. Check it before asking for another copy; "
         "some paper may have printed."
     )
 

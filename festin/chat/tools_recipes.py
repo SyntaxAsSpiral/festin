@@ -639,7 +639,7 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
         row = {
             "voice": "unknown",
             "source": "unknown",
-            "provenance": "documented",
+            "provenance": "generated",
             "status": "draft",
             "photos": [],
             "ocrText": "",
@@ -815,8 +815,10 @@ def attach_recipe_photos(args: dict, ctx: Any) -> dict:
             under_root = file.is_relative_to(photos_root)
         except (ValueError, AttributeError):
             under_root = str(file).startswith(str(photos_root) + "/")
-        if path not in shared or path != expected or not file.is_file() or not under_root:
+        if path not in shared or path != expected or not under_root:
             raise ValueError("Choose a photo already shared in chat.")
+        if not file.is_file():
+            raise ValueError("That photo was shared, but its file is not in this kitchen's photos folder.")
         if expected not in photos and path not in photos:
             photos.append(expected)
     stamp = stamp_now(ctx)

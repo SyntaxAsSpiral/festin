@@ -32,11 +32,12 @@ def search_history(args: dict, ctx: Any) -> dict:
     log = kitchen_log.search_events(conn, words=words, days=days, limit=limit)
     if not words:
         return {"matches": [], "log": log, "limit_reached": False}
-    found = _search_messages(conn, words, limit)
+    found = _search_messages(conn, words, limit, ctx_get(ctx, "chat_id"))
     return {**found, "log": log}
 
 
-def _search_messages(conn, words: list[str], limit: int) -> dict:
+def _search_messages(conn, words: list[str], limit: int, current: str | None = None) -> dict:
+    # Earlier chats first: the current one is already in view, so its matches come last.
     chats = conn.execute(
         """
         SELECT id, title, ordinal
@@ -47,6 +48,7 @@ def _search_messages(conn, words: list[str], limit: int) -> dict:
             id DESC
         """
     ).fetchall()
+    chats = sorted(chats, key=lambda chat: chat["id"] == current)
     matches = []
     for chat in chats:
         messages = conn.execute(

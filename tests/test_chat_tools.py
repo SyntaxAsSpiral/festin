@@ -291,3 +291,19 @@ def test_search_history_lists_recent_days_without_words(kit):
     assert recent["matches"] == []
     with pytest.raises(ValueError):
         registry.dispatch("search_history", {}, ctx)
+
+
+def test_kept_note_starts_pinned_unless_asked_closed(kit):
+    conn, registry, ctx = kit
+    pinned = registry.dispatch("keep_note", {"text": "Buy lemons", "type": "shopping"}, ctx)
+    assert pinned["saved"]["open"] is True
+    closed = registry.dispatch("keep_note", {"text": "Old idea", "type": "note", "open": False}, ctx)
+    assert closed["saved"]["open"] is False
+
+
+def test_babette_new_recipe_is_generated(kit):
+    conn, registry, ctx = kit
+    saved = registry.dispatch(
+        "add_recipe", {"title": "Herb toast", "ingredients": ["bread", "herbs"], "method": "Toast."}, ctx
+    )
+    assert saved["recipe"]["provenance"] == "generated"

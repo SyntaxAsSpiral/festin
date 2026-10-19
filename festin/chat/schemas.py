@@ -83,7 +83,11 @@ RECIPE_FIELDS = {
     },
     "provenance": {
         "type": "string",
-        "enum": ["documented", "reconstructed", "mentioned", "ocr-draft", "confirmed"],
+        "enum": ["documented", "reconstructed", "mentioned", "ocr-draft", "confirmed", "generated"],
+        "description": (
+            "documented: copied from a written source (a card, clipping, book or page). "
+            "generated: you composed or worked it out. A new card defaults to generated."
+        ),
     },
     "stub": {"type": "boolean"},
     "needsPracticeReview": {
@@ -445,8 +449,9 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
             "turn, without waiting or dropping what is written. Otherwise pass type and, "
             "when one fits, a Catppuccin accent color. Suggested: shopping green, "
             "leftovers sky, to-do peach. none leaves it uncolored. Another short label "
-            "is fine. open=true pins a note (needs attention); open=false archives it. "
-            "At most 25 pinned. Choose color, band, and priority yourself. Do not ask "
+            "is fine. A kept note starts pinned; pass open=false only when the household "
+            "asks for a closed (archived) note. At most 25 pinned. To print something without saving "
+            "it (a shopping list from a photo), use prepare_slip kind=note instead. Choose color, band, and priority yourself. Do not ask "
             "the household to set them."
         ),
         {

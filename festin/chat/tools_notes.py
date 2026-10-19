@@ -195,9 +195,14 @@ def keep_note(args: dict, ctx: Any) -> dict:
         conn.commit()
         return {"saved": note_for_model(conn.execute("SELECT * FROM notes WHERE id = ?", (note_id,)).fetchone(), today)}
     label = _clean_kind(args.get("type"))
-    leaving_open = bool(args.get("open"))
+    # A kept note starts pinned unless the household asked for a closed one.
+    explicit = "open" in args
+    leaving_open = bool(args["open"]) if explicit else True
+    full = False
     if leaving_open and _open_count(conn) >= OPEN_NOTE_CAP:
-        raise ValueError("Twenty-five notes are already pinned. Archive one before pinning another.")
+        if explicit:
+            raise ValueError("Twenty-five notes are already pinned. Archive one before pinning another.")
+        leaving_open, full = False, True
     existing = conn.execute(
         "SELECT * FROM notes WHERE kind = ? AND text = ?",
         (label, text),
@@ -226,7 +231,10 @@ def keep_note(args: dict, ctx: Any) -> dict:
         ),
     )
     conn.commit()
-    return {"saved": note_for_model(conn.execute("SELECT * FROM notes WHERE id = ?", (note_id,)).fetchone(), today)}
+    result = {"saved": note_for_model(conn.execute("SELECT * FROM notes WHERE id = ?", (note_id,)).fetchone(), today)}
+    if full:
+        result["message"] = "Twenty-five notes are already pinned, so this one was saved archived."
+    return result
 
 
 def edit_note(args: dict, ctx: Any, *, delete: bool = False) -> dict:

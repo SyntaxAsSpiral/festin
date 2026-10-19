@@ -346,7 +346,7 @@ def test_print_slip_posts_once_and_reports_uncertain(tmp_path):
         assert printed == {
             "slip_id": first["slip_id"],
             "status": "printed",
-            "message": "Print command completed.",
+            "message": "Printed.",
         }
         again = registry.dispatch("print_slip", {"slip_id": first["slip_id"]}, ctx)
         assert again["status"] == "printed"
@@ -354,7 +354,7 @@ def test_print_slip_posts_once_and_reports_uncertain(tmp_path):
 
         unsure = registry.dispatch("print_slip", {"slip_id": second["slip_id"]}, ctx)
         assert unsure["status"] == "uncertain"
-        assert "Check the printer" in unsure["message"]
+        assert "printer did not confirm" in unsure["message"]
         held = registry.dispatch("print_slip", {"slip_id": second["slip_id"]}, ctx)
         assert held["status"] == "uncertain"
         assert held["message"] == "No additional print sent."
@@ -423,7 +423,7 @@ def test_print_dinner_and_test_slip_over_http_with_fake_receiver(tmp_path):
         )
         assert status == 200
         assert first["status"] == "printed"
-        assert first["message"] == "Print command completed."
+        assert first["message"] == "Printed."
         assert len(receiver.posts) == 1
 
         status, again = client.request(

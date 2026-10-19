@@ -3,7 +3,7 @@ import { printTarget, toastForPrintResult } from './printToast.js'
 
 describe('print toast outcomes', () => {
   it('maps printed, already printed, uncertain, and plain errors', () => {
-    expect(toastForPrintResult({ ok: true, body: { status: 'printed', message: 'Print command completed.' } })).toBe(
+    expect(toastForPrintResult({ ok: true, body: { status: 'printed', message: 'Printed.' } })).toBe(
       'Printed.',
     )
     expect(
@@ -18,10 +18,10 @@ describe('print toast outcomes', () => {
         body: {
           status: 'uncertain',
           message:
-            'Print command failed or timed out. Check the printer before requesting another copy; some paper may have printed.',
+            'The printer did not confirm. Check it before asking for another copy; some paper may have printed.',
         },
       }),
-    ).toMatch(/uncertain|Check the printer/)
+    ).toMatch(/uncertain|printer/)
     expect(toastForPrintResult({ ok: false, error: 'Print receiver token is not set.' })).toBe(
       'Print receiver token is not set.',
     )
