@@ -41,10 +41,10 @@ def reset_attempts() -> None:
 
 
 def week_needs_pick(conn, week: str) -> bool:
-    """True when the week has neither a stored quote nor stored plates."""
+    """True when the week is missing its quote or its plates. Only the missing part is filled."""
     return (
         not printing.stored_week_quote(conn, week)
-        and printing.stored_week_plates(conn, week) is None
+        or printing.stored_week_plates(conn, week) is None
     )
 
 
@@ -138,10 +138,12 @@ def run_weekly_pick(
     quote, plates = _parse_pick(raw)
     if not week_needs_pick(conn, week):
         return {"stored": False, "reason": "already-set"}
-    last = printing.last_week_plates(conn, week)
-    chosen = printing.accept_plates(plates, week, last)
-    printing.store_week_plates(conn, week, chosen)
-    cleaned = printing.store_week_quote(conn, week, quote)
+    # Never overwrite what the week already has (a choice made in chat, or imported).
+    chosen = printing.stored_week_plates(conn, week)
+    if chosen is None:
+        last = printing.last_week_plates(conn, week)
+        chosen = printing.store_week_plates(conn, week, printing.accept_plates(plates, week, last))
+    cleaned = printing.stored_week_quote(conn, week) or printing.store_week_quote(conn, week, quote)
     conn.commit()
     return {"stored": True, "quote": cleaned, "plates": chosen}
 

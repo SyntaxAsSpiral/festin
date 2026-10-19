@@ -214,6 +214,26 @@ def test_run_weekly_pick_skips_week_already_set(tmp_path):
     conn.close()
 
 
+def test_run_weekly_pick_fills_only_the_missing_quote(tmp_path):
+    # Imported weeks often carry plates already; the pick still writes the quote.
+    weekly.reset_attempts()
+    db = tmp_path / "store.sqlite"
+    conn = connect(db)
+    apply(conn)
+    _enable_pick(conn)
+    kept = dict(_plates())
+    printing.store_week_plates(conn, SAT, kept)
+    conn.commit()
+    fake = FakePick([_valid_payload()])
+    result = weekly.run_weekly_pick(
+        conn, data_dir=tmp_path, week=SAT, today=TODAY, completer=fake, model_key="test-key"
+    )
+    assert result["stored"] is True
+    assert printing.stored_week_quote(conn, SAT) == "Pour la table et le feu."
+    assert printing.stored_week_plates(conn, SAT) == kept
+    conn.close()
+
+
 def test_run_weekly_pick_bad_response_leaves_fallbacks(tmp_path):
     weekly.reset_attempts()
     db = tmp_path / "store.sqlite"
