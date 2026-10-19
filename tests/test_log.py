@@ -126,7 +126,8 @@ def test_saving_plan_updates_week_log_entry_with_weather(kitchen):
         urlopen.return_value.__enter__.return_value = _response(_geocode_payload())
         client.request("POST", "/api/settings", {"weatherLocation": "83835"})
 
-    week = "2026-10-17"
+    # Past week: the household's current week is omitted from the log.
+    week = "2026-09-05"
     with patch("festin.weather.urlopen") as urlopen:
         urlopen.return_value.__enter__.return_value = _response(_forecast_payload())
         status, plan = client.request(
@@ -258,6 +259,83 @@ def test_chat_appears_linked_with_date_approx(kitchen):
     assert "approx-1" in by_id
     assert by_id["approx-1"]["dateApprox"] is True
     assert by_id["approx-1"]["createdAt"] == "2026-04-18"
+
+
+def test_chat_with_many_messages_is_one_log_entry_at_creation(kitchen):
+    client = Client(kitchen.server_address[1])
+    created_at = "2026-05-03T15:22:00.000000Z"
+    conn = connect(kitchen.db_path)
+    try:
+        conn.execute(
+            """
+            INSERT INTO chats (id, title, ordinal, imported_active, updated_at, created_at, date_approx)
+            VALUES ('busy-1', 'Market run', 0, 0, '2026-05-10T09:00:00.000000Z', ?, 0)
+            """,
+            (created_at,),
+        )
+        for position, (role, text) in enumerate(
+            [
+                ("user", "What is for dinner?"),
+                ("assistant", "Soup."),
+                ("user", "And bread?"),
+                ("assistant", "Yes."),
+                ("user", "Thank you."),
+                ("assistant", "Anytime."),
+            ]
+        ):
+            conn.execute(
+                """
+                INSERT INTO chat_messages (chat_id, position, role, content, extra_json)
+                VALUES ('busy-1', ?, ?, ?, '{}')
+                """,
+                (position, role, text),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+    status, body = client.request("GET", "/api/log")
+    assert status == 200
+    chats = [entry for entry in body["entries"] if entry["kind"] == "chat" and entry["id"] == "busy-1"]
+    assert len(chats) == 1
+    assert chats[0]["createdAt"] == created_at
+    assert chats[0]["at"] == created_at
+    assert chats[0]["title"] == "Market run"
+
+
+def test_log_omits_household_current_week(kitchen):
+    """The slip already shows this week; older weeks stay in the ledger."""
+    client = Client(kitchen.server_address[1])
+    with patch("festin.weather.urlopen") as urlopen:
+        urlopen.return_value.__enter__.return_value = _response(_geocode_payload())
+        client.request("POST", "/api/settings", {"weatherLocation": "83835"})
+
+    current_week = "2026-10-17"  # Sat; contains 2026-10-18 in America/Los_Angeles
+    older_week = "2026-09-05"
+    frozen = date(2026, 10, 18)
+    conn = connect(kitchen.db_path)
+    try:
+        for week, slip in ((current_week, "This week"), (older_week, "Last month")):
+            conn.execute(
+                """
+                INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at, weather_json)
+                VALUES (?, ?, '', NULL, ?, NULL)
+                """,
+                (week, slip, f"{week}T12:00:00.000000Z"),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+    with patch("festin.log.household_today", return_value=frozen):
+        status, body = client.request("GET", "/api/log")
+    assert status == 200
+    weeks = [entry for entry in body["entries"] if entry["kind"] == "week"]
+    starts = [entry["weekStart"] for entry in weeks]
+    assert older_week in starts
+    assert current_week not in starts
+    older = next(entry for entry in weeks if entry["weekStart"] == older_week)
+    assert older["slipTitle"] == "Last month"
 
 
 def test_log_pages_back_to_first_imported_week_newest_first(kitchen):

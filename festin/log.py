@@ -16,6 +16,8 @@ import json
 import sqlite3
 from datetime import date, datetime, timedelta, timezone
 
+from festin.settings import today as household_today, week_start_for, get_settings
+
 PAGE_SIZE = 20
 EVENT_KINDS = frozenset({"recipe_added", "recipe_edited", "note_created"})
 
@@ -99,9 +101,16 @@ def _collect(conn: sqlite3.Connection) -> list[dict]:
 
 
 def _week_entries(conn: sqlite3.Connection) -> list[dict]:
+    """Saved weeks except the household week that contains today (the slip already shows it)."""
+    settings = get_settings(conn)
+    current_start = week_start_for(
+        household_today(conn), settings["week_start_day"]
+    ).isoformat()
     rows = conn.execute("SELECT * FROM weeks ORDER BY start_date DESC").fetchall()
     items = []
     for week in rows:
+        if week["start_date"] == current_start:
+            continue
         start = date.fromisoformat(week["start_date"])
         end = start + timedelta(days=6)
         nights = []
@@ -137,7 +146,6 @@ def _week_entries(conn: sqlite3.Connection) -> list[dict]:
             }
         )
     return items
-
 
 def _event_entries(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute(

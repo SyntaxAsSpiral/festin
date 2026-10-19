@@ -13,6 +13,7 @@ from festin.settings import get_settings, today as household_today, week_start_f
 from festin.weather import weather_context
 
 HISTORY_WINDOW = 40
+DEFAULT_CHAT_TITLE = "Current conversation"
 
 LOOKING_TABS = ("meals", "recipes", "notes", "chats")
 LOOKING_CARD_KINDS = ("recipes", "notes", "chats")
@@ -56,6 +57,8 @@ def append_message(conn: sqlite3.Connection, chat_id: str, message: dict) -> Non
         """,
         (chat_id, position, message["role"], content, json.dumps(extra, ensure_ascii=False)),
     )
+    if message.get("role") == "user":
+        _title_from_first_user_message(conn, chat_id, content)
     conn.execute(
         "UPDATE chats SET updated_at = ? WHERE id = ?",
         (datetime.now(timezone.utc).isoformat(), chat_id),
@@ -63,7 +66,34 @@ def append_message(conn: sqlite3.Connection, chat_id: str, message: dict) -> Non
     conn.commit()
 
 
-def ensure_chat(conn: sqlite3.Connection, chat_id: str, title: str = "Current conversation") -> None:
+def title_from_user_text(content: str) -> str:
+    """Live rule: collapse whitespace, keep the first 80 characters."""
+    return " ".join((content or "").split())[:80]
+
+
+def _title_from_first_user_message(
+    conn: sqlite3.Connection, chat_id: str, content: str
+) -> None:
+    """Name an untitled chat from its first user message. Caller commits."""
+    users = conn.execute(
+        "SELECT count(*) AS n FROM chat_messages WHERE chat_id = ? AND role = 'user'",
+        (chat_id,),
+    ).fetchone()
+    if int(users["n"]) != 1:
+        return
+    row = conn.execute("SELECT title FROM chats WHERE id = ?", (chat_id,)).fetchone()
+    if row is None:
+        return
+    current = (row["title"] or "").strip()
+    if current and current != DEFAULT_CHAT_TITLE:
+        return
+    line = title_from_user_text(content)
+    if not line:
+        return
+    conn.execute("UPDATE chats SET title = ? WHERE id = ?", (line, chat_id))
+
+
+def ensure_chat(conn: sqlite3.Connection, chat_id: str, title: str = DEFAULT_CHAT_TITLE) -> None:
     row = conn.execute("SELECT id FROM chats WHERE id = ?", (chat_id,)).fetchone()
     if row:
         return
