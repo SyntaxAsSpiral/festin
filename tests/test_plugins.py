@@ -438,6 +438,17 @@ def test_print_dinner_and_test_slip_over_http_with_fake_receiver(tmp_path):
         assert len(receiver.posts) == 2
         assert "Babette" in json.dumps(test) or test["status"] == "printed"
 
+        # The Print button sends only the open card's ID; it prints the recipe as saved.
+        status, made = client.request(
+            "POST", "/api/recipes", {"title": "Venison Stroganoff", "ingredients": ["venison"], "method": "Sear."}
+        )
+        assert status in (200, 201)
+        made = made.get("recipe", made)
+        status, printed = client.request("POST", "/api/plugins/printer/print-recipe", {"recipe_id": made["id"]})
+        assert status == 200
+        assert printed["status"] == "printed"
+        assert len(receiver.posts) == 3
+
         status, bare = client.request(
             "PUT",
             "/api/plugins/printer",
@@ -463,7 +474,7 @@ def test_print_dinner_and_test_slip_over_http_with_fake_receiver(tmp_path):
         status, missing = client.request("POST", "/api/plugins/printer/test-slip", {})
         assert status == 400
         assert "not set" in missing["error"].lower()
-        assert len(receiver.posts) == 2
+        assert len(receiver.posts) == 3
     finally:
         server.shutdown()
         server.server_close()

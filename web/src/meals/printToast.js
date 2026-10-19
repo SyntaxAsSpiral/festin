@@ -1,10 +1,16 @@
 /** Map a printer plugin action result into a short toast or inline note. */
 
-export function printGateMessage({ onMeals, printerOn, plan }) {
-  if (!onMeals) return 'Print the slip from Meals.'
-  if (!printerOn) return 'The printer plugin is off.'
-  if (!plan?.weekStart) return 'Open a week on Meals first.'
-  return null
+/**
+ * What the Print button prints: the open recipe card, else the week on Meals.
+ * Returns { message } when there is nothing to print, else { action, body }.
+ */
+export function printTarget({ onMeals, card, printerOn, plan }) {
+  if (!printerOn) return { message: 'The printer plugin is off.' }
+  if (card?.kind === 'recipes' && card.id) return { action: 'print-recipe', body: { recipe_id: card.id }, sending: 'Sending the recipe to the printer…' }
+  if (card) return { message: 'Only recipes and the week’s slip print from here.' }
+  if (!onMeals) return { message: 'Open a recipe, or the week on Meals, to print.' }
+  if (!plan?.weekStart) return { message: 'Open a week on Meals first.' }
+  return { action: 'print-dinner', body: { weekStart: plan.weekStart, plan }, sending: 'Sending the slip to the printer…' }
 }
 
 export function toastForPrintResult(result) {

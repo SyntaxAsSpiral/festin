@@ -15,7 +15,7 @@ import { Meals } from './meals/Meals.jsx'
 import { Frieze } from './meals/Frieze.jsx'
 import { getActiveMealsPlan } from './meals/activePlan.js'
 import { fetchPlugins, printerIsOn } from './meals/plan.js'
-import { printGateMessage, toastForPrintResult } from './meals/printToast.js'
+import { printTarget, toastForPrintResult } from './meals/printToast.js'
 import { callPluginAction } from './settings/api.js'
 import './meals/meals.css'
 
@@ -82,7 +82,7 @@ function Gear() {
   )
 }
 
-function PrintButton({ onMeals }) {
+function PrintButton({ onMeals, card }) {
   const [toast, setToast] = useState('')
   useEffect(() => {
     if (!toast) return undefined
@@ -91,23 +91,18 @@ function PrintButton({ onMeals }) {
   }, [toast])
 
   async function onPrint() {
-    const plan = getActiveMealsPlan()
-    const plugins = onMeals ? await fetchPlugins() : null
-    const gate = printGateMessage({
+    const target = printTarget({
       onMeals,
-      printerOn: printerIsOn(plugins),
-      plan,
+      card,
+      printerOn: printerIsOn(await fetchPlugins()),
+      plan: getActiveMealsPlan(),
     })
-    if (gate) {
-      setToast(gate)
+    if (target.message) {
+      setToast(target.message)
       return
     }
-    setToast('Sending the slip to the printer…')
-    const result = await callPluginAction('printer', 'print-dinner', {
-      weekStart: plan.weekStart,
-      plan,
-    })
-    setToast(toastForPrintResult(result))
+    setToast(target.sending)
+    setToast(toastForPrintResult(await callPluginAction('printer', target.action, target.body)))
   }
 
   return (
@@ -192,7 +187,7 @@ function ShellFrame({ boot }) {
             ))}
           </nav>
           <span className="bar-gap" />
-          <PrintButton onMeals={meals} />
+          <PrintButton onMeals={meals} card={card} />
           <FullscreenButton />
           <Gear />
         </header>

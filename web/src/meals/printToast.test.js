@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { printGateMessage, toastForPrintResult } from './printToast.js'
+import { printTarget, toastForPrintResult } from './printToast.js'
 
 describe('print toast outcomes', () => {
   it('maps printed, already printed, uncertain, and plain errors', () => {
@@ -27,14 +27,17 @@ describe('print toast outcomes', () => {
     )
   })
 
-  it('gates the Print button before calling the plugin', () => {
-    expect(printGateMessage({ onMeals: false, printerOn: true, plan: { weekStart: '2026-10-17' } })).toBe(
-      'Print the slip from Meals.',
-    )
-    expect(printGateMessage({ onMeals: true, printerOn: false, plan: { weekStart: '2026-10-17' } })).toBe(
-      'The printer plugin is off.',
-    )
-    expect(printGateMessage({ onMeals: true, printerOn: true, plan: null })).toBe('Open a week on Meals first.')
-    expect(printGateMessage({ onMeals: true, printerOn: true, plan: { weekStart: '2026-10-17' } })).toBe(null)
+  it('prints the open recipe, else the week on Meals', () => {
+    const week = { weekStart: '2026-10-17' }
+    expect(printTarget({ onMeals: true, printerOn: false, plan: week })).toEqual({ message: 'The printer plugin is off.' })
+    expect(printTarget({ onMeals: false, printerOn: true, card: { kind: 'recipes', id: 'CBK-0933' } })).toMatchObject({
+      action: 'print-recipe',
+      body: { recipe_id: 'CBK-0933' },
+    })
+    expect(printTarget({ onMeals: false, printerOn: true, card: { kind: 'notes', id: 'n1' } }).message).toBeTruthy()
+    expect(printTarget({ onMeals: false, printerOn: true, plan: week }).message).toBe('Open a recipe, or the week on Meals, to print.')
+    expect(printTarget({ onMeals: true, printerOn: true, plan: null })).toEqual({ message: 'Open a week on Meals first.' })
+    expect(printTarget({ onMeals: true, printerOn: true, plan: week })).toMatchObject({ action: 'print-dinner' })
   })
+
 })

@@ -486,8 +486,9 @@ def print_recipe(conn, body: dict, *, data_dir: Path) -> dict:
         recipe = recipes_mod.get_recipe(conn, body.get("recipe_id"))
     except NotFound as exc:
         raise ValueError("Unknown recipe ID.") from exc
+    # The Print button prints the card as saved; a caller that read it first may pin the version.
     expected = body.get("expected_updated_at", body.get("expectedUpdatedAt"))
-    if expected != recipe.get("updatedAt"):
+    if expected is not None and expected != recipe.get("updatedAt"):
         raise StaleState("Recipe changed. Refresh before printing.")
     slip = prepare_slip(
         conn,
