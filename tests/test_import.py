@@ -500,3 +500,24 @@ def _assert_live_chats(conn):
     ).fetchone()
     assert sample["created_at"]
     date.fromisoformat(sample["created_at"])
+
+
+def test_cleared_review_carries_a_cook_unless_a_slip_night_is_that_cook(tmp_path, blank_db):
+    days = _days()
+    days[0] = {"day": days[0]["day"], "recipe": "CBK-0002", "title": "On the slip", "ingredients": []}
+    root = write_copy(
+        tmp_path / "live",
+        plan={"days": days},
+        recipes={
+            "meta": {"nextNumericId": 3},
+            "recipes": [
+                {"id": "CBK-0001", "title": "Cooked before", "ingredients": ["a"], "needsPracticeReview": False},
+                {"id": "CBK-0002", "title": "On the slip", "ingredients": ["b"], "needsPracticeReview": False},
+            ],
+        },
+    )
+    import_directory(root, blank_db)
+    conn = connect(blank_db)
+    carried = dict(conn.execute("SELECT id, cooks_before_log FROM recipes").fetchall())
+    conn.close()
+    assert carried == {"CBK-0001": 1, "CBK-0002": 0}

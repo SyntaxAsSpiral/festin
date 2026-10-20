@@ -170,7 +170,8 @@ def test_auth_missing_wrong_and_right(kitchen):
     body = json.loads(data.decode())
     assert body["id"].startswith("CBK-")
     assert body["provenance"] == "documented"
-    assert body["needsPracticeReview"] is True
+    assert body["cookCount"] == 0
+    assert "needsPracticeReview" not in body
 
 
 def test_agent_name_required(kitchen):
@@ -226,7 +227,7 @@ def test_ingredients_as_newline_string(kitchen):
     assert recipe["ingredients"] == ["water", "salt", "pepper"]
 
 
-def test_provenance_needs_review_and_log(kitchen):
+def test_provenance_never_cooked_and_log(kitchen):
     key = _mint(kitchen)
     client = InboxClient(kitchen.inbox_bound_port())
     status, _, data = client.request(
@@ -244,7 +245,8 @@ def test_provenance_needs_review_and_log(kitchen):
     assert status == 200
     assert recipe["provenance"] == "documented"
     assert recipe["voice"] == "Web"
-    assert recipe["needsPracticeReview"] is True
+    assert recipe["cookCount"] == 0
+    assert "needsPracticeReview" not in recipe
     assert recipe["category"] == "soups-stews"
     assert recipe["source"] == "https://example.com/broth"
 

@@ -508,6 +508,89 @@ def _version_15(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_16(conn: sqlite3.Connection) -> None:
+    """Retire needs_practice_review; carry undated pre-log cooks as cooks_before_log."""
+    conn.executescript(
+        """
+        CREATE TABLE recipes_v16 (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            kind TEXT NOT NULL DEFAULT 'formule' CHECK (kind IN ('formule', 'praxis')),
+            category TEXT,
+            voice TEXT NOT NULL DEFAULT '',
+            source TEXT NOT NULL DEFAULT '',
+            provenance TEXT,
+            status TEXT,
+            stub INTEGER NOT NULL DEFAULT 0 CHECK (stub IN (0, 1)),
+            cooks_before_log INTEGER NOT NULL DEFAULT 0
+                CHECK (cooks_before_log >= 0),
+            favourite INTEGER NOT NULL DEFAULT 0 CHECK (favourite IN (0, 1)),
+            queued_at TEXT,
+            search_description TEXT NOT NULL DEFAULT '',
+            method TEXT NOT NULL DEFAULT '',
+            notes TEXT NOT NULL DEFAULT '',
+            context TEXT NOT NULL DEFAULT '',
+            ocr_text TEXT NOT NULL DEFAULT '',
+            ingredients_json TEXT NOT NULL DEFAULT '[]',
+            applies_to_json TEXT NOT NULL DEFAULT '[]',
+            tattva_json TEXT NOT NULL DEFAULT '[]',
+            photos_json TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT,
+            updated_at TEXT,
+            extra_json TEXT NOT NULL DEFAULT '{}'
+        );
+
+        INSERT INTO recipes_v16 (
+            id, title, kind, category, voice, source, provenance, status, stub,
+            cooks_before_log, favourite, queued_at, search_description, method, notes,
+            context, ocr_text, ingredients_json, applies_to_json, tattva_json,
+            photos_json, created_at, updated_at, extra_json
+        )
+        SELECT
+            id,
+            title,
+            kind,
+            category,
+            voice,
+            source,
+            provenance,
+            status,
+            stub,
+            CASE
+                WHEN needs_practice_review = 0
+                 AND NOT EXISTS (
+                    SELECT 1 FROM kitchen_log_events e
+                    WHERE e.kind = 'recipe_cooked' AND e.ref_id = recipes.id
+                 )
+                 -- A linked slip night is that cook, counted once its week ends.
+                 AND NOT EXISTS (
+                    SELECT 1 FROM nights n WHERE n.recipe_id = recipes.id
+                 )
+                THEN 1
+                ELSE 0
+            END,
+            favourite,
+            queued_at,
+            search_description,
+            method,
+            notes,
+            context,
+            ocr_text,
+            ingredients_json,
+            applies_to_json,
+            tattva_json,
+            photos_json,
+            created_at,
+            updated_at,
+            extra_json
+        FROM recipes;
+
+        DROP TABLE recipes;
+        ALTER TABLE recipes_v16 RENAME TO recipes;
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
 # v6 is the Kitchen Log. Plugin tables are v7. Shared favourites are v8.
 # v9 widens the kitchen log event kinds CHECK.
@@ -517,6 +600,7 @@ def _version_15(conn: sqlite3.Connection) -> None:
 # v13 moves household context sections out of notes into household_context.
 # v14 renames recipe→formule and adds applies_to for praxis cards.
 # v15 adds recipes.queued_at and the recipe_planned log kind.
+# v16 drops needs_practice_review; cooks_before_log carries undated pre-log cooks.
 MIGRATIONS = (
     _version_1,
     _version_2,
@@ -533,6 +617,7 @@ MIGRATIONS = (
     _version_13,
     _version_14,
     _version_15,
+    _version_16,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

@@ -46,7 +46,7 @@ includes `application/json`.
 ### What Festin stores
 
 The row is a normal recipe: `provenance` is the agent name,
-`needsPracticeReview` is true, `category` is empty for Babette or the cook.
+`cookCount` starts at 0, `category` is empty for Babette or the cook.
 The Kitchen Log gets a `recipe_added` line with detail `from <agent>`.
 
 ## Key

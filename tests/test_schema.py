@@ -12,7 +12,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert SCHEMA_VERSION == 15
+    assert SCHEMA_VERSION == 16
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "sessions" in tables
@@ -24,6 +24,8 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     assert "favourite" in recipe_columns
     assert "queued_at" in recipe_columns
     assert "applies_to_json" in recipe_columns
+    assert "cooks_before_log" in recipe_columns
+    assert "needs_practice_review" not in recipe_columns
     week_columns = {row["name"] for row in conn.execute("PRAGMA table_info(weeks)")}
     assert "weather_json" in week_columns
     assert "slip_quote" in week_columns
@@ -347,4 +349,62 @@ def test_v14_renames_recipe_to_formule_and_moves_praxis_applies_to(tmp_path):
         raise AssertionError("expected CHECK failure for kind=recipe")
     except Exception:
         conn.rollback()
+    conn.close()
+
+
+def test_v16_carries_cleared_review_without_event_as_cooks_before_log(tmp_path):
+    conn = connect(tmp_path / "store.sqlite")
+    for step in MIGRATIONS[:15]:
+        step(conn)
+    conn.execute("PRAGMA user_version = 15")
+    conn.execute(
+        """
+        INSERT INTO recipes (
+            id, title, kind, category, voice, source, provenance, status, stub,
+            needs_practice_review, favourite, queued_at, search_description, method, notes,
+            context, ocr_text, ingredients_json, applies_to_json, tattva_json,
+            photos_json, created_at, updated_at, extra_json
+        ) VALUES
+            ('CBK-0001', 'Carried', 'formule', 'soups-stews', '', '', 'documented', 'ok', 0,
+             0, 0, NULL, '', '', '', '', '', '[]', '[]', '[]', '[]',
+             '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', '{}'),
+            ('CBK-0002', 'Still review', 'formule', 'soups-stews', '', '', 'documented', 'ok', 0,
+             1, 0, NULL, '', '', '', '', '', '[]', '[]', '[]', '[]',
+             '2026-01-02T00:00:00Z', '2026-01-02T00:00:00Z', '{}'),
+            ('CBK-0003', 'Logged cook', 'formule', 'soups-stews', '', '', 'documented', 'ok', 0,
+             0, 0, NULL, '', '', '', '', '', '[]', '[]', '[]', '[]',
+             '2026-01-03T00:00:00Z', '2026-01-03T00:00:00Z', '{}'),
+            ('CBK-0004', 'Slip night', 'formule', 'soups-stews', '', '', 'documented', 'ok', 0,
+             0, 0, NULL, '', '', '', '', '', '[]', '[]', '[]', '[]',
+             '2026-01-03T00:00:00Z', '2026-01-03T00:00:00Z', '{}')
+        """
+    )
+    # Cleared review with a linked slip night: that night is the cook, not a carried one.
+    conn.execute(
+        "INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at, weather_json)"
+        " VALUES ('2026-01-03', '', '', NULL, '2026-01-03T00:00:00Z', NULL)"
+    )
+    conn.execute(
+        "INSERT INTO nights (date, week_start, recipe_id, title, cooked, updated_at)"
+        " VALUES ('2026-01-05', '2026-01-03', 'CBK-0004', 'Slip night', 0, '2026-01-05T00:00:00Z')"
+    )
+    conn.execute(
+        """
+        INSERT INTO kitchen_log_events (kind, at, ref_id, title, detail, extra_json)
+        VALUES ('recipe_cooked', '2026-01-04T12:00:00Z', 'CBK-0003', 'Logged cook',
+                '2026-01-04', '{"date":"2026-01-04"}')
+        """
+    )
+    conn.commit()
+
+    apply(conn)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+    cols = {row["name"] for row in conn.execute("PRAGMA table_info(recipes)")}
+    assert "cooks_before_log" in cols
+    assert "needs_practice_review" not in cols
+    by_id = {
+        row["id"]: row["cooks_before_log"]
+        for row in conn.execute("SELECT id, cooks_before_log FROM recipes")
+    }
+    assert by_id == {"CBK-0001": 1, "CBK-0002": 0, "CBK-0003": 0, "CBK-0004": 0}
     conn.close()

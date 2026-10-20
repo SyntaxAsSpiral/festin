@@ -34,7 +34,6 @@ _STRING_FIELDS = {
 }
 _BOOL_FIELDS = {
     "stub": "stub",
-    "needsPracticeReview": "needs_practice_review",
     "favourite": "favourite",
 }
 _LIST_FIELDS = {
@@ -195,12 +194,25 @@ def cook_dates_for(conn: sqlite3.Connection, recipe_ids: list[str] | None = None
 
 
 def cook_stats_for(conn: sqlite3.Connection, recipe_ids: list[str]) -> dict[str, dict]:
-    """Derived cookCount and lastCooked from cook_dates_for."""
+    """cookCount = dated cooks (events ∪ ended nights) + cooks_before_log; lastCooked from dates only."""
+    if not recipe_ids:
+        return {}
     dates = cook_dates_for(conn, recipe_ids)
-    return {
-        rid: {"cookCount": len(days), "lastCooked": days[-1] if days else None}
-        for rid, days in dates.items()
-    }
+    before: dict[str, int] = {rid: 0 for rid in recipe_ids}
+    marks = ",".join("?" * len(recipe_ids))
+    for row in conn.execute(
+        f"SELECT id, cooks_before_log FROM recipes WHERE id IN ({marks})",
+        list(recipe_ids),
+    ).fetchall():
+        before[row["id"]] = int(row["cooks_before_log"] or 0)
+    out: dict[str, dict] = {}
+    for rid in recipe_ids:
+        days = dates.get(rid, [])
+        out[rid] = {
+            "cookCount": len(days) + before.get(rid, 0),
+            "lastCooked": days[-1] if days else None,
+        }
+    return out
 
 
 def close_ended_weeks(conn: sqlite3.Connection) -> int:
@@ -321,7 +333,7 @@ def create_recipe(
         "provenance": fields.get("provenance") or "documented",
         "status": fields.get("status") or "draft",
         "stub": int(fields.get("stub") or 0),
-        "needs_practice_review": int(fields.get("needs_practice_review") or 0),
+        "cooks_before_log": 0,
         "favourite": int(fields.get("favourite") or 0),
         "queued_at": fields.get("queued_at"),
         "search_description": fields.get("search_description") or "",
@@ -389,7 +401,7 @@ def edit_recipe(
     if not fields:
         raise ValueError("Supply recipe fields to change.")
     if row["provenance"] == "ocr-draft" and fields.get("provenance") not in (None, "ocr-draft"):
-        raise ValueError("Keep OCR provenance; record a first cook with needsPracticeReview instead.")
+        raise ValueError("Keep OCR provenance; record a cook with cooked true instead.")
     assignments = []
     values = []
     for column, value in fields.items():
@@ -450,16 +462,16 @@ def delete_recipe(conn: sqlite3.Connection, recipe_id: str, body: dict) -> dict:
 
 
 def mark_cooked(conn: sqlite3.Connection, recipe_id: str, body: dict, *, now: datetime | None = None) -> dict:
-    """Record a cook: clear queue + practice review; maybe mark a slip night.
+    """Record a cook: clear the queue; maybe mark a slip night.
 
     Does not place the recipe onto tonight's slip. If the recipe already sits on
     an uncooked night of the current week on or before today, that night is
     marked cooked and its date is the cook date; otherwise the cook date is today.
+    Idempotent per (recipe, cook date): a second press the same day clears the
+    queue and marks a matching night, but does not write another Log event.
     """
     if not isinstance(body, dict):
         raise ValueError("JSON object required")
-    if "needsPracticeReview" in body and body.get("needsPracticeReview") is not False:
-        raise ValueError("Mark cooked only clears practice review.")
     row = _row(conn, recipe_id)
     expected = body.get("expected_updated_at", body.get("expectedUpdatedAt"))
     if expected != row["updated_at"]:
@@ -484,24 +496,39 @@ def mark_cooked(conn: sqlite3.Connection, recipe_id: str, body: dict, *, now: da
             (stamp, night["date"]),
         )
     conn.execute(
-        """
-        UPDATE recipes
-        SET needs_practice_review = 0, queued_at = NULL, updated_at = ?
-        WHERE id = ?
-        """,
+        "UPDATE recipes SET queued_at = NULL, updated_at = ? WHERE id = ?",
         (stamp, recipe_id),
     )
-    kitchen_log.record_event(
-        conn,
-        "recipe_cooked",
-        ref_id=recipe_id,
-        at=stamp,
-        title=row["title"] or "",
-        detail=cook_date,
-        extra={"category": row["category"], "date": cook_date},
-    )
+    if not _has_cook_event(conn, recipe_id, cook_date):
+        kitchen_log.record_event(
+            conn,
+            "recipe_cooked",
+            ref_id=recipe_id,
+            at=stamp,
+            title=row["title"] or "",
+            detail=cook_date,
+            extra={"category": row["category"], "date": cook_date},
+        )
     conn.commit()
     return get_recipe(conn, recipe_id)
+
+
+def _has_cook_event(conn: sqlite3.Connection, recipe_id: str, cook_date: str) -> bool:
+    """True when a recipe_cooked event already carries this cook date."""
+    row = conn.execute(
+        """
+        SELECT 1 FROM kitchen_log_events
+        WHERE kind = 'recipe_cooked' AND ref_id = ?
+          AND COALESCE(
+            json_extract(extra_json, '$.date'),
+            CASE WHEN length(detail) >= 10 THEN substr(detail, 1, 10) END,
+            substr(at, 1, 10)
+          ) = ?
+        LIMIT 1
+        """,
+        (recipe_id, cook_date),
+    ).fetchone()
+    return row is not None
 
 
 def clear_queue_and_review(
@@ -511,24 +538,20 @@ def clear_queue_and_review(
     stamp: str,
     cook_date: str | None = None,
 ) -> None:
-    """Slip newly-cooked night: clear queue/review and log one recipe_cooked.
+    """Slip newly-cooked night: clear the queue and log one recipe_cooked.
 
     Every newly cooked night with a recipe writes a cook event (dated cook_date).
-    Queue and practice review clear when set. Caller commits.
+    Caller commits.
     """
     row = conn.execute(
-        "SELECT title, category, needs_practice_review, queued_at FROM recipes WHERE id = ?",
+        "SELECT title, category, queued_at FROM recipes WHERE id = ?",
         (recipe_id,),
     ).fetchone()
     if row is None:
         return
-    if row["needs_practice_review"] or row["queued_at"] is not None:
+    if row["queued_at"] is not None:
         conn.execute(
-            """
-            UPDATE recipes
-            SET needs_practice_review = 0, queued_at = NULL, updated_at = ?
-            WHERE id = ?
-            """,
+            "UPDATE recipes SET queued_at = NULL, updated_at = ? WHERE id = ?",
             (stamp, recipe_id),
         )
     if cook_date:
@@ -717,7 +740,6 @@ def _public(row) -> dict:
         "provenance": row["provenance"],
         "status": row["status"],
         "stub": bool(row["stub"]),
-        "needsPracticeReview": bool(row["needs_practice_review"]),
         "favourite": bool(row["favourite"]),
         "queuedAt": queued_at,
         "searchDescription": row["search_description"],
@@ -766,7 +788,6 @@ def _card(item: dict) -> dict:
         "appliesTo": item["appliesTo"],
         "notes": item["notes"],
         "stub": item["stub"],
-        "needsPracticeReview": item["needsPracticeReview"],
         "favourite": item["favourite"],
         "queuedAt": item.get("queuedAt"),
         "cookCount": int(item.get("cookCount") or 0),
@@ -799,8 +820,8 @@ def _decode_cursor(cursor: str) -> tuple[str, str]:
 def _edit_log_kind(row, fields: dict) -> str | None:
     """One log line per save: planned, then favourite, else edit.
 
-    Clearing practice review is quiet — cooks are /cooked or the slip toggle.
     Unqueueing, unfavouriting, and repeat same-state saves stay quiet.
+    Cooks are /cooked or the slip toggle.
     """
     was_queued = row["queued_at"] is not None
     if "queued_at" in fields and not was_queued and fields["queued_at"]:
@@ -808,15 +829,14 @@ def _edit_log_kind(row, fields: dict) -> str | None:
     was_favourite = bool(row["favourite"])
     if "favourite" in fields and not was_favourite and fields["favourite"]:
         return "recipe_favourited"
-    material = {key: value for key, value in fields.items() if key != "needs_practice_review"}
     quiet = {"favourite", "queued_at"}
-    if set(material) <= quiet:
-        favourite_noop = "favourite" not in material or bool(material["favourite"]) == was_favourite or (
-            was_favourite and not material["favourite"]
+    if set(fields) <= quiet:
+        favourite_noop = "favourite" not in fields or bool(fields["favourite"]) == was_favourite or (
+            was_favourite and not fields["favourite"]
         )
-        queue_noop = "queued_at" not in material or (
-            (material["queued_at"] is not None) == was_queued
-            or (was_queued and material["queued_at"] is None)
+        queue_noop = "queued_at" not in fields or (
+            (fields["queued_at"] is not None) == was_queued
+            or (was_queued and fields["queued_at"] is None)
         )
         if favourite_noop and queue_noop:
             return None

@@ -428,7 +428,7 @@ def test_derived_import_recipe_and_note_without_duplicate_api_events(kitchen):
             """
             INSERT INTO recipes (
                 id, title, kind, category, voice, source, provenance, status, stub,
-                needs_practice_review, search_description, method, notes, context, ocr_text,
+                cooks_before_log, search_description, method, notes, context, ocr_text,
                 ingredients_json, tattva_json, photos_json, created_at, updated_at, extra_json
             ) VALUES (
                 'CBK-0099', 'Seeded rye', 'formule', 'breads', '', '', 'documented', 'ok', 0, 0,
@@ -480,12 +480,12 @@ def test_first_cook_favourite_archive_and_photo_log_once(kitchen, tmp_path):
         {
             "title": "Barley stew",
             "ingredients": ["barley"],
-            "needsPracticeReview": True,
             "category": "soups-stews",
         },
     )
     assert status == 201
-    assert recipe["needsPracticeReview"] is True
+    assert "needsPracticeReview" not in recipe
+    assert recipe["cookCount"] == 0
 
     status, cooked = client.request(
         "POST",
@@ -493,15 +493,15 @@ def test_first_cook_favourite_archive_and_photo_log_once(kitchen, tmp_path):
         {"expected_updated_at": recipe["updatedAt"]},
     )
     assert status == 200
-    assert cooked["needsPracticeReview"] is False
+    assert cooked["cookCount"] == 1
 
-    # Same cook again: no second first-cook line (and a plain edit instead).
+    # Notes tweak after the cook: a plain edit, not another cook line.
     status, again = client.request(
         "POST",
         f"/api/recipes/{recipe['id']}",
         {
             "expected_updated_at": cooked["updatedAt"],
-            "changes": {"needsPracticeReview": False, "notes": "still good"},
+            "changes": {"notes": "still good"},
         },
     )
     assert status == 200
@@ -579,19 +579,16 @@ def test_first_cook_favourite_archive_and_photo_log_once(kitchen, tmp_path):
     assert by_kind["photo_added"][0]["detail"] == "1"
 
 
-def test_edit_clearing_review_is_not_a_cook(kitchen):
+def test_needs_practice_review_is_rejected(kitchen):
     client = Client(kitchen.server_address[1])
     status, recipe = client.request(
         "POST",
         "/api/recipes",
-        {
-            "title": "Rye",
-            "ingredients": ["rye"],
-            "needsPracticeReview": True,
-        },
+        {"title": "Rye", "ingredients": ["rye"]},
     )
     assert status == 201
-    status, cleared = client.request(
+    assert "needsPracticeReview" not in recipe
+    status, body = client.request(
         "POST",
         f"/api/recipes/{recipe['id']}",
         {
@@ -599,31 +596,8 @@ def test_edit_clearing_review_is_not_a_cook(kitchen):
             "changes": {"needsPracticeReview": False},
         },
     )
-    assert status == 200
-    assert cleared["needsPracticeReview"] is False
-    assert cleared["cookCount"] == 0
-
-    status, saved = client.request(
-        "POST",
-        f"/api/recipes/{recipe['id']}",
-        {
-            "expected_updated_at": cleared["updatedAt"],
-            "changes": {
-                "needsPracticeReview": False,
-                "favourite": True,
-                "notes": "first loaf",
-            },
-        },
-    )
-    assert status == 200
-    status, body = client.request("GET", "/api/log")
-    kinds = [
-        entry["kind"]
-        for entry in body["entries"]
-        if entry.get("id") == recipe["id"] and entry["kind"] != "recipe_added"
-    ]
-    assert "recipe_cooked" not in kinds
-    assert kinds == ["recipe_favourited"]
+    assert status == 400
+    assert "needsPracticeReview" in str(body)
 
 
 def test_approx_chats_fold_into_week_summary(kitchen):

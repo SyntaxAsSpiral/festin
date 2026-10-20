@@ -12,6 +12,7 @@ export const DEFAULT_CHOICE = Object.freeze({
   showArchived: false,
   favouritesOnly: false,
   toCookOnly: false,
+  neverCookedOnly: false,
 })
 
 export const FORM_IDS = ['formule', 'praxis']
@@ -31,7 +32,8 @@ export function isDefaultChoice(choice, kind = 'recipes') {
   const archOk = !choice.showArchived
   const favOk = !choice.favouritesOnly
   const cookOk = !choice.toCookOnly
-  return sortOk && catOk && formOk && archOk && favOk && cookOk
+  const neverOk = !choice.neverCookedOnly
+  return sortOk && catOk && formOk && archOk && favOk && cookOk && neverOk
 }
 
 export function cbkNumber(id) {
@@ -82,6 +84,11 @@ export function filterFavourites(items, favouritesOnly) {
 export function filterToCook(items, toCookOnly) {
   if (!toCookOnly) return items
   return items.filter((it) => it.raw && it.raw.queuedAt)
+}
+
+export function filterNeverCooked(items, neverCookedOnly) {
+  if (!neverCookedOnly) return items
+  return items.filter((it) => it.raw && !(Number(it.raw.cookCount) > 0))
 }
 
 function byQueuedAt(a, b) {
@@ -136,10 +143,14 @@ export function applySortFilter(items, choice, kind = 'recipes') {
 
   const favouritesOnly = Boolean(choice && choice.favouritesOnly)
   const toCookOnly = Boolean(choice && choice.toCookOnly)
+  const neverCookedOnly = Boolean(choice && choice.neverCookedOnly)
   const form = choice && FORM_IDS.includes(choice.form) ? choice.form : ''
-  let out = filterToCook(
-    filterFavourites(filterByForm(filterByCategory(list, category), form), favouritesOnly),
-    toCookOnly,
+  let out = filterNeverCooked(
+    filterToCook(
+      filterFavourites(filterByForm(filterByCategory(list, category), form), favouritesOnly),
+      toCookOnly,
+    ),
+    neverCookedOnly,
   )
   if (toCookOnly) {
     out = out.slice().sort(byQueuedAt)
@@ -164,6 +175,7 @@ export function summarizeChoice(choice, kind = 'recipes') {
   }
   if (choice.favouritesOnly) parts.push('Favourites only')
   if (choice.toCookOnly) parts.push('To cook')
+  if (choice.neverCookedOnly) parts.push('Never cooked')
   if (choice.form === 'formule') parts.push('Formule')
   else if (choice.form === 'praxis') parts.push('Praxis')
   if (choice.category && CATEGORY_LABELS[choice.category]) parts.push(CATEGORY_LABELS[choice.category])
@@ -184,6 +196,7 @@ function normalizeChoice(raw, kind) {
     showArchived: Boolean(raw.showArchived),
     favouritesOnly: Boolean(raw.favouritesOnly),
     toCookOnly: Boolean(raw.toCookOnly),
+    neverCookedOnly: Boolean(raw.neverCookedOnly),
   }
 }
 

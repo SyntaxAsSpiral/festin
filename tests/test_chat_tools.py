@@ -34,7 +34,7 @@ def kit(blank_db, tmp_path):
         """
         INSERT INTO recipes (
             id, title, kind, voice, source, provenance, status, stub,
-            needs_practice_review, ingredients_json, method, updated_at
+            cooks_before_log, ingredients_json, method, updated_at
         ) VALUES (?, ?, 'formule', 'zk', 'unknown', 'documented', 'draft', 0, 0, ?, '', ?)
         """,
         ("CBK-0001", "Soup", json.dumps(["water", "salt"]), "2026-01-01T00:00:00+00:00"),

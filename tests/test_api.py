@@ -482,10 +482,11 @@ def test_recipe_photos_and_mark_cooked(kitchen):
     status, recipe = client.request(
         "POST",
         "/api/recipes",
-        {"title": "Pie", "ingredients": ["flour"], "needsPracticeReview": True},
+        {"title": "Pie", "ingredients": ["flour"]},
     )
     assert status == 201
-    assert recipe["needsPracticeReview"] is True
+    assert "needsPracticeReview" not in recipe
+    assert recipe["cookCount"] == 0
     assert recipe["favourite"] is False
     png = base64.b64encode(
         b"\x89PNG\r\n\x1a\n" + b"\x00" * 30
@@ -506,7 +507,9 @@ def test_recipe_photos_and_mark_cooked(kitchen):
         {"expected_updated_at": with_photo["recipe"]["updatedAt"]},
     )
     assert status == 200
-    assert cooked["needsPracticeReview"] is False
+    assert cooked["cookCount"] == 1
+    assert cooked["lastCooked"]
+    assert "needsPracticeReview" not in cooked
 
 
 def test_recipe_favourite_toggle_and_stale(kitchen):

@@ -149,7 +149,7 @@ def test_sample_puts_queued_first(blank_db):
     conn.close()
 
 
-def test_cooked_clears_queue_and_review_without_slip_overwrite(kitchen):
+def test_cooked_clears_queue_without_slip_overwrite(kitchen):
     client = Client(kitchen.server_address[1])
     status, recipe = client.request(
         "POST",
@@ -158,12 +158,11 @@ def test_cooked_clears_queue_and_review_without_slip_overwrite(kitchen):
             "title": "Missed Roast",
             "ingredients": ["beef"],
             "category": "meats",
-            "needsPracticeReview": True,
             "queued": True,
         },
     )
     assert status == 201
-    assert recipe["needsPracticeReview"] is True
+    assert "needsPracticeReview" not in recipe
     assert recipe["queuedAt"]
 
     conn = connect(kitchen.db_path)
@@ -177,8 +176,9 @@ def test_cooked_clears_queue_and_review_without_slip_overwrite(kitchen):
         {"expected_updated_at": recipe["updatedAt"]},
     )
     assert status == 200
-    assert cooked["needsPracticeReview"] is False
     assert cooked["queuedAt"] is None
+    assert cooked["cookCount"] == 1
+    assert "needsPracticeReview" not in cooked
 
     conn = connect(kitchen.db_path)
     after = plans_mod.get_plan(conn, start)
@@ -252,7 +252,7 @@ def test_cooked_marks_matching_uncooked_night(kitchen):
     conn.close()
 
 
-def test_slip_toggle_clears_queue_and_review(kitchen):
+def test_slip_toggle_clears_queue(kitchen):
     client = Client(kitchen.server_address[1])
     status, recipe = client.request(
         "POST",
@@ -261,7 +261,6 @@ def test_slip_toggle_clears_queue_and_review(kitchen):
             "title": "Slip Clear",
             "ingredients": ["onion"],
             "category": "soups-stews",
-            "needsPracticeReview": True,
             "queued": True,
         },
     )
@@ -297,7 +296,8 @@ def test_slip_toggle_clears_queue_and_review(kitchen):
     )
     saved = recipes_mod.get_recipe(conn, recipe["id"])
     assert saved["queuedAt"] is None
-    assert saved["needsPracticeReview"] is False
+    assert saved["cookCount"] == 1
+    assert "needsPracticeReview" not in saved
 
     # Queued again after that cook: re-saving the slip with the night still cooked is
     # not a new cook, so the queue mark stays.
@@ -378,7 +378,7 @@ def test_slip_toggle_logs_cook_without_review(kitchen):
         {"title": "Plain Night", "ingredients": ["salt"], "category": "soups-stews"},
     )
     assert status == 201
-    assert recipe["needsPracticeReview"] is False
+    assert "needsPracticeReview" not in recipe
     assert recipe["queuedAt"] is None
 
     conn = connect(kitchen.db_path)
@@ -496,6 +496,88 @@ def test_cooked_button_then_same_night_does_not_double(kitchen):
     assert cooks[0]["ordinal"] == 1
 
 
+def test_mark_cooked_idempotent_same_date_three_presses(kitchen):
+    """Three Cooked presses for one dinner write one Log line; queue still clears."""
+    client = Client(kitchen.server_address[1])
+    status, recipe = client.request(
+        "POST",
+        "/api/recipes",
+        {
+            "title": "One Dinner",
+            "ingredients": ["beans"],
+            "category": "soups-stews",
+            "queued": True,
+        },
+    )
+    assert status == 201
+    assert recipe["queuedAt"]
+
+    conn = connect(kitchen.db_path)
+    day = today(conn)
+    start = week_start_for(day, get_settings(conn)["week_start_day"])
+    plan = plans_mod.get_plan(conn, start.isoformat())
+    days = []
+    for slot in plan["days"]:
+        if slot["date"] == day.isoformat():
+            days.append(
+                {
+                    **slot,
+                    "recipe": recipe["id"],
+                    "title": recipe["title"],
+                    "cooked": False,
+                }
+            )
+        else:
+            days.append(dict(slot))
+    plans_mod.save_plan(
+        conn,
+        start.isoformat(),
+        {
+            "weekStart": start.isoformat(),
+            "expected_updated_at": plan["updatedAt"],
+            "days": days,
+            "slipTitle": "",
+            "notes": "",
+        },
+    )
+    fresh = recipes_mod.get_recipe(conn, recipe["id"])
+    conn.close()
+
+    current = fresh
+    for _ in range(3):
+        status, current = client.request(
+            "POST",
+            f"/api/recipes/{current['id']}/cooked",
+            {"expected_updated_at": current["updatedAt"]},
+        )
+        assert status == 200
+        assert current["cookCount"] == 1
+        assert current["queuedAt"] is None
+
+    conn = connect(kitchen.db_path)
+    night = conn.execute(
+        "SELECT cooked FROM nights WHERE date = ?", (day.isoformat(),)
+    ).fetchone()
+    assert night["cooked"] == 1
+    event_n = conn.execute(
+        """
+        SELECT count(*) FROM kitchen_log_events
+        WHERE kind = 'recipe_cooked' AND ref_id = ?
+        """,
+        (recipe["id"],),
+    ).fetchone()[0]
+    conn.close()
+    assert event_n == 1
+
+    status, body = client.request("GET", "/api/log")
+    cooks = [
+        e for e in body["entries"] if e.get("kind") == "recipe_cooked" and e.get("id") == recipe["id"]
+    ]
+    assert len(cooks) == 1
+    assert cooks[0]["date"] == day.isoformat()
+    assert cooks[0]["ordinal"] == 1
+
+
 def test_second_cook_raises_count_and_ordinal(kitchen):
     client = Client(kitchen.server_address[1])
     status, recipe = client.request(
@@ -513,7 +595,7 @@ def test_second_cook_raises_count_and_ordinal(kitchen):
     assert status == 200
     assert first["cookCount"] == 1
 
-    # Same calendar day is one cook (distinct recipe, date), even with two events.
+    # Same calendar day: no second Log event; cookCount stays 1.
     status, same_day = client.request(
         "POST",
         f"/api/recipes/{recipe['id']}/cooked",
@@ -522,8 +604,17 @@ def test_second_cook_raises_count_and_ordinal(kitchen):
     assert status == 200
     assert same_day["cookCount"] == 1
 
-    # A cook dated another day raises the count; both Log lines share ordinals by date.
     conn = connect(kitchen.db_path)
+    same_day_events = conn.execute(
+        """
+        SELECT count(*) FROM kitchen_log_events
+        WHERE kind = 'recipe_cooked' AND ref_id = ?
+        """,
+        (recipe["id"],),
+    ).fetchone()[0]
+    assert same_day_events == 1
+
+    # A cook dated another day raises the count; Log ordinals follow the date set.
     from festin import log as kitchen_log
 
     kitchen_log.record_event(
@@ -547,9 +638,9 @@ def test_second_cook_raises_count_and_ordinal(kitchen):
         for e in body["entries"]
         if e.get("kind") == "recipe_cooked" and e.get("id") == recipe["id"]
     ]
+    assert len(cooks) == 2
     by_date = {e.get("date"): e.get("ordinal") for e in cooks}
     assert by_date.get("2026-10-01") == 1
-    # Today's button events share one ordinal (the later date in the set).
     today_ordinals = {e.get("ordinal") for e in cooks if e.get("date") and e.get("date") != "2026-10-01"}
     assert today_ordinals == {2}
 
@@ -580,6 +671,24 @@ def test_ended_week_linked_night_counts_as_cook_with_dedupe(blank_db):
     stats = recipes_mod.cook_stats_for(conn, [recipe["id"]])[recipe["id"]]
     assert stats["cookCount"] == 1
     assert stats["lastCooked"] == "2026-09-28"
+
+    # Carried pre-log cook with no dated event: count without lastCooked.
+    carried = recipes_mod.create_recipe(
+        conn,
+        {"title": "Carried Once", "ingredients": ["b"], "category": "soups-stews"},
+    )
+    conn.execute(
+        "UPDATE recipes SET cooks_before_log = 1 WHERE id = ?",
+        (carried["id"],),
+    )
+    conn.commit()
+    carried_stats = recipes_mod.cook_stats_for(conn, [carried["id"]])[carried["id"]]
+    assert carried_stats["cookCount"] == 1
+    assert carried_stats["lastCooked"] is None
+    public = recipes_mod.get_recipe(conn, carried["id"])
+    assert public["cookCount"] == 1
+    assert public["lastCooked"] is None
+    assert "needsPracticeReview" not in public
 
     # Same date as a recipe_cooked event: still one cook.
     from festin import log as kitchen_log
@@ -753,7 +862,6 @@ def test_babette_cooked_true_matches_button(blank_db, tmp_path):
             "ingredients": ["beans"],
             "category": "soups-stews",
             "searchDescription": "A pot.",
-            "needsPracticeReview": True,
             "queued": True,
         },
         ctx,
@@ -796,7 +904,7 @@ def test_babette_cooked_true_matches_button(blank_db, tmp_path):
         },
         ctx,
     )
-    assert cooked["recipe"]["needsPracticeReview"] is False
+    assert "needsPracticeReview" not in cooked["recipe"]
     assert cooked["recipe"]["queuedAt"] is None
     assert cooked["recipe"]["cookCount"] == 1
     assert cooked["recipe"]["lastCooked"] == day.isoformat()

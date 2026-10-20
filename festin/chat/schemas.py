@@ -103,14 +103,6 @@ RECIPE_FIELDS = {
         ),
     },
     "stub": {"type": "boolean"},
-    "needsPracticeReview": {
-        "type": "boolean",
-        "description": (
-            "True for OCR-batch cards until the household cooks or checks them. Typos "
-            "are expected. Recording a cook (cooked true) clears this; do not clear it "
-            "by hand to mean a cook."
-        ),
-    },
     "favourite": {
         "type": "boolean",
         "description": (
@@ -122,8 +114,7 @@ RECIPE_FIELDS = {
         "type": "boolean",
         "description": (
             "To-cook queue mark. Set true only when the cook asks to plan or remember a "
-            "dish to cook. Clear when asked or when it has been cooked. Needing practice "
-            "review is not a reason to queue."
+            "dish to cook. Clear when asked or when it has been cooked."
         ),
     },
     "cooked": {
@@ -131,8 +122,8 @@ RECIPE_FIELDS = {
         "description": (
             "Record a cook (edit_recipe only). Set cooked true alone when the household "
             "says the dish was made or cooking photos land on the card. Same as the "
-            "Cooked button: clears queue and practice review, marks a matching slip night "
-            "when present, and writes one Kitchen Log cook. cooked false is invalid."
+            "Cooked button: clears the queue, marks a matching slip night when present, "
+            "and writes one Kitchen Log cook. cooked false is invalid."
         ),
     },
     "tattva": {"type": "array", "items": {"type": "string"}},
@@ -253,7 +244,7 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
             "images or read_chat_history, never invented paths. Ask which recipe or "
             "photo if ambiguous. Appends without replacing existing photos; repeated "
             "attachments are deduplicated. Claim success only after this tool succeeds. "
-            "If the card still needs practice review and these photos are the cooked "
+            "If the card has never been cooked here and these photos are the cooked "
             "dish, the result asks you to record a cook: call edit_recipe with only "
             "cooked true. If you are not sure which card, ask. Do not change "
             "provenance or status."
@@ -305,14 +296,13 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
             "explicitly when expansion is complete. Preserve source attribution. Record "
             "a cook with changes {cooked: true} alone in the same turn the household "
             "says the dish was made, or just after attach_recipe_photos of the cooked "
-            "dish, without waiting to be asked again. That clears queue and practice "
-            "review and may mark a slip night — same as the Cooked button. Set "
-            "favourite true when someone loved the dish (a shared household heart). "
-            "Clear favourite only when asked. Set queued true only when the cook asks "
-            "to put a dish on the to-cook queue; needing practice review is not a "
-            "reason to queue. Clear queued when asked. If more than one card could be "
+            "dish, without waiting to be asked again. That clears the queue and may "
+            "mark a slip night — same as the Cooked button. Set favourite true when "
+            "someone loved the dish (a shared household heart). Clear favourite only "
+            "when asked. Set queued true only when the cook asks to put a dish on the "
+            "to-cook queue. Clear queued when asked. If more than one card could be "
             "meant, ask which one. Never change provenance away from ocr-draft, and "
-            "never change status. A cook is cooked true, not needsPracticeReview false."
+            "never change status. A cook is cooked true."
         ),
         {
             "type": "object",
