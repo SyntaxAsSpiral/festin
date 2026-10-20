@@ -2,37 +2,40 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from festin.chat.persona import fill_placeholders, load_blocks
 from festin.plugins.printer import printing, slips
 
 PLUGIN_ID = "printer"
 PLUGIN_NAME = "Thermal printer"
-
-_PREPARE = (
-    "Prepare a PNG preview of a dinner plan, catalog recipe, praxis card, or note. "
-    "Does not print. Returns rendered_text for content checks with text-only models. "
-    "For recipes and praxis, pass recipe_id; kind=recipe is inferred if omitted. "
-    "Recipe and note band art follows Settings: Babette's pick uses the card category "
-    "(and note band rules); a named band uses that band for every recipe and note slip. "
-    "Dinner slips keep their own weekly plates either way. For plans pass kind=plan and "
-    "week_start; matching draft takes precedence over saved plan. When the week has no "
-    "plates stored, pass plates {top,bottom,header,pantry} chosen for the season and "
-    "dinners. Pass quote for a short French closing line on the dinner slip (printed "
-    "only; default Pour les dames de la maison.). For notes pass kind=note with the "
-    "title and the text to print; both are "
-    "required. To print a saved note, read it and write a print-friendly title and text "
-    "yourself. Saved notes are not written for reading and do not need to be. You may "
-    "use **bold** sparingly. Pass note_id only to take that note’s band when you omit "
-    "band. Inspect the supplied preview before printing. "
-    + slips.SLIP_SENTENCE
+_TOOLS_YAML = Path(__file__).resolve().parent / "tools.yaml"
+_PRINTER_TOOL_KEYS = (
+    "prepare_slip",
+    "print_slip",
+    "prepare_slip.note_id",
+    "prepare_slip.band",
+    "prepare_slip.plates",
+    "prepare_slip.quote",
 )
 
-_PRINT = (
-    "Print ONE copy of a prepared slip on the kitchen printer. Only call when the user "
-    "requested physical printing, after checking prepare_slip preview (rendered_text "
-    "for text-only models). Repeated calls for the same slip will not print again. "
-    "If status is uncertain, report it and do not create a replacement automatically. "
-    + slips.SLIP_SENTENCE
-)
+
+def tool_text() -> dict[str, str]:
+    """Load printer tool prose; placeholders filled from the live catalogs."""
+    blocks = load_blocks(_TOOLS_YAML)
+    values = {
+        "slip_sentence": slips.SLIP_SENTENCE,
+        "plate_listing": printing.plate_tool_listing(),
+        "band_listing": printing.band_listing(),
+    }
+    filled = {key: fill_placeholders(body, values) for key, body in blocks.items()}
+    orphans = sorted(set(filled) - set(_PRINTER_TOOL_KEYS))
+    if orphans:
+        raise ValueError("Orphan printer tool text keys: " + ", ".join(orphans))
+    missing = sorted(set(_PRINTER_TOOL_KEYS) - set(filled))
+    if missing:
+        raise ValueError("Missing printer tool text keys: " + ", ".join(missing))
+    return filled
 
 
 class PrinterPlugin:
@@ -131,9 +134,10 @@ class PrinterPlugin:
         ]
 
     def register(self, registry) -> None:
+        text = tool_text()
         registry.register_tool(
             "prepare_slip",
-            _PREPARE,
+            text["prepare_slip"],
             {
                 "type": "object",
                 "properties": {
@@ -144,22 +148,13 @@ class PrinterPlugin:
                     "text": {"type": "string"},
                     "note_id": {
                         "type": "string",
-                        "description": (
-                            "Saved note id. Supplies only the default band when band is omitted. "
-                            "Read the note and write the title and text yourself."
-                        ),
+                        "description": text["prepare_slip.note_id"],
                     },
-                    "band": printing.band_property(
-                        "Note slips only. Omit to use a saved note’s band, or this week’s pantry plate."
-                    ),
-                    "plates": printing.plates_property(),
+                    "band": printing.band_property(text["prepare_slip.band"]),
+                    "plates": printing.plates_property(text["prepare_slip.plates"]),
                     "quote": {
                         "type": "string",
-                        "description": (
-                            "Dinner-slip closing line for kind=plan. Short French motto "
-                            "or sign-off, printed only. Omit to keep a stored quote, or "
-                            "the default Pour les dames de la maison."
-                        ),
+                        "description": text["prepare_slip.quote"],
                     },
                 },
             },
@@ -168,7 +163,7 @@ class PrinterPlugin:
         )
         registry.register_tool(
             "print_slip",
-            _PRINT,
+            text["print_slip"],
             {
                 "type": "object",
                 "properties": {"slip_id": {"type": "string"}},

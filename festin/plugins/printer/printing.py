@@ -283,26 +283,24 @@ def week_note_band(conn: sqlite3.Connection, settings=None, today=None):
     return ident
 
 
-def band_property(purpose: str) -> dict:
+def band_listing() -> str:
     rows = band_catalog()["bands"]
-    listing = " ".join(row["id"] + ": " + row["description"] for row in rows)
+    return " ".join(row["id"] + ": " + row["description"] for row in rows)
+
+
+def band_property(description: str) -> dict:
+    rows = band_catalog()["bands"]
     return {
         "type": "string",
         "enum": [row["id"] for row in rows],
-        "description": purpose + " " + listing,
+        "description": description,
     }
 
 
-def plates_property() -> dict:
+def plates_property(description: str) -> dict:
     return {
         "type": "object",
-        "description": (
-            "Dinner-slip plates for kind=plan: {top,bottom,header,pantry}. "
-            "When the week has none stored, choose for the season and dinners from "
-            + plate_tool_listing()
-            + ". Omit when plates are already stored unless asked to change them. "
-            "A repeat of last week's set is replaced by the weekly rotation."
-        ),
+        "description": description,
         "properties": {slot: {"type": "string"} for slot in SLOTS},
     }
 

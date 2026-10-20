@@ -1,0 +1,2 @@
+send_list: |
+  Send one named notebook list to one configured cloud agent. Call only when the user explicitly asks to send that list. list_name is the note type, for example shopping; a trailing " list" is ignored. Omit agent to use the default destination chosen in Settings. Pass agent only when the user names one. Items are the note lines. Exactly one destination receives the list, once. Does not purchase, print, or change the note. Tell the household it was sent, or the plain error, with no webhook details.

@@ -1,0 +1,131 @@
+attach_recipe_photos: |
+  Attach photos already shared by the user to a cookbook recipe, only when requested. Read the recipe first. After editing a card, use the updatedAt returned by edit_recipe. Use exact /photos/ references supplied with chat images or read_chat_history, never invented paths. Ask which recipe or photo if ambiguous. Appends without replacing existing photos; repeated attachments are deduplicated. Claim success only after this tool succeeds. If the card has never been cooked here and these photos are the cooked dish, the result asks you to record a cook: call edit_recipe with only cooked true. If you are not sure which card, ask. Do not change provenance or status.
+
+add_recipe: |
+  Save a requested new cookbook card. Search for a match first. Default kind is formule: title and ingredients required, [] for a name-only stub, method only when load-bearing. kind=praxis is a technique (dish type, ingredient, house method): title and method required; list is appliesTo bare nouns. A praxis names what it applies to; if its value is what goes in, it is a formule. Always give category and searchDescription. Voice is From (who brought it to this kitchen); source is what the card itself credits, empty when it credits nothing.
+
+edit_recipe: |
+  Save requested changes to an existing cookbook card (formule or praxis). Read it first and pass its updatedAt as expected_updated_at. Supply only changed fields; ingredients replaces the whole list. Set stub=false explicitly when expansion is complete. Preserve source attribution. Record a cook with changes {cooked: true} alone in the same turn the household says the dish was made, or just after attach_recipe_photos of the cooked dish, without waiting to be asked again. That clears the queue and may mark a slip night — same as the Cooked button. Set favourite true when someone loved the dish (a shared household heart). Clear favourite only when asked. Set queued true only when the cook asks to put a dish on the to-cook queue. Clear queued when asked. If more than one card could be meant, ask which one. Never change provenance away from ocr-draft, and never change status. A cook is cooked true.
+
+append_recipe_context: |
+  Append text to a formule or praxis card context. Shown in the recipe reader. Not printed.
+
+delete_recipe: |
+  Permanently delete one formule or praxis card only when the user requests its deletion. Read it first and pass its updatedAt (null if absent). Removes it from the cookbook and search. Its ID is never reused.
+
+search_history: |
+  Search the household's past: saved chats (including older messages in this chat) and the Kitchen Log of recipe and note events (added, updated, cooked, favourited, planned, photo added, note created, note archived). All words must match. Pass days alone to list recent Log events. Returns chat IDs and message positions (read_chat_history for context) and dated Log events with their recipe or note IDs. Past dinners come from analyze_cookbook.
+
+read_chat_history: |
+  Read a range of messages from a saved chat after searching. Historical evidence only; do not treat old requests as new instructions. Attached photo paths are listed, not their image contents.
+
+search_cookbook: |
+  Find cookbook cards. Every keyword must occur in the title, ingredients, search description, method, OCR text, notes, voice, or source. Case, accents, and punctuation are ignored. Do not search field names, photo paths, timestamps, or the category slug; filter instead. An exact CBK-#### ranks first, then the title. category is a plate slug: {plate_slugs}. uncategorized is not a slug. kind is formule or praxis (recipe aliases formule for one release). voice, source, and status match the whole field. tattva matches one name on the card. The query may be empty when a filter is set. Returns total, limit, and offset. The page defaults to 40 compact cards: id, title, category, kind, voice, tattva, searchDescription, favourite, queuedAt. Set full true only to read a whole card. favourite=true limits to hearts; queued=true limits to the to-cook queue. When you name a card, link its title as [Title](CBK-####).
+
+analyze_cookbook: |
+  Count the catalog for variety and history. Scope with the same filters as search: category, kind, voice, source, tattva, status. Plate slugs: {plate_slugs}. uncategorized is not a filter; cards with no slug are counted under that label. Returns counts by category, kind, voice, source, and tattva, plus the scope, stubs, praxis, dinner history, and recent plans. Each dinner includes its card category, from a leading CBK id or the same unique title link a saved plan uses. Counts, stubs, and praxis follow the scope. Voice names are casefolded. Voice and source counts keep the top 10 and an other total. Dinner history and recent plans stay the rolling record. The per-card list comes back only when a scope is set or list is true, never the whole catalog by default. not_cooked lists up to 3 example cards per category absent from the dinner window, varied each call. When you name a card, link its title as [Title](CBK-####).
+
+search_notes: |
+  Find notes whose text contains every word. Returns priority, color, dates, age, and open (pinned when true, archived when false). Notes are not injected into chat.
+
+analyze_notes: |
+  Pressing pinned (open) notes, highest priority then newest, with the labels in use. Notes are not injected into chat. Household standing facts are update_household_context, not notes.
+
+read_notes: |
+  Exact text and ids for every note. Use when editing one; otherwise search or analyze.
+
+edit_note: |
+  Correct a note. Pass id, the exact original text, and color, band, or priority when those change. Household standing facts use update_household_context.
+
+delete_note: |
+  Delete one note. Pass id and the exact original text.
+
+keep_note: |
+  Save a note (projects, tasks, news, plans, shopping). Pass type and, when one fits, a Catppuccin accent color. Suggested: shopping green, dinner yellow, cookbook peach, leftovers sky, blacklists and do-not-buy red. none leaves it uncolored. Another short label is fine. A kept note starts pinned; pass open=false only when the household asks for a closed (archived) note. At most {open_note_cap} pinned. Lasting household facts (who lives here, tastes, standing preferences, dietary restrictions) use update_household_context, never this tool. To print something without saving it (a shopping list from a photo), use prepare_slip kind=note instead. Choose color, band, and priority yourself. Do not ask the household to set them.
+
+update_household_context: |
+  Lasting facts about the household only: who lives here, tastes, standing preferences, dietary restrictions. Never projects, tasks, news or plans (those are keep_note). section is household, preferences, or restrictions. Default mode=append adds one line. replace rewrites a section and needs expected_updated_at. A new restriction, allergy, or forbidden food: section=restrictions, mode=append, only the new line, same turn, without waiting. Limits: household and preferences {household_limit} characters, restrictions {restrictions_limit}.
+
+propose_dinners: |
+  Save any Saturday–Friday dinner week immediately. Exactly seven nights; blank nights allowed. Pass expected_updated_at from the saved plan, or null when the week has no saved plan. Read the week before replacing nights. When a night is one known recipe card, set recipe to its CBK id. Leave recipe null when unsure. A title that matches one recipe is linked on save; a title that matches several, or only a praxis card, is left unlinked. A missing link is allowed.
+
+fields.kind: |
+  formule answers what goes in (ingredients required, method optional). praxis answers how it is done (method required; list is appliesTo bare nouns, not ingredients). A praxis names what it applies to; if its value is what goes in, it is a formule. Omitted kind is a formule. Input alias recipe means formule for one release.
+
+fields.appliesTo: |
+  Bare nouns naming what a praxis is about. Prefer this over ingredients on a praxis card.
+
+fields.notes: |
+  The household's own notes, printed with the card. Never put your inferences, assumptions or commentary here; those go in context.
+
+fields.context: |
+  Your commentary: inferences, what you added or assumed, cooking history. Shown in the recipe reader, never printed. Replaces the whole field; use append_recipe_context to add a line.
+
+fields.voice: |
+  From: who brought the recipe to this kitchen. Quita's recipe box for cards from the box, a family member when the card names one, zk for what zk brings in, Babette for recipes you compose, Web for the inbox. Never unknown.
+
+fields.source: |
+  What the card itself credits: a publication, a store's series, a person, a book with page, or a website. Empty when nothing is credited; never unknown. Not where the card lives (that is From).
+
+fields.provenance: |
+  documented: copied from a written source (a card, clipping, book or page). generated: you composed or worked it out. A new card defaults to generated.
+
+fields.favourite: |
+  Shared household heart on a recipe. Set true when someone loved the dish (for example Mom loved the venison stroganoff). Clear only when asked.
+
+fields.queued: |
+  To-cook queue mark. Set true only when the cook asks to plan or remember a dish to cook. Clear when asked or when it has been cooked.
+
+fields.cooked: |
+  Record a cook (edit_recipe only). Set cooked true alone when the household says the dish was made or cooking photos land on the card. Same as the Cooked button: clears the queue, marks a matching slip night when present, and writes one Kitchen Log cook. cooked false is invalid.
+
+fields.searchDescription: |
+  One or two plain sentences saying what the dish is and how it is made; shown under the title and used by search. Required on a new card.
+
+fields.category: |
+  The card's category, its plate slug. Required on a new card: choose the one that fits (chicken is all poultry; meats is meat and game; kitchen-craft is equipment, fats, cleaning, the table; misc when nothing fits). A technique is filed by its subject, not under kitchen-craft. On an edit, change it only when asked.
+
+fields.note.original: |
+  Exact current text, for stale-edit protection.
+
+fields.note.band: |
+  Ornament for a later note slip. Choose it yourself.
+
+filters.category: |
+  Plate slugs. A card matches any of them. uncategorized is not a slug.
+
+filters.kind: |
+  formule or praxis (recipe aliases formule for one release).
+
+filters.voice: |
+  Whole voice field. Case and accents ignored.
+
+filters.source: |
+  Whole source field. Case and accents ignored.
+
+filters.tattva: |
+  Tattva names on the card.
+
+filters.status: |
+  Whole status field, such as draft or confirmed.
+
+filters.favourite: |
+  When true, only favourited recipes. When false, only unmarked ones.
+
+filters.queued: |
+  When true, only recipes on the to-cook queue. When false, only those not queued.
+
+fields.expected_updated_at: |
+  Current recipe updatedAt, or null if absent.
+
+search_cookbook.query: |
+  Keywords. May be empty when a filter is set. Every word must match.
+
+search_cookbook.full: |
+  True returns whole cards. Default is a compact card.
+
+analyze_cookbook.list: |
+  Include one summary row per card in scope. Without a scope this lists the whole catalog.
+
+keep_note.band: |
+  Choose this yourself, the same way you choose color.

@@ -29,7 +29,7 @@ _HANDLERS = {
 
 
 def register_core_tools(registry: ToolRegistry) -> ToolRegistry:
-    for name, description, parameters in schemas.TOOL_SPECS:
+    for name, description, parameters in schemas.tool_specs():
         registry.register_tool(
             name,
             description,

@@ -1,7 +1,14 @@
-"""OpenAI tool schemas and trace labels for the core kitchen tools."""
+"""OpenAI tool schemas and trace labels for the core kitchen tools.
+
+Structure (types, enums, required, limits) lives here. Model-facing prose
+lives in festin/data/tools.yaml and is read on each tool_specs() call.
+"""
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from festin.chat.persona import fill_placeholders, load_blocks
 from festin.schema import NOTE_COLORS, WEEKDAYS
 
 PLATE_SLUGS = (
@@ -37,114 +44,44 @@ OPEN_NOTE_CAP = 25
 CONTEXT_CAP = 1500
 DINNER_HISTORY_DAYS = 60
 
+DEFAULT_TOOLS = Path(__file__).resolve().parent.parent / "data" / "tools.yaml"
+
+# Structure only — descriptions come from tools.yaml via tool_specs().
 RECIPE_FIELDS = {
     "title": {"type": "string", "minLength": 1},
     "kind": {
         "type": "string",
         "enum": ["formule", "praxis", "recipe"],
-        "description": (
-            "formule answers what goes in (ingredients required, method optional). "
-            "praxis answers how it is done (method required; list is appliesTo bare "
-            "nouns, not ingredients). A praxis names what it applies to; if its value "
-            "is what goes in, it is a formule. Omitted kind is a formule. Input alias "
-            "recipe means formule for one release."
-        ),
     },
     "ingredients": {"type": "array", "items": {"type": "string"}},
     "appliesTo": {
         "type": "array",
         "items": {"type": "string"},
-        "description": (
-            "Bare nouns naming what a praxis is about. Prefer this over ingredients "
-            "on a praxis card."
-        ),
     },
-    "notes": {
-        "type": "string",
-        "description": (
-            "The household's own notes, printed with the card. Never put your "
-            "inferences, assumptions or commentary here; those go in context."
-        ),
-    },
-    "context": {
-        "type": "string",
-        "description": (
-            "Your commentary: inferences, what you added or assumed, cooking "
-            "history. Shown in the recipe reader, never printed. Replaces the "
-            "whole field; use append_recipe_context to add a line."
-        ),
-    },
+    "notes": {"type": "string"},
+    "context": {"type": "string"},
     "method": {"type": "string"},
     "voice": {
         "type": "string",
         "minLength": 1,
-        "description": (
-            "From: who brought the recipe to this kitchen. Quita's recipe box for "
-            "cards from the box, a family member when the card names one, zk for "
-            "what zk brings in, Babette for recipes you compose, Web for the inbox. "
-            "Never unknown."
-        ),
     },
-    "source": {
-        "type": "string",
-        "description": (
-            "What the card itself credits: a publication, a store's series, a "
-            "person, a book with page, or a website. Empty when nothing is "
-            "credited; never unknown. Not where the card lives (that is From)."
-        ),
-    },
-
+    "source": {"type": "string"},
     "provenance": {
         "type": "string",
         "enum": ["documented", "reconstructed", "mentioned", "ocr-draft", "confirmed", "generated"],
-        "description": (
-            "documented: copied from a written source (a card, clipping, book or page). "
-            "generated: you composed or worked it out. A new card defaults to generated."
-        ),
     },
     "stub": {"type": "boolean"},
-    "favourite": {
-        "type": "boolean",
-        "description": (
-            "Shared household heart on a recipe. Set true when someone loved the dish "
-            "(for example Mom loved the venison stroganoff). Clear only when asked."
-        ),
-    },
-    "queued": {
-        "type": "boolean",
-        "description": (
-            "To-cook queue mark. Set true only when the cook asks to plan or remember a "
-            "dish to cook. Clear when asked or when it has been cooked."
-        ),
-    },
-    "cooked": {
-        "type": "boolean",
-        "description": (
-            "Record a cook (edit_recipe only). Set cooked true alone when the household "
-            "says the dish was made or cooking photos land on the card. Same as the "
-            "Cooked button: clears the queue, marks a matching slip night when present, "
-            "and writes one Kitchen Log cook. cooked false is invalid."
-        ),
-    },
+    "favourite": {"type": "boolean"},
+    "queued": {"type": "boolean"},
+    "cooked": {"type": "boolean"},
     "tattva": {"type": "array", "items": {"type": "string"}},
     "searchDescription": {
         "type": "string",
         "maxLength": 300,
-        "description": (
-            "One or two plain sentences saying what the dish is and how it is made; "
-            "shown under the title and used by search. Required on a new card."
-        ),
     },
     "category": {
         "type": "string",
         "enum": list(PLATE_SLUGS),
-        "description": (
-            "The card's category, its plate slug. Required on a new card: choose the "
-            "one that fits (chicken is all poultry; meats is meat and game; "
-            "kitchen-craft is equipment, fats, cleaning, the table; misc when nothing "
-            "fits). A technique is filed by its subject, not under kitchen-craft. On "
-            "an edit, change it only when asked."
-        ),
     },
 }
 
@@ -155,16 +92,57 @@ RECIPE_REVISION = {
 
 NOTE_REFERENCE = {
     "id": {"type": "string"},
-    "original": {"type": "string", "description": "Exact current text, for stale-edit protection."},
+    "original": {"type": "string"},
     "type": {"type": "string"},
     "open": {"type": "boolean"},
     "color": {"type": "string", "enum": list(NOTE_COLOR_CHOICES)},
-    "band": {
-        "type": "string",
-        "description": "Ornament for a later note slip. Choose it yourself.",
-    },
+    "band": {"type": "string"},
     "priority": {"type": "string", "enum": ["high", "normal", "low"]},
 }
+
+_RECIPE_FIELD_TEXT = (
+    "kind",
+    "appliesTo",
+    "notes",
+    "context",
+    "voice",
+    "source",
+    "provenance",
+    "favourite",
+    "queued",
+    "cooked",
+    "searchDescription",
+    "category",
+)
+_FILTER_FIELD_TEXT = (
+    "category",
+    "kind",
+    "voice",
+    "source",
+    "tattva",
+    "status",
+    "favourite",
+    "queued",
+)
+_CORE_TOOL_NAMES = (
+    "attach_recipe_photos",
+    "add_recipe",
+    "edit_recipe",
+    "append_recipe_context",
+    "delete_recipe",
+    "search_history",
+    "read_chat_history",
+    "search_cookbook",
+    "analyze_cookbook",
+    "search_notes",
+    "analyze_notes",
+    "read_notes",
+    "edit_note",
+    "delete_note",
+    "keep_note",
+    "update_household_context",
+    "propose_dinners",
+)
 
 
 def string_array(enum=None) -> dict:
@@ -174,405 +152,377 @@ def string_array(enum=None) -> dict:
     return {"type": "array", "items": item}
 
 
-CATALOG_FILTER_PROPERTIES = {
-    "category": {
-        **string_array(PLATE_SLUGS),
-        "description": "Plate slugs. A card matches any of them. uncategorized is not a slug.",
-    },
-    "kind": {
-        **string_array(("formule", "praxis", "recipe")),
-        "description": "formule or praxis (recipe aliases formule for one release).",
-    },
-    "voice": {**string_array(), "description": "Whole voice field. Case and accents ignored."},
-    "source": {**string_array(), "description": "Whole source field. Case and accents ignored."},
-    "tattva": {**string_array(), "description": "Tattva names on the card."},
-    "status": {
-        **string_array(),
-        "description": "Whole status field, such as draft or confirmed.",
-    },
-    "favourite": {
-        "type": "boolean",
-        "description": "When true, only favourited recipes. When false, only unmarked ones.",
-    },
-    "queued": {
-        "type": "boolean",
-        "description": "When true, only recipes on the to-cook queue. When false, only those not queued.",
-    },
-}
+def placeholder_values() -> dict[str, object]:
+    return {
+        "plate_slugs": PLATE_SLUG_TEXT,
+        "open_note_cap": OPEN_NOTE_CAP,
+        "context_cap": CONTEXT_CAP,
+        "dinner_history_days": DINNER_HISTORY_DAYS,
+        "household_limit": CONTEXT_LIMITS["household"],
+        "preferences_limit": CONTEXT_LIMITS["preferences"],
+        "restrictions_limit": f"{CONTEXT_LIMITS['restrictions']:,}",
+    }
 
-SEARCH_COOKBOOK_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "query": {
-            "type": "string",
-            "description": "Keywords. May be empty when a filter is set. Every word must match.",
-        },
-        **CATALOG_FILTER_PROPERTIES,
-        "limit": {"type": "integer", "minimum": 1, "maximum": 100},
-        "offset": {"type": "integer", "minimum": 0},
-        "full": {
-            "type": "boolean",
-            "description": "True returns whole cards. Default is a compact card.",
-        },
-    },
-    "additionalProperties": False,
-}
 
-ANALYZE_COOKBOOK_SCHEMA = {
-    "type": "object",
-    "properties": {
-        **CATALOG_FILTER_PROPERTIES,
-        "list": {
-            "type": "boolean",
-            "description": (
-                "Include one summary row per card in scope. Without a scope this "
-                "lists the whole catalog."
-            ),
-        },
-    },
-    "additionalProperties": False,
-}
+def load_tool_text(
+    path: str | Path | None = None,
+    values: dict[str, object] | None = None,
+) -> dict[str, str]:
+    source = Path(path) if path is not None else DEFAULT_TOOLS
+    blocks = load_blocks(source)
+    fill = placeholder_values() if values is None else values
+    return {key: fill_placeholders(body, fill) for key, body in blocks.items()}
 
-# (name, description, parameters) — core tools only.
-TOOL_SPECS: list[tuple[str, str, dict]] = [
-    (
-        "attach_recipe_photos",
-        (
-            "Attach photos already shared by the user to a cookbook recipe, only when "
-            "requested. Read the recipe first. After editing a card, use the updatedAt "
-            "returned by edit_recipe. Use exact /photos/ references supplied with chat "
-            "images or read_chat_history, never invented paths. Ask which recipe or "
-            "photo if ambiguous. Appends without replacing existing photos; repeated "
-            "attachments are deduplicated. Claim success only after this tool succeeds. "
-            "If the card has never been cooked here and these photos are the cooked "
-            "dish, the result asks you to record a cook: call edit_recipe with only "
-            "cooked true. If you are not sure which card, ask. Do not change "
-            "provenance or status."
-        ),
-        {
-            "type": "object",
-            "properties": {
-                "recipe_id": {"type": "string"},
-                "expected_updated_at": {
-                    "type": ["string", "null"],
-                    "description": "Current recipe updatedAt, or null if absent.",
-                },
-                "photo_paths": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "minItems": 1,
-                    "maxItems": 4,
-                },
+
+def _require(text: dict[str, str], key: str) -> str:
+    if key not in text:
+        raise ValueError("Missing tool text: " + key)
+    return text[key]
+
+
+def _with_desc(spec: dict, description: str) -> dict:
+    return {**spec, "description": description}
+
+
+def _recipe_fields(text: dict[str, str]) -> dict:
+    fields = {key: dict(spec) for key, spec in RECIPE_FIELDS.items()}
+    for key in _RECIPE_FIELD_TEXT:
+        fields[key] = _with_desc(fields[key], _require(text, "fields." + key))
+    return fields
+
+
+def _note_reference(text: dict[str, str]) -> dict:
+    fields = {key: dict(spec) for key, spec in NOTE_REFERENCE.items()}
+    fields["original"] = _with_desc(fields["original"], _require(text, "fields.note.original"))
+    fields["band"] = _with_desc(fields["band"], _require(text, "fields.note.band"))
+    return fields
+
+
+def _catalog_filters(text: dict[str, str]) -> dict:
+    base = {
+        "category": string_array(PLATE_SLUGS),
+        "kind": string_array(("formule", "praxis", "recipe")),
+        "voice": string_array(),
+        "source": string_array(),
+        "tattva": string_array(),
+        "status": string_array(),
+        "favourite": {"type": "boolean"},
+        "queued": {"type": "boolean"},
+    }
+    return {
+        key: _with_desc(base[key], _require(text, "filters." + key))
+        for key in _FILTER_FIELD_TEXT
+    }
+
+
+def _expected_updated_at(text: dict[str, str]) -> dict:
+    return {
+        "type": ["string", "null"],
+        "description": _require(text, "fields.expected_updated_at"),
+    }
+
+
+def _search_cookbook_schema(text: dict[str, str]) -> dict:
+    return {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": _require(text, "search_cookbook.query"),
             },
-            "required": ["recipe_id", "expected_updated_at", "photo_paths"],
-            "additionalProperties": False,
-        },
-    ),
-    (
-        "add_recipe",
-        (
-            "Save a requested new cookbook card. Search for a match first. Default kind "
-            "is formule: title and ingredients required, [] for a name-only stub, method "
-            "only when load-bearing. kind=praxis is a technique (dish type, ingredient, "
-            "house method): title and method required; list is appliesTo bare nouns. A "
-            "praxis names what it applies to; if its value is what goes in, it is a "
-            "formule. Always give category and searchDescription. Voice is From (who "
-            "brought it to this kitchen); source is what the card itself credits, "
-            "empty when it credits nothing."
-        ),
-        {
-            "type": "object",
-            "properties": RECIPE_FIELDS,
-            "required": ["title", "category", "searchDescription"],
-            "additionalProperties": False,
-        },
-    ),
-    (
-        "edit_recipe",
-        (
-            "Save requested changes to an existing cookbook card (recipe or praxis). "
-            "Read it first and pass its updatedAt as expected_updated_at. Supply only "
-            "changed fields; ingredients replaces the whole list. Set stub=false "
-            "explicitly when expansion is complete. Preserve source attribution. Record "
-            "a cook with changes {cooked: true} alone in the same turn the household "
-            "says the dish was made, or just after attach_recipe_photos of the cooked "
-            "dish, without waiting to be asked again. That clears the queue and may "
-            "mark a slip night — same as the Cooked button. Set favourite true when "
-            "someone loved the dish (a shared household heart). Clear favourite only "
-            "when asked. Set queued true only when the cook asks to put a dish on the "
-            "to-cook queue. Clear queued when asked. If more than one card could be "
-            "meant, ask which one. Never change provenance away from ocr-draft, and "
-            "never change status. A cook is cooked true."
-        ),
-        {
-            "type": "object",
-            "properties": {
-                **RECIPE_REVISION,
-                "changes": {
-                    "type": "object",
-                    "properties": RECIPE_FIELDS,
-                    "additionalProperties": False,
-                },
-            },
-            "required": ["recipe_id", "expected_updated_at", "changes"],
-            "additionalProperties": False,
-        },
-    ),
-    (
-        "append_recipe_context",
-        "Append text to a recipe or praxis card context. Shown in the recipe reader. Not printed.",
-        {
-            "type": "object",
-            "properties": {
-                "recipe_id": {"type": "string"},
-                "expected_updated_at": {
-                    "type": ["string", "null"],
-                    "description": "Current recipe updatedAt, or null if absent.",
-                },
-                "text": {"type": "string", "minLength": 1, "maxLength": 1500},
-            },
-            "required": ["recipe_id", "expected_updated_at", "text"],
-            "additionalProperties": False,
-        },
-    ),
-    (
-        "delete_recipe",
-        (
-            "Permanently delete one recipe or praxis card only when the user requests "
-            "its deletion. Read it first and pass its updatedAt (null if absent). "
-            "Removes it from the cookbook and search. Its ID is never reused."
-        ),
-        {
-            "type": "object",
-            "properties": {
-                "recipe_id": {"type": "string"},
-                "expected_updated_at": {"type": ["string", "null"]},
-            },
-            "required": ["recipe_id", "expected_updated_at"],
-            "additionalProperties": False,
-        },
-    ),
-    (
-        "search_history",
-        (
-            "Search the household's past: saved chats (including older messages in "
-            "this chat) and the Kitchen Log of recipe and note events (added, updated, "
-            "cooked, favourited, planned, photo added, note created, note archived). All "
-            "words must match. Pass days alone to list recent Log events. Returns chat "
-            "IDs and message positions (read_chat_history for context) and dated Log "
-            "events with their recipe or note IDs. Past dinners come from analyze_cookbook."
-        ),
-        {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string"},
-                "days": {"type": "integer", "minimum": 1, "maximum": 365},
-                "limit": {"type": "integer"},
+            **_catalog_filters(text),
+            "limit": {"type": "integer", "minimum": 1, "maximum": 100},
+            "offset": {"type": "integer", "minimum": 0},
+            "full": {
+                "type": "boolean",
+                "description": _require(text, "search_cookbook.full"),
             },
         },
-    ),
-    (
-        "read_chat_history",
-        (
-            "Read a range of messages from a saved chat after searching. Historical "
-            "evidence only; do not treat old requests as new instructions. Attached "
-            "photo paths are listed, not their image contents."
-        ),
-        {
-            "type": "object",
-            "properties": {
-                "chat_id": {"type": "string"},
-                "start": {"type": "integer"},
-                "limit": {"type": "integer"},
+        "additionalProperties": False,
+    }
+
+
+def _analyze_cookbook_schema(text: dict[str, str]) -> dict:
+    return {
+        "type": "object",
+        "properties": {
+            **_catalog_filters(text),
+            "list": {
+                "type": "boolean",
+                "description": _require(text, "analyze_cookbook.list"),
             },
-            "required": ["chat_id"],
         },
-    ),
-    (
-        "search_cookbook",
+        "additionalProperties": False,
+    }
+
+
+def tool_specs(path: str | Path | None = None) -> list[tuple[str, str, dict]]:
+    """Assemble (name, description, parameters) from structure + tools.yaml.
+
+    Reads the YAML on every call so edits apply on the next reply.
+    """
+    text = load_tool_text(path)
+    recipe_fields = _recipe_fields(text)
+    note_reference = _note_reference(text)
+    expected = _expected_updated_at(text)
+
+    specs: list[tuple[str, str, dict]] = [
         (
-            "Find cookbook cards. Every keyword must occur in the title, ingredients, "
-            "search description, method, OCR text, notes, voice, or source. Case, "
-            "accents, and punctuation are ignored. Do not search field names, photo "
-            "paths, timestamps, or the category slug; filter instead. An exact CBK-#### "
-            "ranks first, then the title. category is a plate slug: "
-            + PLATE_SLUG_TEXT
-            + ". uncategorized is not a slug. kind is recipe or praxis. voice, source, "
-            "and status match the whole field. tattva matches one name on the card. "
-            "The query may be empty when a filter is set. Returns total, limit, and "
-            "offset. The page defaults to 40 compact cards: id, title, category, kind, "
-            "voice, tattva, searchDescription, favourite, queuedAt. Set full true only to read a "
-            "whole card. favourite=true limits to hearts; queued=true limits to the to-cook "
-            "queue. When you name a card, link its title as [Title](CBK-####)."
-        ),
-        SEARCH_COOKBOOK_SCHEMA,
-    ),
-    (
-        "analyze_cookbook",
-        (
-            "Count the catalog for variety and history. Scope with the same filters as "
-            "search: category, kind, voice, source, tattva, status. Plate slugs: "
-            + PLATE_SLUG_TEXT
-            + ". uncategorized is not a filter; cards with no slug are counted under "
-            "that label. Returns counts by category, kind, voice, source, and tattva, "
-            "plus the scope, stubs, praxis, dinner history, and recent plans. Each "
-            "dinner includes its card category, from a leading CBK id or the same "
-            "unique title link a saved plan uses. Counts, stubs, and praxis follow the "
-            "scope. Voice names are casefolded. Voice and source counts keep the top 10 "
-            "and an other total. Dinner history and recent plans stay the rolling "
-            "record. The per-card list comes back only when a scope is set or list is "
-            "true, never the whole catalog by default. not_cooked lists up to 3 example "
-            "cards per category absent from the dinner window, varied each call. When "
-            "you name a card, link its title as [Title](CBK-####)."
-        ),
-        ANALYZE_COOKBOOK_SCHEMA,
-    ),
-    (
-        "search_notes",
-        (
-            "Find notes whose text contains every word. Returns priority, color, dates, "
-            "age, and open (pinned when true, archived when false). Notes are not injected "
-            "into chat."
-        ),
-        {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string"},
-                "limit": {"type": "integer"},
-            },
-            "required": ["query"],
-            "additionalProperties": False,
-        },
-    ),
-    (
-        "analyze_notes",
-        (
-            "Pressing pinned (open) notes, highest priority then newest, with the labels "
-            "in use. Notes are not injected into chat. Household standing facts are "
-            "update_household_context, not notes."
-        ),
-        {"type": "object", "properties": {}, "additionalProperties": False},
-    ),
-    (
-        "read_notes",
-        "Exact text and ids for every note. Use when editing one; otherwise search or analyze.",
-        {"type": "object", "properties": {}, "additionalProperties": False},
-    ),
-    (
-        "edit_note",
-        (
-            "Correct a note. Pass id, the exact original text, and color, band, or "
-            "priority when those change. Household standing facts use "
-            "update_household_context."
-        ),
-        {
-            "type": "object",
-            "properties": {**NOTE_REFERENCE, "text": {"type": "string", "maxLength": 16000}},
-            "required": ["original", "text"],
-            "additionalProperties": False,
-        },
-    ),
-    (
-        "delete_note",
-        "Delete one note. Pass id and the exact original text.",
-        {
-            "type": "object",
-            "properties": NOTE_REFERENCE,
-            "required": ["id", "original"],
-            "additionalProperties": False,
-        },
-    ),
-    (
-        "keep_note",
-        (
-            "Save a note (projects, tasks, news, plans, shopping). Pass type and, when "
-            "one fits, a Catppuccin accent color. Suggested: shopping green, dinner "
-            "yellow, cookbook peach, leftovers sky, blacklists and do-not-buy red. none "
-            "leaves it uncolored. Another short label is fine. A "
-            "kept note starts pinned; pass open=false only when the household asks for a "
-            "closed (archived) note. At most 25 pinned. Lasting household facts "
-            "(who lives here, tastes, standing preferences, dietary restrictions) use "
-            "update_household_context, never this tool. To print something without "
-            "saving it (a shopping list from a photo), use prepare_slip kind=note "
-            "instead. Choose color, band, and priority yourself. Do not ask the "
-            "household to set them."
-        ),
-        {
-            "type": "object",
-            "properties": {
-                "type": {"type": "string"},
-                "text": {"type": "string"},
-                "open": {"type": "boolean"},
-                "color": {"type": "string", "enum": list(NOTE_COLOR_CHOICES)},
-                "band": {
-                    "type": "string",
-                    "description": "Choose this yourself, the same way you choose color.",
-                },
-                "priority": {"type": "string", "enum": ["high", "normal", "low"]},
-            },
-            "required": ["text"],
-            "additionalProperties": False,
-        },
-    ),
-    (
-        "update_household_context",
-        (
-            "Lasting facts about the household only: who lives here, tastes, standing "
-            "preferences, dietary restrictions. Never projects, tasks, news or plans "
-            "(those are keep_note). section is household, preferences, or restrictions. "
-            "Default mode=append adds one line. replace rewrites a section and needs "
-            "expected_updated_at. A new restriction, allergy, or forbidden food: "
-            "section=restrictions, mode=append, only the new line, same turn, without "
-            "waiting. Limits: household and preferences 800 characters, restrictions "
-            "1,000."
-        ),
-        {
-            "type": "object",
-            "properties": {
-                "section": {"type": "string", "enum": list(CONTEXT_LANES)},
-                "text": {"type": "string"},
-                "mode": {"type": "string", "enum": ["append", "replace"]},
-                "expected_updated_at": {"type": ["string", "null"]},
-            },
-            "required": ["section", "text"],
-            "additionalProperties": False,
-        },
-    ),
-    (
-        "propose_dinners",
-        (
-            "Save any Saturday–Friday dinner week immediately. Exactly seven nights; "
-            "blank nights allowed. Pass expected_updated_at from the saved plan, or "
-            "null when the week has no saved plan. Read the week before replacing "
-            "nights. When a night is one known recipe card, set recipe to its CBK id. "
-            "Leave recipe null when unsure. A title that matches one recipe is linked "
-            "on save; a title that matches several, or only a praxis card, is left "
-            "unlinked. A missing link is allowed."
-        ),
-        {
-            "type": "object",
-            "properties": {
-                "weekStart": {"type": "string"},
-                "notes": {"type": "string"},
-                "expected_updated_at": {"type": ["string", "null"]},
-                "days": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "day": {"type": "string", "enum": list(WEEKDAYS)},
-                            "recipe": {"type": ["string", "null"]},
-                            "title": {"type": "string"},
-                            "ingredients": {"type": "array", "items": {"type": "string"}},
-                        },
-                        "required": ["day", "title"],
+            "attach_recipe_photos",
+            _require(text, "attach_recipe_photos"),
+            {
+                "type": "object",
+                "properties": {
+                    "recipe_id": {"type": "string"},
+                    "expected_updated_at": expected,
+                    "photo_paths": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "minItems": 1,
+                        "maxItems": 4,
                     },
                 },
+                "required": ["recipe_id", "expected_updated_at", "photo_paths"],
+                "additionalProperties": False,
             },
-            "required": ["weekStart", "days"],
-        },
-    ),
-]
+        ),
+        (
+            "add_recipe",
+            _require(text, "add_recipe"),
+            {
+                "type": "object",
+                "properties": recipe_fields,
+                "required": ["title", "category", "searchDescription"],
+                "additionalProperties": False,
+            },
+        ),
+        (
+            "edit_recipe",
+            _require(text, "edit_recipe"),
+            {
+                "type": "object",
+                "properties": {
+                    **RECIPE_REVISION,
+                    "changes": {
+                        "type": "object",
+                        "properties": recipe_fields,
+                        "additionalProperties": False,
+                    },
+                },
+                "required": ["recipe_id", "expected_updated_at", "changes"],
+                "additionalProperties": False,
+            },
+        ),
+        (
+            "append_recipe_context",
+            _require(text, "append_recipe_context"),
+            {
+                "type": "object",
+                "properties": {
+                    "recipe_id": {"type": "string"},
+                    "expected_updated_at": expected,
+                    "text": {"type": "string", "minLength": 1, "maxLength": 1500},
+                },
+                "required": ["recipe_id", "expected_updated_at", "text"],
+                "additionalProperties": False,
+            },
+        ),
+        (
+            "delete_recipe",
+            _require(text, "delete_recipe"),
+            {
+                "type": "object",
+                "properties": {
+                    "recipe_id": {"type": "string"},
+                    "expected_updated_at": {"type": ["string", "null"]},
+                },
+                "required": ["recipe_id", "expected_updated_at"],
+                "additionalProperties": False,
+            },
+        ),
+        (
+            "search_history",
+            _require(text, "search_history"),
+            {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "days": {"type": "integer", "minimum": 1, "maximum": 365},
+                    "limit": {"type": "integer"},
+                },
+            },
+        ),
+        (
+            "read_chat_history",
+            _require(text, "read_chat_history"),
+            {
+                "type": "object",
+                "properties": {
+                    "chat_id": {"type": "string"},
+                    "start": {"type": "integer"},
+                    "limit": {"type": "integer"},
+                },
+                "required": ["chat_id"],
+            },
+        ),
+        (
+            "search_cookbook",
+            _require(text, "search_cookbook"),
+            _search_cookbook_schema(text),
+        ),
+        (
+            "analyze_cookbook",
+            _require(text, "analyze_cookbook"),
+            _analyze_cookbook_schema(text),
+        ),
+        (
+            "search_notes",
+            _require(text, "search_notes"),
+            {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "limit": {"type": "integer"},
+                },
+                "required": ["query"],
+                "additionalProperties": False,
+            },
+        ),
+        (
+            "analyze_notes",
+            _require(text, "analyze_notes"),
+            {"type": "object", "properties": {}, "additionalProperties": False},
+        ),
+        (
+            "read_notes",
+            _require(text, "read_notes"),
+            {"type": "object", "properties": {}, "additionalProperties": False},
+        ),
+        (
+            "edit_note",
+            _require(text, "edit_note"),
+            {
+                "type": "object",
+                "properties": {
+                    **note_reference,
+                    "text": {"type": "string", "maxLength": 16000},
+                },
+                "required": ["original", "text"],
+                "additionalProperties": False,
+            },
+        ),
+        (
+            "delete_note",
+            _require(text, "delete_note"),
+            {
+                "type": "object",
+                "properties": note_reference,
+                "required": ["id", "original"],
+                "additionalProperties": False,
+            },
+        ),
+        (
+            "keep_note",
+            _require(text, "keep_note"),
+            {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string"},
+                    "text": {"type": "string"},
+                    "open": {"type": "boolean"},
+                    "color": {"type": "string", "enum": list(NOTE_COLOR_CHOICES)},
+                    "band": {
+                        "type": "string",
+                        "description": _require(text, "keep_note.band"),
+                    },
+                    "priority": {"type": "string", "enum": ["high", "normal", "low"]},
+                },
+                "required": ["text"],
+                "additionalProperties": False,
+            },
+        ),
+        (
+            "update_household_context",
+            _require(text, "update_household_context"),
+            {
+                "type": "object",
+                "properties": {
+                    "section": {"type": "string", "enum": list(CONTEXT_LANES)},
+                    "text": {"type": "string"},
+                    "mode": {"type": "string", "enum": ["append", "replace"]},
+                    "expected_updated_at": {"type": ["string", "null"]},
+                },
+                "required": ["section", "text"],
+                "additionalProperties": False,
+            },
+        ),
+        (
+            "propose_dinners",
+            _require(text, "propose_dinners"),
+            {
+                "type": "object",
+                "properties": {
+                    "weekStart": {"type": "string"},
+                    "notes": {"type": "string"},
+                    "expected_updated_at": {"type": ["string", "null"]},
+                    "days": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "day": {"type": "string", "enum": list(WEEKDAYS)},
+                                "recipe": {"type": ["string", "null"]},
+                                "title": {"type": "string"},
+                                "ingredients": {"type": "array", "items": {"type": "string"}},
+                            },
+                            "required": ["day", "title"],
+                        },
+                    },
+                },
+                "required": ["weekStart", "days"],
+            },
+        ),
+    ]
+
+    expected_keys = set(_CORE_TOOL_NAMES)
+    for key in _RECIPE_FIELD_TEXT:
+        expected_keys.add("fields." + key)
+    expected_keys.update(
+        {
+            "fields.note.original",
+            "fields.note.band",
+            "fields.expected_updated_at",
+            "search_cookbook.query",
+            "search_cookbook.full",
+            "analyze_cookbook.list",
+            "keep_note.band",
+        }
+    )
+    for key in _FILTER_FIELD_TEXT:
+        expected_keys.add("filters." + key)
+
+    orphans = sorted(set(text) - expected_keys)
+    if orphans:
+        raise ValueError("Orphan tool text keys: " + ", ".join(orphans))
+    missing = sorted(expected_keys - set(text))
+    if missing:
+        raise ValueError("Missing tool text keys: " + ", ".join(missing))
+
+    return specs
+
+
+def __getattr__(name: str):
+    # Lazy stand-ins for callers that still import the old module constants.
+    if name == "TOOL_SPECS":
+        return tool_specs()
+    if name == "CATALOG_FILTER_PROPERTIES":
+        return _catalog_filters(load_tool_text())
+    if name == "SEARCH_COOKBOOK_SCHEMA":
+        return _search_cookbook_schema(load_tool_text())
+    if name == "ANALYZE_COOKBOOK_SCHEMA":
+        return _analyze_cookbook_schema(load_tool_text())
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 TOOL_LABELS = {
     "add_recipe": "Added a recipe",
