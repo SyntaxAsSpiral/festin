@@ -1,4 +1,4 @@
-import { seepMs as seepMsFor } from './constants.js'
+import { DEFAULT_WET_BAND, seepMs as seepMsFor } from './constants.js'
 import { createInkBuilder } from './markdownBuild.js'
 import { ensureSeepStyles } from './seep.js'
 
@@ -9,6 +9,7 @@ export function mountInkLayer(host, { plain = false } = {}) {
   if (!host) return { sync() {}, reset() {}, destroy() {} }
   const builder = createInkBuilder(host)
   let lit = 0
+  let litSpans = 0
   let destroyed = false
   let lastSync = 0
 
@@ -16,9 +17,20 @@ export function mountInkLayer(host, { plain = false } = {}) {
   else host.classList.remove('ink-plain')
 
   void ensureSeepStyles()
+  // A finished seep is just sepia text. Leaving the animation attached makes
+  // every later frame restyle the whole reply.
+  host.addEventListener('animationend', (event) => {
+    if (event.animationName !== 'ink-seep-dry') return
+    const el = event.target
+    if (!el.classList || !el.classList.contains('ink-c')) return
+    el.style.animation = 'none'
+    el.style.color = 'var(--bb-sepia, #7a5a3a)'
+    el.style.maskImage = 'none'
+    el.style.webkitMaskImage = 'none'
+  })
 
   return {
-    sync(sourceText, shown, { cps, plain: nextPlain } = {}) {
+    sync(sourceText, shown, { cps, band, plain: nextPlain } = {}) {
       if (destroyed) return
       if (nextPlain != null) {
         host.classList.toggle('ink-plain', Boolean(nextPlain))
@@ -28,18 +40,20 @@ export function mountInkLayer(host, { plain = false } = {}) {
       if (n < lit) {
         builder.clear()
         lit = 0
+        litSpans = 0
       }
       const prefix = text.slice(0, n)
       builder.setTyped(prefix)
-      const duration = seepMsFor(cps)
+      const duration = seepMsFor(cps, band ?? DEFAULT_WET_BAND)
       // Letters due in the same frame would all start together and the front would
       // advance in clumps (visible at high speed). Spread each batch back across
       // the time since the last frame, so every letter starts at its own moment.
       const now = performance.now()
       const elapsed = Math.min(Math.max(0, now - (lastSync || now)), 100)
       lastSync = now
+      if (builder.length < litSpans) litSpans = 0
       const fresh = []
-      for (let i = 0; i < builder.length; i++) {
+      for (let i = litSpans; i < builder.length; i++) {
         if (!builder.spans[i].classList.contains('on')) fresh.push(i)
       }
       fresh.forEach((i, j) => {
@@ -47,9 +61,11 @@ export function mountInkLayer(host, { plain = false } = {}) {
         builder.light(i, { durationMs: duration, lateMs })
       })
       lit = n
+      litSpans = builder.length
     },
     reset() {
       lit = 0
+      litSpans = 0
       builder.clear()
     },
     destroy() {

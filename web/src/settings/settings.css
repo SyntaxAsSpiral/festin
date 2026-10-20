@@ -254,16 +254,20 @@ html[data-motion='off'] #sidebar,
 #sidebar .sbf input[type='checkbox'] {
   accent-color: var(--bb-rose);
 }
-#sidebar .sbf-speed {
-  gap: 8px;
+#sidebar .wet-band {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  color: var(--bb-ink);
 }
-#sidebar .sbf-speed input[type='range'] {
-  width: 88px;
+#sidebar .wet-band input[type='range'] {
+  flex: 1;
+  min-width: 0;
   accent-color: var(--bb-rose);
-  vertical-align: middle;
 }
-#sidebar .sbf-speed-val {
-  min-width: 1.6em;
+#sidebar .wet-band-val {
+  min-width: 3.2em;
   font-variant-numeric: tabular-nums;
   color: var(--bb-tone-4);
 }

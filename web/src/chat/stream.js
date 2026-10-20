@@ -1,5 +1,6 @@
 // Chat transport: this device's chat on the Festin backend.
 import { readJson } from '../backend.js'
+import { clampWetBand } from './ink/constants.js'
 
 // Fired on window when this device's session moves to another chat.
 export const CHAT_SESSION_EVENT = 'festin-chat-session'
@@ -96,5 +97,6 @@ export async function loadKitchenChat() {
     messages: chat?.messages || [],
     model: settings?.model?.name || '',
     host: hostOf(settings?.model?.baseUrl || ''),
+    wetBand: clampWetBand(settings?.chatWetBand),
   }
 }

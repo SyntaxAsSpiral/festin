@@ -16,7 +16,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert SCHEMA_VERSION == 17
+    assert SCHEMA_VERSION == 18
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "sessions" in tables
@@ -56,7 +56,10 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
         "model_name",
         "inbox_enabled",
         "inbox_key_hash",
+        "chat_wet_band",
     }
+    band = conn.execute("SELECT chat_wet_band FROM settings WHERE id = 1").fetchone()
+    assert band["chat_wet_band"] == 45
     inbox = conn.execute(
         "SELECT inbox_enabled, inbox_key_hash FROM settings WHERE id = 1"
     ).fetchone()
@@ -423,7 +426,7 @@ def test_v17_adds_one_row_babette_scratch(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(babette_scratch)")}
     assert columns == {"id", "text", "week_start", "updated_at"}
     assert conn.execute("SELECT count(*) FROM babette_scratch").fetchone()[0] == 0

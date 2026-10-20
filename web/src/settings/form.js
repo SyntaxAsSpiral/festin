@@ -1,5 +1,7 @@
 /** Settings form mapping: API body ↔ draft, and the 409 conflict path. */
 
+import { DEFAULT_WET_BAND, clampWetBand } from '../chat/ink/constants.js'
+
 export const SETTINGS_TABS = ['model', 'context', 'plugins']
 export const OPENROUTER_BASE = 'https://openrouter.ai/api/v1'
 export const WEEK_STARTS = [
@@ -64,6 +66,7 @@ export function draftFromSettings(body) {
     inboxEnabled: inbox.enabled !== false && body?.inboxEnabled !== false,
     inboxAddress: String(inbox.address || body?.inboxAddress || '').trim(),
     inboxKeySet: Boolean(inbox.keySet ?? body?.inboxKeySet),
+    chatWetBand: clampWetBand(pick(body, 'chatWetBand', 'chat_wet_band'), DEFAULT_WET_BAND),
     updatedAt: body?.updatedAt || body?.updated_at || null,
   }
 }
@@ -84,6 +87,7 @@ export function settingsSaveBody(draft, expectedUpdatedAt) {
     modelName: String(draft.modelName || '').trim(),
     modelBaseUrl: String(draft.modelBaseUrl || '').trim().replace(/\/+$/, '') || OPENROUTER_BASE,
     inboxEnabled: draft.inboxEnabled !== false,
+    chatWetBand: clampWetBand(draft.chatWetBand, DEFAULT_WET_BAND),
   }
   if (expectedUpdatedAt != null) {
     body.expectedUpdatedAt = expectedUpdatedAt

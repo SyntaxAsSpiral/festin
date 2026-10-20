@@ -1,4 +1,5 @@
 import { Composer } from './Composer.jsx'
+import { revealPace, visibleTail } from './revealPace.js'
 import { Transcript } from './Transcript.jsx'
 import './chat.css'
 
@@ -7,7 +8,7 @@ export function ChatPanel({ chat }) {
   if (!chat.ready) return <p className="progress">Setting the table…</p>
   return (
     <div className="chat-panel">
-      <Transcript messages={chat.messages} turn={chat.turn} />
+      <Transcript messages={chat.messages} turn={chat.turn} wetBand={chat.wetBand} />
       <Composer chat={chat} />
     </div>
   )
@@ -17,7 +18,10 @@ export function ChatPanel({ chat }) {
 export function peekLine(chat) {
   const { turn } = chat
   if (turn.phase === 'thinking') return 'Babette is reading…'
-  if (turn.phase === 'revealing' || turn.phase === 'settled') return lastLine(turn.text.slice(0, Math.floor(turn.shown)))
+  if (turn.phase === 'revealing' || turn.phase === 'settled') {
+    const shown = Math.max(Math.floor(turn.shown) || 0, Math.floor(revealPace.shown) || 0)
+    return visibleTail(turn.text, shown)
+  }
   const last = [...chat.messages].reverse().find((m) => m.role === 'user' || m.role === 'assistant')
   return last ? lastLine(last.content) : ''
 }

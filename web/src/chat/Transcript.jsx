@@ -2,6 +2,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { fetchPlugins } from '../meals/plan.js'
 import { useReducedMotion } from '../useReducedMotion.js'
+import { DEFAULT_WET_BAND, handIsPlain } from './ink/constants.js'
 import { InkReply } from './InkReply.jsx'
 import { ListenControl } from './ListenControl.jsx'
 import { voiceIsOn } from './listen.js'
@@ -119,11 +120,12 @@ function distanceFromBottom(scroller) {
   return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
 }
 
-export function Transcript({ messages, turn }) {
+export function Transcript({ messages, turn, wetBand = DEFAULT_WET_BAND }) {
   const end = useRef(null)
   const height = useRef(0)
   const navigate = useNavigate()
   const reduced = useReducedMotion()
+  const plain = handIsPlain(wetBand, reduced)
   const [voiceOn, setVoiceOn] = useState(false)
   const sentId = turn.sent?.submissionId
   const stored = sentId && messages.some((m) => m.submission_id === sentId)
@@ -195,7 +197,7 @@ export function Transcript({ messages, turn }) {
             turn.phase === 'thinking' ? (
               <p className="progress">{traceLine(turn.trace) || 'Babette is reading…'}</p>
             ) : (
-              <InkReply text={turn.text} shown={shownCount} plain={reduced} />
+              <InkReply text={turn.text} shown={shownCount} plain={plain} cps={turn.cps} band={wetBand} />
             )
           }
         />

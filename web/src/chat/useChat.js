@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { prefersReducedMotion } from '../useReducedMotion.js'
+import { DEFAULT_WET_BAND, clampWetBand, handIsPlain } from './ink/constants.js'
 import { ensureSeepStyles } from './ink/seep.js'
-import { readWritingSpeed } from './ink/speed.js'
 import { newId } from '../secure.js'
+import { BASE_CPS, advance } from './reveal.js'
+import { pulseReveal, resetRevealPace, revealPace, visibleTail } from './revealPace.js'
 import { CHAT_SESSION_EVENT, loadKitchenChat, newChat, sendChat, stopChat } from './stream.js'
 import { initialTurn, turnReducer } from './turn.js'
 
@@ -33,7 +35,15 @@ function startTurn() {
 // This device's chat: transcript, turn machine, and the actions on it.
 export function useChat(context = null) {
   const [kitchen, setKitchen] = useState(null)
+  const [wetBand, setWetBand] = useState(DEFAULT_WET_BAND)
   const [turn, dispatch] = useReducer(turnReducer, undefined, startTurn)
+  const wetBandRef = useRef(DEFAULT_WET_BAND)
+  wetBandRef.current = wetBand
+  const textRef = useRef(turn.text)
+  const doneRef = useRef(turn.done)
+  textRef.current = turn.text
+  doneRef.current = turn.done
+  if (!turn.text && !turn.shown) resetRevealPace()
   const flight = useRef(null)
   // The context at the moment of sending, not at render: read through a ref.
   const looking = useRef(context)
@@ -47,27 +57,65 @@ export function useChat(context = null) {
 
   useEffect(() => {
     let gone = false
-    loadKitchenChat().then((next) => !gone && setKitchen(next), () => {})
+    const take = (next) => {
+      if (gone || !next) return
+      setKitchen(next)
+      setWetBand(clampWetBand(next.wetBand))
+    }
+    loadKitchenChat().then(take, () => {})
     // Reopening a filed chat points the session at it elsewhere (a chat card);
     // the panel then loads that chat instead of keeping the one it started with.
-    const onSession = () => loadKitchenChat().then((next) => !gone && setKitchen(next), () => {})
+    const onSession = () => loadKitchenChat().then(take, () => {})
+    // The wet band is household state. A save on this page publishes it; another
+    // device reads it the next time it loads settings.
+    const onSettings = () => loadKitchenChat().then(take, () => {})
     window.addEventListener(CHAT_SESSION_EVENT, onSession)
+    window.addEventListener('festin-settings', onSettings)
     return () => {
       gone = true
       window.removeEventListener(CHAT_SESSION_EVENT, onSession)
+      window.removeEventListener('festin-settings', onSettings)
       flight.current?.abort()
     }
   }, [])
 
   useEffect(() => saveDraft(turn.draft), [turn.draft])
 
-  // Ghost typist runs on animation frames while there is text to show.
+  // The reveal runs on animation frames. A wet hand writes the ink layer
+  // directly: dispatching each letter re-renders the shell, and the meals
+  // page under the chat misses the frame. The machine hears a tick when the
+  // buffer is shown, or every frame when the hand is plain.
   const revealing = turn.phase === 'revealing'
   useEffect(() => {
     if (!revealing) return undefined
+    let last = 0
     let frame = requestAnimationFrame(function tick(now) {
-      const instant = prefersReducedMotion()
-      dispatch({ type: 'tick', now, cps: readWritingSpeed(), instant })
+      const dt = last ? now - last : 16
+      last = now
+      const band = wetBandRef.current
+      const instant = handIsPlain(band, prefersReducedMotion())
+      if (instant) {
+        dispatch({ type: 'tick', dt, band, instant: true })
+        frame = requestAnimationFrame(tick)
+        return
+      }
+      const text = textRef.current
+      const next = advance(revealPace.shown, text.length, dt, revealPace.cps)
+      const moved = next.shown !== revealPace.shown || next.cps !== revealPace.cps
+      revealPace.shown = next.shown
+      revealPace.cps = next.cps
+      if (moved) {
+        pulseReveal()
+        const peek = document.getElementById('peek')
+        if (peek) {
+          const line = visibleTail(text, next.shown)
+          if (peek.textContent !== line) peek.textContent = line
+        }
+      }
+      if (doneRef.current && next.shown >= text.length) {
+        dispatch({ type: 'tick', dt, band, shown: text.length, cps: BASE_CPS })
+        return
+      }
       frame = requestAnimationFrame(tick)
     })
     return () => cancelAnimationFrame(frame)
@@ -147,6 +195,7 @@ export function useChat(context = null) {
     model: kitchen?.model || '',
     host: kitchen?.host || '',
     turn,
+    wetBand,
     type: (draft) => dispatch({ type: 'type', draft }),
     send,
     stop,

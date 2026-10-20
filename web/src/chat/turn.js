@@ -1,6 +1,6 @@
 // Chat Turn machine (state-machine.md §2.4, §8.4 Turn). Pure: no fetch, no timers.
-import { DEFAULT_TYPE_CPS } from './ink/constants.js'
-import { typistTick } from './ink/typist.js'
+import { handIsPlain } from './ink/constants.js'
+import { BASE_CPS, advance } from './reveal.js'
 
 export const initialTurn = {
   phase: 'idle', // idle | composing | thinking | revealing | settled | failed
@@ -8,8 +8,8 @@ export const initialTurn = {
   sent: null, // { text, photos, files, submissionId } of the message in flight, kept for retry
   requestId: null,
   text: '', // reply received so far
-  shown: 0, // characters the ghost typist has struck (integer)
-  nextKey: 0, // performance.now()-style time the next keystroke is due
+  shown: 0, // fractional characters revealed; render Math.floor(shown)
+  cps: BASE_CPS, // pace carried between frames
   done: false, // server said done; settle when the buffer drains
   trace: null,
   error: null,
@@ -21,7 +21,7 @@ function afterReply(state) {
 }
 
 function clearReveal(extra = {}) {
-  return { text: '', shown: 0, nextKey: 0, done: false, trace: null, requestId: null, ...extra }
+  return { text: '', shown: 0, cps: BASE_CPS, done: false, trace: null, requestId: null, ...extra }
 }
 
 export function turnReducer(state, action) {
@@ -60,30 +60,31 @@ export function turnReducer(state, action) {
       return onEvent(state, action.event)
     case 'tick': {
       if (state.phase !== 'revealing') return state
-      // Reduced motion: show everything received, no typist animation.
-      if (action.instant) {
+      // Reduced motion and wet band 0: the whole buffer at once, plain text.
+      if (action.instant || handIsPlain(action.band)) {
         const shown = state.text.length
-        if (state.done) return { ...state, shown, phase: 'settled' }
-        if (state.shown === shown) return state
-        return { ...state, shown }
+        if (state.done) {
+          if (state.shown === shown && state.phase === 'settled') return state
+          return { ...state, shown, cps: BASE_CPS, phase: 'settled' }
+        }
+        if (state.shown === shown && state.cps === BASE_CPS) return state
+        return { ...state, shown, cps: BASE_CPS }
       }
-      const cps = action.cps ?? DEFAULT_TYPE_CPS
-      const now = action.now ?? 0
-      const typed = typistTick(
-        { lit: state.shown, nextKey: state.nextKey, cps, rng: action.rng },
-        { received: state.text.length, text: state.text, now },
-      )
-      const shown = typed.lit
-      const nextKey = typed.nextKey
-      if (state.done && shown >= state.text.length) {
-        return { ...state, shown, nextKey, phase: 'settled' }
+      // The frame loop passes the position it already revealed. Tests omit it
+      // and the machine advances one frame itself.
+      const next = Number.isFinite(action.shown)
+        ? { shown: Math.min(state.text.length, Math.max(0, action.shown)), cps: action.cps ?? state.cps }
+        : advance(state.shown, state.text.length, action.dt ?? 16, state.cps)
+      if (state.done && next.shown >= state.text.length) {
+        if (state.shown === state.text.length && state.cps === BASE_CPS) {
+          return { ...state, phase: 'settled' }
+        }
+        return { ...state, shown: state.text.length, cps: BASE_CPS, phase: 'settled' }
       }
-      // Same shown, nextKey, and phase: the frame typed nothing. Once the
-      // typist has caught the buffer, the schedule clamp slides nextKey to
-      // now every frame; that is not a new stroke, so keep this object and
-      // let the next tick apply the clamp when text actually arrives.
-      if (shown === state.shown && (nextKey === state.nextKey || shown >= state.text.length)) return state
-      return { ...state, shown, nextKey }
+      // Parked on the buffer: keep this object so a waiting frame does not
+      // re-render the page under the chat.
+      if (next.shown === state.shown && next.cps === state.cps) return state
+      return { ...state, shown: next.shown, cps: next.cps }
     }
     case 'absorbed': {
       // The settled reply is now in the reloaded transcript.
@@ -105,7 +106,7 @@ function onEvent(state, event) {
       return { ...state, text, phase: 'revealing' }
     }
     case 'reset':
-      return { ...state, text: '', shown: 0, nextKey: 0 }
+      return { ...state, text: '', shown: 0, cps: BASE_CPS }
     case 'trace':
       return { ...state, trace: event.trace ?? null }
     case 'done':

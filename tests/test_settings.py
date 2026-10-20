@@ -101,6 +101,23 @@ def test_today_follows_stored_timezone(conn):
     assert core.today(conn, now=instant) == instant.astimezone().date()
 
 
+def test_chat_wet_band_default_range_junk_and_round_trip(conn):
+    assert core.get_settings(conn)["chat_wet_band"] == core.DEFAULT_CHAT_WET_BAND == 45
+
+    assert core.update_settings(conn, chat_wet_band=0)["chat_wet_band"] == 0
+    assert core.update_settings(conn, chat_wet_band=60)["chat_wet_band"] == 60
+    saved = core.update_settings(conn, chat_wet_band="12")
+    assert saved["chat_wet_band"] == 12
+    assert core.get_settings(conn)["chat_wet_band"] == 12
+    # A write that omits the band leaves it.
+    assert core.update_settings(conn, table_name="Holliday Table")["chat_wet_band"] == 12
+
+    for junk in (-1, 61, 20.5, True, False, "fast", "12.0", "", 45.2):
+        with pytest.raises(ValueError, match="Wet band"):
+            core.update_settings(conn, chat_wet_band=junk)
+    assert core.get_settings(conn)["chat_wet_band"] == 12
+
+
 def test_week_bounds_from_configured_start(conn):
     # Wednesday 2026-10-14 with Saturday start → Sat 10/10 … Fri 10/16.
     core.update_settings(conn, week_start_day="sat")

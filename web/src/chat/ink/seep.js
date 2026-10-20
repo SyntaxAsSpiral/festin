@@ -87,6 +87,7 @@ export async function ensureSeepStyles() {
   mask-position: var(--mx) var(--my);
   animation: ink-seep var(--d, 360ms) linear forwards, ink-seep-dry calc(var(--d, 360ms) * 1.8) ease-out forwards;
 }
+.ink-host { contain: layout paint; }
 .ink-host.ink-plain .ink-c,
 .ink-host.ink-plain .ink-c.on {
   opacity: 1;

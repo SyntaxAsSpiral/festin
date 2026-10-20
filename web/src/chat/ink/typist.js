@@ -1,6 +1,7 @@
 import {
   DEFAULT_TYPE_CPS,
   KEYS_PER_FRAME,
+  OVERLAP,
   PAUSE_CLAUSE_MS,
   PAUSE_SENTENCE_MS,
   STALL_RESET_MS,
@@ -20,7 +21,7 @@ export function createTypist({ cps = DEFAULT_TYPE_CPS, now = 0, rng = Math.rando
     lit: 0,
     nextKey: now,
     cps,
-    seepMs: seepMs(cps),
+    seepMs: seepMs(cps, OVERLAP),
     rng,
   }
 }
@@ -49,7 +50,7 @@ export function typistTick(state, { received, text, now }) {
     lit,
     nextKey,
     cps,
-    seepMs: seepMs(cps),
+    seepMs: seepMs(cps, OVERLAP),
     rng,
   }
 }

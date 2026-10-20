@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { handIsPlain, seepMs } from './ink/constants.js'
 import { advance, BASE_CPS, LAG_MS } from './reveal.js'
 import { readNdjson } from './stream.js'
 import { initialTurn, traceLine, turnReducer } from './turn.js'
@@ -6,14 +7,36 @@ import { initialTurn, traceLine, turnReducer } from './turn.js'
 const run = (state, ...actions) => actions.reduce(turnReducer, state)
 const ev = (event) => ({ type: 'event', event })
 const sending = () => run(initialTurn, { type: 'type', draft: 'hi' }, { type: 'send', text: 'hi', submissionId: 's1' })
-// Drain the ghost typist with 16 ms frames at a fixed writing speed.
-function drain(state, cps = 55) {
-  let now = 1
+// Drain the reveal with 16 ms frames. Pace comes from the stream, not a slider.
+function drain(state) {
   for (let i = 0; i < 100000 && state.phase === 'revealing'; i++) {
-    state = turnReducer(state, { type: 'tick', now, cps, rng: () => 0.5 })
-    now += 16
+    state = turnReducer(state, { type: 'tick', dt: 16, band: 45 })
   }
   return state
+}
+
+// Study arrivals: uneven bursts, no punctuation delay of their own.
+function arrivals(total, rng) {
+  const out = []
+  let t = 700
+  let n = 0
+  while (n < total) {
+    n = Math.min(total, n + 8 + Math.floor(rng() * 60))
+    out.push({ at: t, upto: n })
+    t += 60 + rng() * (rng() < 0.15 ? 900 : 260)
+  }
+  return out
+}
+
+function mulberry32(seed) {
+  let a = seed >>> 0
+  return () => {
+    a |= 0
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
 }
 
 describe('reveal pacing', () => {
@@ -29,15 +52,34 @@ describe('reveal pacing', () => {
   it('shows a short reply at the base pace', () => {
     expect(advance(0, 10, 16).shown).toBeCloseTo((BASE_CPS * 16) / 1000)
   })
-  it('clears a big burst within the lag window', () => {
-    expect(frames(2000, LAG_MS + 50).shown).toBe(2000)
+  it('a long frame still lights only a few letters', () => {
+    const dumped = advance(0, 2000, 100, 2000)
+    expect(Math.floor(dumped.shown)).toBeLessThanOrEqual(4)
+    expect(dumped.shown).toBeGreaterThan(0)
   })
-  it('holds its pace through a catch-up instead of slowing', () => {
-    const { paces } = frames(2000, LAG_MS - 100)
-    expect(Math.min(...paces)).toBe(Math.max(...paces))
+  it('eases toward a burst instead of stepping to the catch-up pace', () => {
+    const target = 2000 / (LAG_MS / 1000)
+    const { paces } = frames(2000, 160)
+    expect(paces[0]).toBeGreaterThan(BASE_CPS)
+    expect(paces[0]).toBeLessThan(target * 0.5)
+    expect(paces[paces.length - 1]).toBeGreaterThan(paces[0])
+    for (let i = 1; i < paces.length; i++) expect(paces[i]).toBeGreaterThanOrEqual(paces[i - 1] - 1e-9)
+  })
+  it('does not slow while a lag-window of text is still waiting', () => {
+    let shown = 0
+    let cps = BASE_CPS
+    let prev = cps
+    for (let t = 0; t < LAG_MS - 100 && 2000 - shown > BASE_CPS * (LAG_MS / 1000); t += 16) {
+      const next = advance(shown, 2000, 16, cps)
+      expect(next.cps).toBeGreaterThanOrEqual(prev - 1e-9)
+      prev = next.cps
+      shown = next.shown
+      cps = next.cps
+    }
   })
   it('drops back to the base pace once caught up', () => {
-    expect(frames(2000, LAG_MS + 50).cps).toBe(BASE_CPS)
+    expect(frames(80, 3000).cps).toBe(BASE_CPS)
+    expect(frames(80, 3000).shown).toBe(80)
   })
   it('never overshoots, and caps a long background frame', () => {
     expect(advance(5, 6, 1000).shown).toBe(6)
@@ -68,18 +110,70 @@ describe('turn machine', () => {
     expect(Math.floor(s.shown)).toBe('Leek and gruyère.'.length)
   })
   it('reset clears what was received and shown', () => {
-    const s = run(sending(), ev({ type: 'delta', text: 'wrong' }), { type: 'tick', now: 20, cps: 55, rng: () => 0.5 }, ev({ type: 'reset' }))
+    const s = run(sending(), ev({ type: 'delta', text: 'wrong' }), { type: 'tick', dt: 16, band: 45 }, ev({ type: 'reset' }))
     expect(s).toMatchObject({ text: '', shown: 0, phase: 'revealing' })
   })
 
-  it('the ghost typist paces the reveal and settles when caught up', () => {
+  it('the reveal follows the stream and settles when caught up', () => {
     let s = run(sending(), ev({ type: 'delta', text: 'Hi.' }), ev({ type: 'done' }))
     expect(s.phase).toBe('revealing')
-    s = turnReducer(s, { type: 'tick', now: 10, cps: 55, rng: () => 0.5 })
-    expect(s.shown).toBe(1)
+    s = turnReducer(s, { type: 'tick', dt: 16, band: 45 })
+    expect(s.shown).toBeGreaterThan(0)
+    expect(s.shown).toBeLessThan(3)
     s = drain(s)
     expect(s.phase).toBe('settled')
     expect(s.shown).toBe(3)
+  })
+  it('adds no pause after punctuation', () => {
+    const text = 'Hi. There, friend;'
+    const at = []
+    let shown = 0
+    let cps = BASE_CPS
+    let t = 0
+    while (shown < text.length && t < 20000) {
+      const next = advance(shown, text.length, 16, cps)
+      t += 16
+      shown = next.shown
+      cps = next.cps
+      while (at.length < Math.floor(shown)) at.push(t)
+    }
+    const gaps = at.slice(1).map((stamp, i) => stamp - at[i])
+    expect(Math.max(...gaps)).toBeLessThan(50)
+    const period = text.indexOf('.')
+    const comma = text.indexOf(',')
+    expect(at[period + 1] - at[period]).toBeLessThan(50)
+    expect(at[comma + 1] - at[comma]).toBeLessThan(50)
+  })
+  it('keeps a burst from lighting as a block', () => {
+    const total = 1412
+    const plan = arrivals(total, mulberry32(19))
+    let shown = 0
+    let cps = BASE_CPS
+    let prev = 0
+    let maxLit = 0
+    const lastAt = plan[plan.length - 1].at
+    for (let t = 0; t <= lastAt + LAG_MS + 400; t += 16) {
+      const received = plan.filter((a) => a.at <= t).reduce((m, a) => Math.max(m, a.upto), 0)
+      const next = advance(shown, received, 16, cps)
+      maxLit = Math.max(maxLit, Math.floor(next.shown) - prev)
+      prev = Math.floor(next.shown)
+      shown = next.shown
+      cps = next.cps
+    }
+    expect(shown).toBe(total)
+    expect(maxLit).toBeLessThanOrEqual(6)
+  })
+  it('band 0 is plain and the seep is the band divided by the pace', () => {
+    expect(handIsPlain(0, false)).toBe(true)
+    expect(handIsPlain(45, false)).toBe(false)
+    expect(handIsPlain(45, true)).toBe(true)
+    expect(seepMs(160, 45)).toBe(281)
+    expect(seepMs(160, 0)).toBe(0)
+    expect(seepMs(80, 20)).toBe(250)
+    let s = run(sending(), ev({ type: 'delta', text: 'Plain words.' }), ev({ type: 'done' }))
+    s = turnReducer(s, { type: 'tick', dt: 16, band: 0 })
+    expect(s.phase).toBe('settled')
+    expect(s.shown).toBe('Plain words.'.length)
   })
 
   it('reduced motion shows the whole buffer at once', () => {
@@ -90,9 +184,7 @@ describe('turn machine', () => {
   })
   it('a tick that moves nothing returns the same state', () => {
     let s = run(sending(), ev({ type: 'delta', text: 'Hi.' }))
-    s = turnReducer(s, { type: 'tick', now: 0, cps: 55, rng: () => 0.5 })
-    expect(s.shown).toBe(1)
-    const waiting = turnReducer(s, { type: 'tick', now: 1, cps: 55, rng: () => 0.5 })
+    const waiting = turnReducer(s, { type: 'tick', dt: 0, band: 45 })
     expect(waiting).toBe(s)
     const instant = turnReducer(s, { type: 'tick', instant: true })
     const instantAgain = turnReducer(instant, { type: 'tick', instant: true })
@@ -100,18 +192,16 @@ describe('turn machine', () => {
     expect(instant.phase).toBe('revealing')
     expect(instantAgain).toBe(instant)
   })
-  it('a tick once the typist has caught the buffer returns the same state', () => {
+  it('a tick once the reveal has caught the buffer returns the same state', () => {
     let s = run(sending(), ev({ type: 'delta', text: 'Hi.' }))
-    let now = 0
-    for (let i = 0; i < 40 && s.shown < s.text.length; i++) {
-      s = turnReducer(s, { type: 'tick', now, cps: 55, rng: () => 0.5 })
-      now += 40
+    for (let i = 0; i < 80 && s.shown < s.text.length; i++) {
+      s = turnReducer(s, { type: 'tick', dt: 16, band: 45 })
     }
     expect(s.phase).toBe('revealing')
     expect(s.shown).toBe(s.text.length)
-    const parked = turnReducer(s, { type: 'tick', now: now + 80, cps: 55, rng: () => 0.5 })
+    const parked = turnReducer(s, { type: 'tick', dt: 16, band: 45 })
     expect(parked).toBe(s)
-    expect(parked.nextKey).toBe(s.nextKey)
+    expect(parked.cps).toBe(BASE_CPS)
   })
   it('stopped settles at once with what arrived', () => {
     const s = run(sending(), ev({ type: 'delta', text: 'half a reply' }), ev({ type: 'stopped' }))

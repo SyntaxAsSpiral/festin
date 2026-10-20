@@ -23,10 +23,11 @@ describe('loading this device\'s chat', () => {
       messages: [{ role: 'user', content: 'hi' }],
       model: 'anthropic/claude-haiku',
       host: 'openrouter.ai',
+      wetBand: 45,
     })
   })
   it('starts empty when the device has no chat yet', async () => {
     vi.stubGlobal('fetch', respond({ '/api/session': { chat_id: null }, '/api/settings': {} }))
-    expect(await loadKitchenChat()).toEqual({ chatId: null, messages: [], model: '', host: '' })
+    expect(await loadKitchenChat()).toEqual({ chatId: null, messages: [], model: '', host: '', wetBand: 45 })
   })
 })

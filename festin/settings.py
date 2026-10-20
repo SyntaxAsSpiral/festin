@@ -19,6 +19,8 @@ DEFAULT_TABLE_NAME = "Babette's Table"
 DEFAULT_DINNER_HOUR = "17:30"
 DEFAULT_WEEK_START = "sat"
 DEFAULT_MODEL_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_CHAT_WET_BAND = 45
+CHAT_WET_BAND_MAX = 60
 
 # Python weekday numbers match the importer.
 _WEEKDAY_NUMBER = {
@@ -40,7 +42,8 @@ def get_settings(conn: sqlite3.Connection) -> dict:
                weather_location, weather_label, weather_latitude,
                weather_longitude, weather_timezone,
                model_base_url, model_name,
-               inbox_enabled, inbox_key_hash
+               inbox_enabled, inbox_key_hash,
+               chat_wet_band
         FROM settings WHERE id = 1
         """
     ).fetchone()
@@ -68,6 +71,7 @@ def get_settings(conn: sqlite3.Connection) -> dict:
         "model_name": row["model_name"] or "",
         "inbox_enabled": bool(row["inbox_enabled"]),
         "inbox_key_hash": row["inbox_key_hash"] or "",
+        "chat_wet_band": int(row["chat_wet_band"]),
     }
 
 
@@ -82,6 +86,7 @@ def update_settings(
     model_name: str | None = None,
     inbox_enabled: bool | None = None,
     inbox_key_hash: str | None = None,
+    chat_wet_band: int | None = None,
     now: datetime | None = None,
 ) -> dict:
     """Write core fields. Geocode when the weather location string changes."""
@@ -104,6 +109,9 @@ def update_settings(
     )
     next_hash = (
         current["inbox_key_hash"] if inbox_key_hash is None else _clean_inbox_key_hash(inbox_key_hash)
+    )
+    next_band = (
+        current["chat_wet_band"] if chat_wet_band is None else _clean_chat_wet_band(chat_wet_band)
     )
 
     weather = dict(current["weather"])
@@ -130,6 +138,7 @@ def update_settings(
             model_name = ?,
             inbox_enabled = ?,
             inbox_key_hash = ?,
+            chat_wet_band = ?,
             updated_at = ?
         WHERE id = 1
         """,
@@ -146,6 +155,7 @@ def update_settings(
             next_model,
             1 if next_inbox else 0,
             next_hash,
+            next_band,
             stamp,
         ),
     )
@@ -246,6 +256,25 @@ def _clean_model_name(value) -> str:
 def _clean_inbox_enabled(value) -> bool:
     if type(value) is not bool:
         raise ValueError("inboxEnabled must be true or false.")
+    return value
+
+
+def _clean_chat_wet_band(value) -> int:
+    if isinstance(value, bool):
+        raise ValueError("Wet band must be a whole number from 0 to 60.")
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise ValueError("Wet band must be a whole number from 0 to 60.")
+        value = int(value)
+    elif isinstance(value, str):
+        text = value.strip()
+        if not text.isdecimal():
+            raise ValueError("Wet band must be a whole number from 0 to 60.")
+        value = int(text)
+    elif type(value) is not int:
+        raise ValueError("Wet band must be a whole number from 0 to 60.")
+    if value < 0 or value > CHAT_WET_BAND_MAX:
+        raise ValueError("Wet band must be a whole number from 0 to 60.")
     return value
 
 

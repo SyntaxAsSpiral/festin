@@ -181,6 +181,38 @@ def test_settings_round_trip(kitchen):
     assert again == saved
 
 
+def test_chat_wet_band_round_trip(kitchen):
+    client = Client(kitchen.server_address[1])
+    other = Client(kitchen.server_address[1])
+    status, body = client.request("GET", "/api/settings")
+    assert status == 200
+    assert body["chatWetBand"] == 45
+
+    status, junk = client.request("POST", "/api/settings", {"chatWetBand": "nope"})
+    assert status == 400
+    assert "Wet band" in junk["error"]
+    status, still = other.request("GET", "/api/settings")
+    assert still["chatWetBand"] == 45
+
+    status, saved = client.request(
+        "POST",
+        "/api/settings",
+        {"chatWetBand": 12, "expectedUpdatedAt": still["updatedAt"]},
+    )
+    assert status == 200
+    assert saved["chatWetBand"] == 12
+    status, read = other.request("GET", "/api/settings")
+    assert read["chatWetBand"] == 12
+
+    status, plain = client.request(
+        "POST",
+        "/api/settings",
+        {"chatWetBand": 0, "expectedUpdatedAt": read["updatedAt"]},
+    )
+    assert status == 200
+    assert plain["chatWetBand"] == 0
+
+
 def test_weather_read(kitchen):
     client = Client(kitchen.server_address[1])
     status, bare = client.request("GET", "/api/weather")

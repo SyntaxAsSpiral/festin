@@ -596,6 +596,7 @@ class Handler(BaseHTTPRequestHandler):
             model_base_url=_pick(body, "modelBaseUrl", "model_base_url"),
             model_name=_pick(body, "modelName", "model_name"),
             inbox_enabled=inbox_enabled,
+            chat_wet_band=_pick(body, "chatWetBand", "chat_wet_band"),
             now=self.server.now(),
         )
         if inbox_enabled is not None:
@@ -958,6 +959,7 @@ def _public_settings(
             "address": inbox_address,
             "keySet": bool(raw.get("inbox_key_hash")),
         },
+        "chatWetBand": int(raw.get("chat_wet_band", 45)),
     }
 
 

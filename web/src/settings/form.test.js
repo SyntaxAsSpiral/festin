@@ -90,6 +90,7 @@ describe('settings form mapping', () => {
       modelName: 'tool-model',
       modelBaseUrl: OPENROUTER_BASE,
       inboxEnabled: true,
+      chatWetBand: 45,
       expectedUpdatedAt: 'stamp-1',
       expected_updated_at: 'stamp-1',
     })
@@ -103,6 +104,9 @@ describe('settings form mapping', () => {
     expect(draft.inboxEnabled).toBe(true)
     expect(draft.inboxAddress).toBe('http://127.0.0.1:8896')
     expect(draft.inboxKeySet).toBe(true)
+    expect(draft.chatWetBand).toBe(45)
+    expect(draftFromSettings({ chatWetBand: 0 }).chatWetBand).toBe(0)
+    expect(settingsSaveBody({ ...draft, chatWetBand: 33 }).chatWetBand).toBe(33)
     expect(settingsSaveBody({ ...draft, inboxEnabled: false }).inboxEnabled).toBe(false)
     const block = inboxKeyBlock({
       key: 'secret-once',

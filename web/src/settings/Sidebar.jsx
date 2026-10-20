@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useSurface } from '../chat/Surface.jsx'
-import { DEFAULT_TYPE_CPS, TYPE_CPS_MAX, TYPE_CPS_MIN } from '../chat/ink/constants.js'
-import { readWritingSpeed, writeWritingSpeed } from '../chat/ink/speed.js'
+import { WET_BAND_MAX } from '../chat/ink/constants.js'
 import { MOTION_KEY, prefersReducedMotion } from '../useReducedMotion.js'
 import {
   fetchContextLanes,
@@ -97,7 +96,6 @@ export function SettingsSidebar() {
   const [inboxSecret, setInboxSecret] = useState('')
   const [busy, setBusy] = useState(false)
   const [motionOn, setMotionOn] = useState(() => !prefersReducedMotion())
-  const [writingSpeed, setWritingSpeed] = useState(() => readWritingSpeed())
 
   const setDraft = useCallback((next) => {
     const value = typeof next === 'function' ? next(draftRef.current) : next
@@ -145,17 +143,6 @@ export function SettingsSidebar() {
     window.addEventListener('storage', sync)
     return () => {
       window.removeEventListener('festin-motion', sync)
-      window.removeEventListener('storage', sync)
-    }
-  }, [])
-
-  useEffect(() => {
-    const sync = () => setWritingSpeed(readWritingSpeed())
-    sync()
-    window.addEventListener('festin-writing-speed', sync)
-    window.addEventListener('storage', sync)
-    return () => {
-      window.removeEventListener('festin-writing-speed', sync)
       window.removeEventListener('storage', sync)
     }
   }, [])
@@ -212,6 +199,7 @@ export function SettingsSidebar() {
     }
     setDraft(draftFromSettings(result.body))
     setStatus('Saved.')
+    window.dispatchEvent(new Event('festin-settings'))
     return result
   }
 
@@ -407,6 +395,31 @@ export function SettingsSidebar() {
                   Test
                 </button>
               </div>
+            </section>
+            <section className="sg" aria-labelledby="sh-hand">
+              <h3 id="sh-hand">Babette&apos;s hand</h3>
+              <p className="fine">How long the ink stays wet behind the pen. The same on every screen in the house.</p>
+              <label className="wet-band" htmlFor="s-wet">
+                Wet band
+                <input
+                  id="s-wet"
+                  type="range"
+                  min={0}
+                  max={WET_BAND_MAX}
+                  step={1}
+                  value={draft.chatWetBand}
+                  aria-valuemin={0}
+                  aria-valuemax={WET_BAND_MAX}
+                  aria-valuenow={draft.chatWetBand}
+                  aria-valuetext={draft.chatWetBand === 0 ? 'plain' : String(draft.chatWetBand)}
+                  onChange={(e) => setDraft({ ...draftRef.current, chatWetBand: Number(e.target.value) })}
+                  onPointerUp={() => persist(draftRef.current)}
+                  onKeyUp={() => persist(draftRef.current)}
+                  onBlur={() => persist(draftRef.current)}
+                  disabled={busy}
+                />
+                <span className="wet-band-val">{draft.chatWetBand === 0 ? 'plain' : draft.chatWetBand}</span>
+              </label>
             </section>
             <section className={'sg plug' + (draft.inboxEnabled ? ' on' : '')} aria-labelledby="sh-inbox">
               <div className="plh">
@@ -604,25 +617,6 @@ export function SettingsSidebar() {
             }}
           />{' '}
           Motion
-        </label>
-        <label className="sbf-speed" title="Babette's writing speed for live replies">
-          Writing speed
-          <input
-            type="range"
-            min={TYPE_CPS_MIN}
-            max={TYPE_CPS_MAX}
-            step={1}
-            value={writingSpeed}
-            aria-valuemin={TYPE_CPS_MIN}
-            aria-valuemax={TYPE_CPS_MAX}
-            aria-valuenow={writingSpeed}
-            aria-valuetext={writingSpeed + ' characters per second'}
-            onChange={(e) => {
-              const next = writeWritingSpeed(e.target.value)
-              setWritingSpeed(next)
-            }}
-          />
-          <span className="sbf-speed-val">{writingSpeed || DEFAULT_TYPE_CPS}</span>
         </label>
         <span className="sp" />
         <small>

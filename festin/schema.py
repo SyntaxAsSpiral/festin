@@ -606,6 +606,16 @@ def _version_17(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_18(conn: sqlite3.Connection) -> None:
+    """How long a letter stays wet. One household value, read by every device."""
+    conn.executescript(
+        """
+        ALTER TABLE settings ADD COLUMN chat_wet_band INTEGER NOT NULL DEFAULT 45
+            CHECK (chat_wet_band BETWEEN 0 AND 60);
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
 # v6 is the Kitchen Log. Plugin tables are v7. Shared favourites are v8.
 # v9 widens the kitchen log event kinds CHECK.
@@ -617,6 +627,7 @@ def _version_17(conn: sqlite3.Connection) -> None:
 # v15 adds recipes.queued_at and the recipe_planned log kind.
 # v16 drops needs_practice_review; cooks_before_log carries undated pre-log cooks.
 # v17 is Babette's private scratch (one row; not an API, Log, or settings field).
+# v18 is the shared chat wet band (0 plain, 60 longest, default 45).
 MIGRATIONS = (
     _version_1,
     _version_2,
@@ -635,6 +646,7 @@ MIGRATIONS = (
     _version_15,
     _version_16,
     _version_17,
+    _version_18,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)
