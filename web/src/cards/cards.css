@@ -230,7 +230,6 @@
   font-variant-numeric: lining-nums tabular-nums;
   color: var(--bb-tone-3);
 }
-.npraxis,
 .form-mark {
   display: inline-block;
   margin-right: 0.45em;

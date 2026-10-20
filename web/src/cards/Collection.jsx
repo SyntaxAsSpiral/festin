@@ -411,7 +411,6 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                     <span className="nhead">
                       <span className="ntitle">
                         {kind === 'notes' && item.raw?.open && <PinMark />}
-                        {kind === 'recipes' && item.raw?.kind === 'praxis' && <span className="npraxis">Praxis</span>}
                         {face.title}
                       </span>
                       {kind === 'recipes' && <span className="nid">{item.id}</span>}
