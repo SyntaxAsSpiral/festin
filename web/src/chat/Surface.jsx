@@ -6,6 +6,7 @@ import { useReducedMotion } from '../useReducedMotion.js'
 import './surface.css'
 
 const NARROW = '(max-width: 900px)'
+const PHONE = '(max-width: 560px)'
 const STRIP = 52
 const Ctx = createContext(null)
 
@@ -14,6 +15,19 @@ function viewportBox() {
   const height = vv?.height || window.innerHeight
   const overlap = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0
   return { height, keyboard: overlap > 80 ? overlap : 0 }
+}
+
+// Opening the chat: a phone gets the whole drawer; a tablet keeps the page in view.
+export function openedState(phone) {
+  return phone ? 'full' : 'peek'
+}
+
+// The drawer animates only what the cook did (open, close, a snap). When the
+// viewport moves under it (the keyboard, the address bar), height and bottom
+// change together and at once; otherwise bottom jumps while height eases, and
+// the drawer falls with the closing keyboard before it climbs back.
+export function drawerSnaps({ dragging, viewportMoved, keyboard, reduced }) {
+  return Boolean(dragging || viewportMoved || keyboard || reduced)
 }
 
 function clamp(n, lo, hi) {
@@ -49,7 +63,7 @@ export function SurfaceProvider({ children }) {
     return () => mq.removeEventListener('change', apply)
   }, [])
 
-  const open = useCallback(() => setState('peek'), [])
+  const open = useCallback(() => setState(openedState(window.matchMedia(PHONE).matches)), [])
   const tuck = useCallback(() => setState('tucked'), [])
   const expand = useCallback(() => {
     setState((current) => {
@@ -106,6 +120,11 @@ function SurfaceView({ peekLine, lookingAt, header, children }) {
   const widthDrag = useRef(420)
   const [liveH, setLiveH] = useState(null)
   const [liveW, setLiveW] = useState(null)
+  const lastBox = useRef({ viewH, keyboard })
+  const viewportMoved = lastBox.current.viewH !== viewH || lastBox.current.keyboard !== keyboard
+  useEffect(() => {
+    lastBox.current = { viewH, keyboard }
+  })
 
   const { state, narrow, peekPx, width, setPeekPx, setWidth, setState, open, tuck } = api
   const fullPx = viewH * 0.94
@@ -208,7 +227,7 @@ function SurfaceView({ peekLine, lookingAt, header, children }) {
             ? { height: shownH, x: 0 }
             : { height: '100%', x: state === 'tucked' ? 'calc(100% + 24px)' : 0 }
         }
-        transition={liveH != null || keyboard || reduced ? { duration: 0 } : transition(reduced, 'drawer')}
+        transition={drawerSnaps({ dragging: liveH != null, viewportMoved, keyboard, reduced }) ? { duration: 0 } : transition(reduced, 'drawer')}
         style={narrow ? { bottom: keyboard } : { width: clamp(shownW, 340, maxW) }}
       >
         {!narrow && state !== 'tucked' && (
