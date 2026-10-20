@@ -549,6 +549,49 @@ def test_recipe_favourite_toggle_and_stale(kitchen):
     assert cleared["favourite"] is False
 
 
+def test_formule_and_praxis_forms(kitchen):
+    client = Client(kitchen.server_address[1])
+    status, formule = client.request(
+        "POST",
+        "/api/recipes",
+        {"title": "Stock", "kind": "recipe", "ingredients": ["bones", "water"], "category": "soups-stews"},
+    )
+    assert status == 201
+    assert formule["kind"] == "formule"
+    assert formule["ingredients"] == ["bones", "water"]
+    assert formule["appliesTo"] == []
+
+    status, praxis = client.request(
+        "POST",
+        "/api/recipes",
+        {
+            "title": "Stir-Fry",
+            "kind": "praxis",
+            "method": "Hot wok, quick toss.",
+            "appliesTo": ["beef", "vegetables"],
+            "category": "kitchen-craft",
+        },
+    )
+    assert status == 201
+    assert praxis["kind"] == "praxis"
+    assert praxis["appliesTo"] == ["beef", "vegetables"]
+    assert praxis["ingredients"] == []
+    assert praxis["category"] == "kitchen-craft"
+
+    status, bad = client.request(
+        "POST",
+        "/api/recipes",
+        {"title": "No method", "kind": "praxis", "appliesTo": ["eggs"]},
+    )
+    assert status == 400
+    assert "method" in bad["error"].casefold()
+
+    status, listed = client.request("GET", f"/api/recipes/{praxis['id']}")
+    assert status == 200
+    assert listed["kind"] == "praxis"
+    assert listed["appliesTo"] == ["beef", "vegetables"]
+
+
 def _non_loopback_ipv4():
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:

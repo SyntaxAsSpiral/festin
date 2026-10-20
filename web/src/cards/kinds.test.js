@@ -149,7 +149,29 @@ describe('list paging and the 409 path', () => {
     expect(JSON.parse(init.body)).toMatchObject({
       expected_updated_at: recipe.updatedAt,
       title: 'Stock',
+      kind: 'formule',
       ingredients: ['water'],
+      appliesTo: [],
+    })
+  })
+
+  it('sends praxis appliesTo and omits an empty ingredients expectation', async () => {
+    const fetch = vi.fn(async () => jsonResponse(200, { id: 'CBK-0009', kind: 'praxis' }))
+    vi.stubGlobal('fetch', fetch)
+    await saveRecipe(null, {
+      title: 'Stir-Fry',
+      kind: 'praxis',
+      category: 'misc',
+      appliesTo: 'beef\nvegetables',
+      method: 'Hot wok.',
+      notes: '',
+      context: '',
+    })
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({
+      title: 'Stir-Fry',
+      kind: 'praxis',
+      appliesTo: ['beef', 'vegetables'],
+      method: 'Hot wok.',
     })
   })
 })

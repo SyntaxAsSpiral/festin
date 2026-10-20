@@ -24,6 +24,7 @@ PLATE_SLUGS = (
     "eggs-breakfast",
     "seasonings",
     "snacks-sandwiches",
+    "kitchen-craft",
     "misc",
 )
 PLATE_SLUG_SET = frozenset(PLATE_SLUGS)
@@ -40,13 +41,24 @@ RECIPE_FIELDS = {
     "title": {"type": "string", "minLength": 1},
     "kind": {
         "type": "string",
-        "enum": ["recipe", "praxis"],
+        "enum": ["formule", "praxis", "recipe"],
         "description": (
-            "recipe is a formule (ingredient list). praxis is a technique card "
-            "(method is the payload). Omitted kind is a recipe."
+            "formule answers what goes in (ingredients required, method optional). "
+            "praxis answers how it is done (method required; list is appliesTo bare "
+            "nouns, not ingredients). A praxis names what it applies to; if its value "
+            "is what goes in, it is a formule. Omitted kind is a formule. Input alias "
+            "recipe means formule for one release."
         ),
     },
     "ingredients": {"type": "array", "items": {"type": "string"}},
+    "appliesTo": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": (
+            "Bare nouns naming what a praxis is about. Prefer this over ingredients "
+            "on a praxis card."
+        ),
+    },
     "notes": {
         "type": "string",
         "description": (
@@ -120,8 +132,10 @@ RECIPE_FIELDS = {
         "enum": list(PLATE_SLUGS),
         "description": (
             "The card's category, its plate slug. Required on a new card: choose the "
-            "one that fits (chicken is all poultry; meats is meat and game; misc when "
-            "nothing fits). On an edit, change it only when asked."
+            "one that fits (chicken is all poultry; meats is meat and game; "
+            "kitchen-craft is equipment, fats, cleaning, the table; misc when nothing "
+            "fits). A technique is filed by its subject, not under kitchen-craft. On "
+            "an edit, change it only when asked."
         ),
     },
 }
@@ -157,7 +171,10 @@ CATALOG_FILTER_PROPERTIES = {
         **string_array(PLATE_SLUGS),
         "description": "Plate slugs. A card matches any of them. uncategorized is not a slug.",
     },
-    "kind": {**string_array(("recipe", "praxis")), "description": "recipe or praxis."},
+    "kind": {
+        **string_array(("formule", "praxis", "recipe")),
+        "description": "formule or praxis (recipe aliases formule for one release).",
+    },
     "voice": {**string_array(), "description": "Whole voice field. Case and accents ignored."},
     "source": {**string_array(), "description": "Whole source field. Case and accents ignored."},
     "tattva": {**string_array(), "description": "Tattva names on the card."},
@@ -243,10 +260,11 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
         "add_recipe",
         (
             "Save a requested new cookbook card. Search for a match first. Default kind "
-            "is recipe: title and ingredients required, [] for a name-only stub, method "
+            "is formule: title and ingredients required, [] for a name-only stub, method "
             "only when load-bearing. kind=praxis is a technique (dish type, ingredient, "
-            "house method): title and method required, ingredients optional, not a "
-            "dinner. Always give category and searchDescription. Voice is From (who "
+            "house method): title and method required; list is appliesTo bare nouns. A "
+            "praxis names what it applies to; if its value is what goes in, it is a "
+            "formule. Always give category and searchDescription. Voice is From (who "
             "brought it to this kitchen); source is what the card itself credits, "
             "empty when it credits nothing."
         ),

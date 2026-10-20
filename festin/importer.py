@@ -48,6 +48,7 @@ RECIPE_FIELDS = {
     "context",
     "ocrText",
     "ingredients",
+    "appliesTo",
     "tattva",
     "photos",
     "createdAt",
@@ -624,8 +625,13 @@ def _replace_recipes(conn: sqlite3.Connection, document) -> None:
         match = RECIPE_NUMBER.match(recipe_id)
         if match:
             numbers.append(int(match.group(1)))
-        kind = "praxis" if recipe.get("kind") == "praxis" else "recipe"
+        kind = "praxis" if recipe.get("kind") == "praxis" else "formule"
         ingredients = recipe.get("ingredients") if isinstance(recipe.get("ingredients"), list) else []
+        applies = recipe.get("appliesTo") if isinstance(recipe.get("appliesTo"), list) else []
+        # Live dump: praxis used ingredients for the applies-to nouns.
+        if kind == "praxis" and not applies and ingredients:
+            applies = ingredients
+            ingredients = []
         tattva = recipe.get("tattva") if isinstance(recipe.get("tattva"), list) else []
         photos = recipe.get("photos") if isinstance(recipe.get("photos"), list) else []
         extra = {key: value for key, value in recipe.items() if key not in RECIPE_FIELDS}
@@ -648,6 +654,7 @@ def _replace_recipes(conn: sqlite3.Connection, document) -> None:
                 recipe.get("context") if isinstance(recipe.get("context"), str) else "",
                 recipe.get("ocrText") if isinstance(recipe.get("ocrText"), str) else "",
                 _json(ingredients),
+                _json(applies),
                 _json(tattva),
                 _json(photos),
                 _text(recipe.get("createdAt")),
@@ -665,8 +672,8 @@ def _replace_recipes(conn: sqlite3.Connection, document) -> None:
         INSERT INTO recipes (
             id, title, kind, category, voice, source, provenance, status, stub,
             needs_practice_review, search_description, method, notes, context, ocr_text,
-            ingredients_json, tattva_json, photos_json, created_at, updated_at, extra_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ingredients_json, applies_to_json, tattva_json, photos_json, created_at, updated_at, extra_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         rows,
     )

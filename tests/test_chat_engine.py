@@ -516,7 +516,7 @@ def test_looking_at_context_resolved_from_sqlite(db):
         """
         INSERT INTO recipes (
             id, title, kind, voice, source, ingredients_json, method, updated_at
-        ) VALUES ('CBK-0042', 'Real Soup', 'recipe', 'zk', 'unknown', '[]', '', '2026-01-01T00:00:00Z')
+        ) VALUES ('CBK-0042', 'Real Soup', 'formule', 'zk', 'unknown', '[]', '', '2026-01-01T00:00:00Z')
         """
     )
     conn.commit()

@@ -431,7 +431,7 @@ def test_derived_import_recipe_and_note_without_duplicate_api_events(kitchen):
                 needs_practice_review, search_description, method, notes, context, ocr_text,
                 ingredients_json, tattva_json, photos_json, created_at, updated_at, extra_json
             ) VALUES (
-                'CBK-0099', 'Seeded rye', 'recipe', 'breads', '', '', 'documented', 'ok', 0, 0,
+                'CBK-0099', 'Seeded rye', 'formule', 'breads', '', '', 'documented', 'ok', 0, 0,
                 '', '', '', '', '', '[]', '[]', '[]',
                 '2026-04-25T10:00:00.000000Z', '2026-05-01T12:00:00.000000Z', '{}'
             )

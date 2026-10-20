@@ -38,8 +38,25 @@ _BOOL_FIELDS = {
 }
 _LIST_FIELDS = {
     "ingredients": "ingredients_json",
+    "appliesTo": "applies_to_json",
     "tattva": "tattva_json",
 }
+
+# Stored forms. Input may still say "recipe" for one release; that means formule.
+_FORM_KINDS = frozenset(("formule", "praxis"))
+
+
+def _normalize_kind(value) -> str:
+    if value in (None, ""):
+        return "formule"
+    if not isinstance(value, str):
+        raise ValueError("Invalid recipe field: kind")
+    kind = value.strip().casefold()
+    if kind == "recipe":
+        return "formule"
+    if kind not in _FORM_KINDS:
+        raise ValueError("Invalid recipe field: kind")
+    return kind
 
 
 def list_recipes(
@@ -111,18 +128,24 @@ def create_recipe(
     fields = _parse_fields(body, creating=True)
     if not fields.get("title"):
         raise ValueError("Cookbook cards require a title.")
-    kind = fields.get("kind") or "recipe"
+    kind = fields.get("kind") or "formule"
     if kind == "praxis":
         if not (fields.get("method") or "").strip():
             raise ValueError("Praxis cards require a method.")
+        if "applies_to_json" not in fields:
+            fields["applies_to_json"] = "[]"
+        if "ingredients_json" not in fields:
+            fields["ingredients_json"] = "[]"
     else:
         if "ingredients_json" not in fields:
             fields["ingredients_json"] = "[]"
         ingredients = json.loads(fields["ingredients_json"])
         if not ingredients and fields.get("stub") is False:
-            raise ValueError("A finished recipe needs ingredients.")
+            raise ValueError("A finished formule needs ingredients.")
         if not ingredients:
             fields["stub"] = 1
+        if "applies_to_json" not in fields:
+            fields["applies_to_json"] = "[]"
     recipe_id = _mint_id(conn)
     columns = {
         "id": recipe_id,
@@ -142,6 +165,7 @@ def create_recipe(
         "context": fields.get("context") or "",
         "ocr_text": fields.get("ocr_text") or "",
         "ingredients_json": fields.get("ingredients_json") or "[]",
+        "applies_to_json": fields.get("applies_to_json") or "[]",
         "tattva_json": fields.get("tattva_json") or "[]",
         "photos_json": "[]",
         "created_at": stamp,
@@ -210,7 +234,7 @@ def edit_recipe(
     else:
         if not merged.get("ingredients") and merged.get("stub") is False:
             conn.rollback()
-            raise ValueError("A finished recipe needs ingredients.")
+            raise ValueError("A finished formule needs ingredients.")
     kind = _edit_log_kind(row, fields)
     if kind:
         kitchen_log.record_event(
@@ -375,9 +399,7 @@ def _parse_fields(body: dict, *, creating: bool) -> dict:
             continue
         value = body[key]
         if key == "kind":
-            if value not in ("recipe", "praxis"):
-                raise ValueError("Invalid recipe field: kind")
-            fields[column] = value
+            fields[column] = _normalize_kind(value)
             continue
         if value is None and key == "category":
             fields[column] = None
@@ -415,12 +437,13 @@ def _parse_fields(body: dict, *, creating: bool) -> dict:
 
 def _public(row) -> dict:
     ingredients = json.loads(row["ingredients_json"] or "[]")
+    applies_to = json.loads(row["applies_to_json"] or "[]")
     tattva = json.loads(row["tattva_json"] or "[]")
     photos = json.loads(row["photos_json"] or "[]")
     out = {
         "id": row["id"],
         "title": row["title"],
-        "kind": row["kind"],
+        "kind": row["kind"] if row["kind"] in _FORM_KINDS else "formule",
         "category": row["category"],
         "voice": row["voice"],
         "source": row["source"],
@@ -435,6 +458,7 @@ def _public(row) -> dict:
         "context": row["context"],
         "ocrText": row["ocr_text"],
         "ingredients": ingredients,
+        "appliesTo": applies_to,
         "tattva": tattva,
         "photos": photos,
         "createdAt": row["created_at"],
@@ -469,6 +493,7 @@ def _card(item: dict) -> dict:
         "voice": item["voice"],
         "searchDescription": item["searchDescription"],
         "ingredients": item["ingredients"],
+        "appliesTo": item["appliesTo"],
         "notes": item["notes"],
         "stub": item["stub"],
         "needsPracticeReview": item["needsPracticeReview"],

@@ -362,10 +362,20 @@ def recipe_slip_text(recipe):
         head += "\nUnfinished recipe"
     plain, marked = [head], [head]
     sections = []
-    if recipe.get("ingredients"):
-        sections.append(("Ingredients", "\n".join(recipe["ingredients"])))
-    if recipe.get("method"):
-        sections.append(("Method", recipe["method"]))
+    praxis = recipe.get("kind") == "praxis"
+    if praxis:
+        if recipe.get("method"):
+            sections.append(("Method", recipe["method"]))
+        applies = recipe.get("appliesTo") or []
+        if applies:
+            sections.append(("Applies to", "\n".join(applies)))
+        if recipe.get("ingredients"):
+            sections.append(("Ingredients", "\n".join(recipe["ingredients"])))
+    else:
+        if recipe.get("ingredients"):
+            sections.append(("Ingredients", "\n".join(recipe["ingredients"])))
+        if recipe.get("method"):
+            sections.append(("Method", recipe["method"]))
     if recipe.get("notes"):
         sections.append(("Notes", recipe["notes"]))
     for label, body in sections:

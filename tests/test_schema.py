@@ -12,7 +12,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert SCHEMA_VERSION == 13
+    assert SCHEMA_VERSION == 14
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "sessions" in tables
@@ -22,6 +22,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     assert "household_context" in tables
     recipe_columns = {row["name"] for row in conn.execute("PRAGMA table_info(recipes)")}
     assert "favourite" in recipe_columns
+    assert "applies_to_json" in recipe_columns
     week_columns = {row["name"] for row in conn.execute("PRAGMA table_info(weeks)")}
     assert "weather_json" in week_columns
     assert "slip_quote" in week_columns
@@ -297,4 +298,49 @@ def test_v13_moves_context_notes_into_household_context(tmp_path):
         ).fetchone()[0]
         == 0
     )
+    conn.close()
+
+
+def test_v14_renames_recipe_to_formule_and_moves_praxis_applies_to(tmp_path):
+    conn = connect(tmp_path / "store.sqlite")
+    for step in MIGRATIONS[:13]:
+        step(conn)
+    conn.execute("PRAGMA user_version = 13")
+    conn.execute(
+        """
+        INSERT INTO recipes (
+            id, title, kind, category, voice, source, provenance, status, stub,
+            needs_practice_review, favourite, search_description, method, notes,
+            context, ocr_text, ingredients_json, tattva_json, photos_json,
+            created_at, updated_at, extra_json
+        ) VALUES
+            ('CBK-0001', 'Soup', 'recipe', 'soups-stews', 'zk', '', 'documented', 'ok', 0,
+             0, 0, '', 'Simmer.', '', '', '', '["water","salt"]', '[]', '[]',
+             '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', '{}'),
+            ('CBK-0002', 'Mint', 'praxis', 'misc', 'zk', '', 'documented', 'ok', 0,
+             0, 0, '', 'Whip egg white with sugar.', '', '', '',
+             '["mint","egg white","sugar"]', '[]', '[]',
+             '2026-01-02T00:00:00Z', '2026-01-02T00:00:00Z', '{}')
+        """
+    )
+    conn.commit()
+
+    apply(conn)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 14
+    soup = conn.execute("SELECT kind, ingredients_json, applies_to_json FROM recipes WHERE id = 'CBK-0001'").fetchone()
+    mint = conn.execute("SELECT kind, ingredients_json, applies_to_json FROM recipes WHERE id = 'CBK-0002'").fetchone()
+    assert soup["kind"] == "formule"
+    assert soup["ingredients_json"] == '["water","salt"]'
+    assert soup["applies_to_json"] == "[]"
+    assert mint["kind"] == "praxis"
+    assert mint["ingredients_json"] == "[]"
+    assert mint["applies_to_json"] == '["mint","egg white","sugar"]'
+    # CHECK rejects the old kind name.
+    try:
+        conn.execute(
+            "INSERT INTO recipes (id, title, kind) VALUES ('CBK-9', 'Nope', 'recipe')"
+        )
+        raise AssertionError("expected CHECK failure for kind=recipe")
+    except Exception:
+        conn.rollback()
     conn.close()

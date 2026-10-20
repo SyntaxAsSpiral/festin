@@ -45,12 +45,18 @@ export function RecipePage({ recipe, onRemovePhoto }) {
   const scans = (recipe.ocrPhotos || []).map(served)
   const photos = (recipe.photos || []).map((path) => ({ path, src: served(path) }))
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : []
+  const appliesTo = Array.isArray(recipe.appliesTo) ? recipe.appliesTo : []
+  const praxis = recipe.kind === 'praxis'
+  const empty = praxis ? !recipe.method && !appliesTo.length : !ingredients.length && !recipe.method
   return (
-    <article className="page page-recipe">
+    <article className={'page page-recipe' + (praxis ? ' page-praxis' : '')}>
       <img className="frontis" src={plateFor(recipe.category)} alt="" />
       <header className="page-head">
         <h1>{recipe.title}</h1>
-        <p className="prov">{provenance(recipe)}</p>
+        <p className="prov">
+          {praxis && <span className="form-mark">Praxis</span>}
+          {provenance(recipe)}
+        </p>
         {sourceOf(recipe) && <p className="prov prov-source">Source: {sourceOf(recipe)}</p>}
       </header>
       {recipe.searchDescription && <p className="standfirst">{recipe.searchDescription}</p>}
@@ -69,23 +75,56 @@ export function RecipePage({ recipe, onRemovePhoto }) {
             )}
           </figure>
         )}
-        {ingredients.length > 0 && (
-          <section className="ingredients">
-            <h2>Ingredients</h2>
-            <ul>
-              {ingredients.map((line, i) => (
-                <li key={i}>{line}</li>
-              ))}
-            </ul>
-          </section>
+        {praxis ? (
+          <>
+            {recipe.method && (
+              <section className="method">
+                <h2>Method</h2>
+                <Paragraphs text={recipe.method} />
+              </section>
+            )}
+            {appliesTo.length > 0 && (
+              <section className="applies-to">
+                <h2>Applies to</h2>
+                <ul>
+                  {appliesTo.map((line, i) => (
+                    <li key={i}>{line}</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {ingredients.length > 0 && (
+              <section className="ingredients">
+                <h2>Ingredients</h2>
+                <ul>
+                  {ingredients.map((line, i) => (
+                    <li key={i}>{line}</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
+        ) : (
+          <>
+            {ingredients.length > 0 && (
+              <section className="ingredients">
+                <h2>Ingredients</h2>
+                <ul>
+                  {ingredients.map((line, i) => (
+                    <li key={i}>{line}</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {recipe.method && (
+              <section className="method">
+                <h2>Method</h2>
+                <Paragraphs text={recipe.method} />
+              </section>
+            )}
+          </>
         )}
-        {recipe.method && (
-          <section className="method">
-            <h2>Method</h2>
-            <Paragraphs text={recipe.method} />
-          </section>
-        )}
-        {!ingredients.length && !recipe.method && <p className="quiet">This card has no ingredients or method yet.</p>}
+        {empty && <p className="quiet">{praxis ? 'This praxis has no method yet.' : 'This card has no ingredients or method yet.'}</p>}
       </div>
       {photos.length > 1 && (
         <div className="cooked-photos">
@@ -146,30 +185,58 @@ export function RecipeEditor({ draft, onDraft }) {
     onDraft({ ...draft, [key]: value })
   }
   const known = Object.prototype.hasOwnProperty.call(CATEGORY_LABELS, draft.category)
+  const praxis = draft.kind === 'praxis'
   return (
-    <article className="page page-recipe">
+    <article className={'page page-recipe' + (praxis ? ' page-praxis' : '')}>
       <img className="frontis" src={plateFor(draft.category)} alt="" />
       <header className="page-head">
         <input className="page-title" aria-label="Title" value={draft.title} placeholder="Title" onChange={(e) => set('title', e.target.value)} autoFocus />
-        <select className="page-cat" aria-label="Category" value={draft.category || ''} onChange={(e) => set('category', e.target.value)}>
-          <option value="">Uncategorized</option>
-          {!known && draft.category ? <option value={draft.category}>{draft.category}</option> : null}
-          {Object.entries(CATEGORY_LABELS).map(([id, label]) => (
-            <option key={id} value={id}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <div className="page-form-row">
+          <select className="page-form" aria-label="Form" value={praxis ? 'praxis' : 'formule'} onChange={(e) => set('kind', e.target.value)}>
+            <option value="formule">Formule</option>
+            <option value="praxis">Praxis</option>
+          </select>
+          <select className="page-cat" aria-label="Category" value={draft.category || ''} onChange={(e) => set('category', e.target.value)}>
+            <option value="">Uncategorized</option>
+            {!known && draft.category ? <option value={draft.category}>{draft.category}</option> : null}
+            {Object.entries(CATEGORY_LABELS).map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
       </header>
       <div className="recipe-body">
-        <section className="ingredients">
-          <h2>Ingredients</h2>
-          <textarea className="page-area" aria-label="Ingredients" value={draft.ingredients} placeholder="One ingredient on each line" onChange={(e) => set('ingredients', e.target.value)} />
-        </section>
-        <section className="method">
-          <h2>Method</h2>
-          <textarea className="page-area" aria-label="Method" value={draft.method} onChange={(e) => set('method', e.target.value)} />
-        </section>
+        {praxis ? (
+          <>
+            <section className="method">
+              <h2>Method</h2>
+              <textarea className="page-area" aria-label="Method" value={draft.method} onChange={(e) => set('method', e.target.value)} />
+            </section>
+            <section className="applies-to">
+              <h2>Applies to</h2>
+              <textarea
+                className="page-area"
+                aria-label="Applies to"
+                value={draft.appliesTo}
+                placeholder="Bare nouns, one on each line"
+                onChange={(e) => set('appliesTo', e.target.value)}
+              />
+            </section>
+          </>
+        ) : (
+          <>
+            <section className="ingredients">
+              <h2>Ingredients</h2>
+              <textarea className="page-area" aria-label="Ingredients" value={draft.ingredients} placeholder="One ingredient on each line" onChange={(e) => set('ingredients', e.target.value)} />
+            </section>
+            <section className="method">
+              <h2>Method</h2>
+              <textarea className="page-area" aria-label="Method" value={draft.method} onChange={(e) => set('method', e.target.value)} />
+            </section>
+          </>
+        )}
       </div>
       <section className="kitchen">
         <h2>Notes</h2>

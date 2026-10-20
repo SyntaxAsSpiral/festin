@@ -70,14 +70,16 @@ function fromRect(page, rect) {
 const AT_REST = { x: 0, y: 0, scaleX: 1, scaleY: 1, rotateY: 0, opacity: 1 }
 
 function blankRecipe() {
-  return { title: '', category: '', ingredients: '', method: '', notes: '', context: '' }
+  return { title: '', kind: 'formule', category: '', ingredients: '', appliesTo: '', method: '', notes: '', context: '' }
 }
 
 function draftFrom(recipe) {
   return {
     title: recipe.title || '',
+    kind: recipe.kind === 'praxis' ? 'praxis' : 'formule',
     category: recipe.category || '',
     ingredients: (recipe.ingredients || []).join('\n'),
+    appliesTo: (recipe.appliesTo || []).join('\n'),
     method: recipe.method || '',
     notes: recipe.notes || '',
     context: recipe.context || '',

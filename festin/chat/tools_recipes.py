@@ -46,12 +46,16 @@ def stamp_now(ctx: Any = None) -> str:
 
 def recipe_public(row) -> dict:
     ingredients = json.loads(row["ingredients_json"] or "[]")
+    applies_to = json.loads(row["applies_to_json"] or "[]")
     tattva = json.loads(row["tattva_json"] or "[]")
     photos = json.loads(row["photos_json"] or "[]")
+    kind = row["kind"]
+    if kind not in ("formule", "praxis"):
+        kind = "formule"
     return {
         "id": row["id"],
         "title": row["title"],
-        "kind": row["kind"],
+        "kind": kind,
         "category": row["category"],
         "voice": row["voice"],
         "source": row["source"],
@@ -66,6 +70,7 @@ def recipe_public(row) -> dict:
         "context": row["context"],
         "ocrText": row["ocr_text"],
         "ingredients": ingredients,
+        "appliesTo": applies_to,
         "tattva": tattva,
         "photos": photos,
         "createdAt": row["created_at"],
@@ -131,8 +136,10 @@ def catalog_filters(args: dict) -> dict:
     kinds = []
     for raw in string_list(args.get("kind"), "kind"):
         kind = raw.casefold()
-        if kind not in ("recipe", "praxis"):
-            raise ValueError("kind is recipe or praxis.")
+        if kind == "recipe":
+            kind = "formule"
+        if kind not in ("formule", "praxis"):
+            raise ValueError("kind is formule or praxis.")
         if kind not in kinds:
             kinds.append(kind)
     if kinds:
@@ -151,7 +158,10 @@ def catalog_filters(args: dict) -> dict:
 
 
 def entry_kind(row: dict) -> str:
-    return "praxis" if row.get("kind") == "praxis" else "recipe"
+    kind = row.get("kind")
+    if kind == "praxis":
+        return "praxis"
+    return "formule"
 
 
 def row_in_scope(recipe: dict, filters: dict) -> bool:
@@ -177,9 +187,10 @@ def searchable_text(recipe: dict) -> str:
         value = recipe.get(key)
         if isinstance(value, str):
             parts.append(value)
-    ingredients = recipe.get("ingredients")
-    if isinstance(ingredients, list):
-        parts.extend(item for item in ingredients if isinstance(item, str))
+    for key in ("ingredients", "appliesTo"):
+        values = recipe.get(key)
+        if isinstance(values, list):
+            parts.extend(item for item in values if isinstance(item, str))
     return normalize_search("\n".join(parts))
 
 
@@ -577,6 +588,7 @@ def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
         public.get("context") or "",
         public.get("ocrText") or "",
         json.dumps(public.get("ingredients") or [], ensure_ascii=False),
+        json.dumps(public.get("appliesTo") or [], ensure_ascii=False),
         json.dumps(public.get("tattva") or [], ensure_ascii=False),
         json.dumps(public.get("photos") or [], ensure_ascii=False),
         public.get("createdAt"),
@@ -589,8 +601,8 @@ def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
             INSERT INTO recipes (
                 id, title, kind, category, voice, source, provenance, status, stub,
                 needs_practice_review, favourite, search_description, method, notes, context, ocr_text,
-                ingredients_json, tattva_json, photos_json, created_at, updated_at, extra_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ingredients_json, applies_to_json, tattva_json, photos_json, created_at, updated_at, extra_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             columns,
         )
@@ -601,7 +613,7 @@ def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
                 title = ?, kind = ?, category = ?, voice = ?, source = ?, provenance = ?,
                 status = ?, stub = ?, needs_practice_review = ?, favourite = ?,
                 search_description = ?, method = ?, notes = ?, context = ?, ocr_text = ?,
-                ingredients_json = ?, tattva_json = ?, photos_json = ?, updated_at = ?
+                ingredients_json = ?, applies_to_json = ?, tattva_json = ?, photos_json = ?, updated_at = ?
             WHERE id = ?
             """,
             (
@@ -623,6 +635,7 @@ def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
                 columns[16],
                 columns[17],
                 columns[18],
+                columns[19],
                 stamp,
                 public["id"],
             ),
@@ -653,6 +666,7 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
             "searchDescription": "",
             "method": "",
             "ingredients": [],
+            "appliesTo": [],
             "tattva": [],
             "stub": False,
             "needsPracticeReview": False,
@@ -689,21 +703,32 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
     for field, value in changes.items():
         _validate_field(field, value)
     row = _apply_changes_to_public(row, changes)
+    if "kind" in changes or creating:
+        raw_kind = changes.get("kind", row.get("kind"))
+        if raw_kind == "recipe":
+            row["kind"] = "formule"
+        elif raw_kind in ("formule", "praxis"):
+            row["kind"] = raw_kind
+        elif creating:
+            row["kind"] = "formule"
     kind = entry_kind(row)
-    if creating:
-        row["kind"] = kind
+    row["kind"] = kind
     if not isinstance(row.get("title"), str) or not row["title"].strip():
         raise ValueError("Cookbook cards require a title.")
     if kind == "praxis":
         if not isinstance(row.get("method"), str) or not row["method"].strip():
             raise ValueError("Praxis cards require a method.")
+        if "appliesTo" not in row or row.get("appliesTo") is None:
+            row["appliesTo"] = []
     else:
         if "ingredients" not in row:
-            raise ValueError("Recipes require a title and ingredients list (empty for a name-only stub).")
+            raise ValueError("Formules require a title and ingredients list (empty for a name-only stub).")
         if not row["ingredients"]:
             if row.get("stub") is False:
-                raise ValueError("A finished recipe needs ingredients.")
+                raise ValueError("A finished formule needs ingredients.")
             row["stub"] = True
+        if "appliesTo" not in row or row.get("appliesTo") is None:
+            row["appliesTo"] = []
     original = None
     if not creating:
         original = recipe_public(_recipe_row(conn, row["id"]))

@@ -223,6 +223,10 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
     setChoice((c) => ({ ...c, favouritesOnly }))
   }
 
+  function setForm(form) {
+    setChoice((c) => ({ ...c, form }))
+  }
+
   function clearChoice() {
     setChoice(defaultChoice(kind))
     setSortOpen(false)
@@ -324,6 +328,23 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                     </label>
                   )}
                   {kind === 'recipes' && (
+                    <fieldset className="lsort-field">
+                      <legend>Form</legend>
+                      <label className="lsort-opt">
+                        <input type="radio" name="lsort-form" checked={!choice.form} onChange={() => setForm('')} />
+                        All
+                      </label>
+                      <label className="lsort-opt">
+                        <input type="radio" name="lsort-form" checked={choice.form === 'formule'} onChange={() => setForm('formule')} />
+                        Formule
+                      </label>
+                      <label className="lsort-opt">
+                        <input type="radio" name="lsort-form" checked={choice.form === 'praxis'} onChange={() => setForm('praxis')} />
+                        Praxis
+                      </label>
+                    </fieldset>
+                  )}
+                  {kind === 'recipes' && (
                     <label className="lsort-opt">
                       <input type="checkbox" checked={Boolean(choice.favouritesOnly)} onChange={(event) => setFavouritesOnly(event.target.checked)} />
                       Favourites only
@@ -372,7 +393,12 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                 <li key={item.id}>
                   <button
                     type="button"
-                    className={'nitem' + (archived ? ' nitem-archived' : '') + (kind === 'recipes' && item.raw?.favourite ? ' nitem-fav' : '')}
+                    className={
+                      'nitem' +
+                      (archived ? ' nitem-archived' : '') +
+                      (kind === 'recipes' && item.raw?.favourite ? ' nitem-fav' : '') +
+                      (kind === 'recipes' && item.raw?.kind === 'praxis' ? ' nitem-praxis' : '')
+                    }
                     data-cursor={i === cursor || undefined}
                     onClick={(event) => open(item, event.currentTarget)}
                   >
@@ -385,6 +411,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                     <span className="nhead">
                       <span className="ntitle">
                         {kind === 'notes' && item.raw?.open && <PinMark />}
+                        {kind === 'recipes' && item.raw?.kind === 'praxis' && <span className="npraxis">Praxis</span>}
                         {face.title}
                       </span>
                       {kind === 'recipes' && <span className="nid">{item.id}</span>}

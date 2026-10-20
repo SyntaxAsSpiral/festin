@@ -14,8 +14,8 @@ import {
   writeStoredChoice,
 } from './sortfilter.js'
 
-function item(id, title, category, favourite = false) {
-  return { id, title, raw: { id, title, category, favourite }, search: title.toLowerCase() }
+function item(id, title, category, favourite = false, kind = 'formule') {
+  return { id, title, raw: { id, title, category, favourite, kind }, search: title.toLowerCase() }
 }
 
 function note(id, title, open) {
@@ -27,6 +27,7 @@ const SAMPLE = [
   item('CBK-0010', 'Apple Pie', 'pies-tarts', true),
   item('CBK-0001', 'Banana Bread', 'breads'),
   item('CBK-0007', 'Carrot Cake', 'cakes', true),
+  item('CBK-0049', 'Stir-Fry', 'misc', false, 'praxis'),
 ]
 
 const NOTES = [
@@ -39,17 +40,27 @@ const NOTES = [
 describe('applySortFilter', () => {
   it('sorts by name A–Z by default', () => {
     const ids = applySortFilter(SAMPLE, DEFAULT_CHOICE).map((r) => r.id)
-    expect(ids).toEqual(['CBK-0010', 'CBK-0001', 'CBK-0007', 'CBK-0003'])
+    expect(ids).toEqual(['CBK-0010', 'CBK-0001', 'CBK-0007', 'CBK-0049', 'CBK-0003'])
   })
 
   it('sorts by CBK number, newest first', () => {
     const ids = applySortFilter(SAMPLE, { sort: 'id-newest', category: '' }).map((r) => r.id)
-    expect(ids).toEqual(['CBK-0010', 'CBK-0007', 'CBK-0003', 'CBK-0001'])
+    expect(ids).toEqual(['CBK-0049', 'CBK-0010', 'CBK-0007', 'CBK-0003', 'CBK-0001'])
   })
 
   it('sorts by CBK number, oldest first', () => {
     const ids = applySortFilter(SAMPLE, { sort: 'id-oldest', category: '' }).map((r) => r.id)
-    expect(ids).toEqual(['CBK-0001', 'CBK-0003', 'CBK-0007', 'CBK-0010'])
+    expect(ids).toEqual(['CBK-0001', 'CBK-0003', 'CBK-0007', 'CBK-0010', 'CBK-0049'])
+  })
+
+  it('filters to formule or praxis', () => {
+    expect(applySortFilter(SAMPLE, { sort: 'name', form: 'praxis' }).map((r) => r.title)).toEqual(['Stir-Fry'])
+    expect(applySortFilter(SAMPLE, { sort: 'name', form: 'formule' }).map((r) => r.id)).toEqual([
+      'CBK-0010',
+      'CBK-0001',
+      'CBK-0007',
+      'CBK-0003',
+    ])
   })
 
   it('filters to one category, then sorts', () => {
@@ -105,6 +116,11 @@ describe('summarizeChoice', () => {
     expect(summarizeChoice({ sort: 'name', category: '', favouritesOnly: true })).toBe('Favourites only')
   })
 
+  it('names a form filter', () => {
+    expect(summarizeChoice({ sort: 'name', form: 'praxis' })).toBe('Praxis')
+    expect(summarizeChoice({ sort: 'name', form: 'formule', category: 'cakes' })).toBe('Formule, Cakes')
+  })
+
   it('names ID order with direction', () => {
     expect(summarizeChoice({ sort: 'id-newest', category: '' })).toBe('by ID, newest first')
     expect(summarizeChoice({ sort: 'id-oldest', category: '' })).toBe('by ID, oldest first')
@@ -135,20 +151,32 @@ describe('stored choice', () => {
   })
 
   it('remembers a choice per kind', () => {
-    writeStoredChoice('recipes', { sort: 'id-newest', category: 'cakes', favouritesOnly: true })
+    writeStoredChoice('recipes', { sort: 'id-newest', category: 'cakes', favouritesOnly: true, form: 'praxis' })
     expect(localStorage.getItem(STORAGE_KEY + 'recipes')).toBeTruthy()
-    expect(readStoredChoice('recipes')).toEqual({ sort: 'id-newest', category: 'cakes', showArchived: false, favouritesOnly: true })
+    expect(readStoredChoice('recipes')).toEqual({
+      sort: 'id-newest',
+      category: 'cakes',
+      form: 'praxis',
+      showArchived: false,
+      favouritesOnly: true,
+    })
     expect(readStoredChoice('notes')).toEqual(DEFAULT_CHOICE)
   })
 
   it('remembers Show archived for notes', () => {
     writeStoredChoice('notes', { sort: 'name', showArchived: true })
-    expect(readStoredChoice('notes')).toEqual({ sort: 'name', category: '', showArchived: true, favouritesOnly: false })
+    expect(readStoredChoice('notes')).toEqual({ sort: 'name', category: '', form: '', showArchived: true, favouritesOnly: false })
   })
 
   it('fills favouritesOnly false for older stored choices', () => {
     localStorage.setItem(STORAGE_KEY + 'recipes', JSON.stringify({ sort: 'name', category: 'cakes' }))
-    expect(readStoredChoice('recipes')).toEqual({ sort: 'name', category: 'cakes', showArchived: false, favouritesOnly: false })
+    expect(readStoredChoice('recipes')).toEqual({
+      sort: 'name',
+      category: 'cakes',
+      form: '',
+      showArchived: false,
+      favouritesOnly: false,
+    })
   })
 
   it('ignores a corrupt payload', () => {

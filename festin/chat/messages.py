@@ -331,7 +331,7 @@ def looking_at_block(resolved: dict | None) -> str | None:
     if isinstance(card, dict):
         kind = card["kind"]
         if kind == "recipes":
-            label = "praxis" if card.get("recipe_kind") == "praxis" else "recipe"
+            label = "praxis" if card.get("recipe_kind") == "praxis" else "formule"
             lines.append(f"- {label} {card['id']} · {card['title']}")
         elif kind == "notes":
             lines.append(f"- note {card['id']} ({card['note_kind']}) · {card['text']}")
