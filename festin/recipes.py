@@ -467,6 +467,8 @@ def mark_cooked(conn: sqlite3.Connection, recipe_id: str, body: dict, *, now: da
     Does not place the recipe onto tonight's slip. If the recipe already sits on
     an uncooked night of the current week on or before today, that night is
     marked cooked and its date is the cook date; otherwise the cook date is today.
+    Idempotent per (recipe, cook date): a second press the same day clears the
+    queue and marks a matching night, but does not write another Log event.
     """
     if not isinstance(body, dict):
         raise ValueError("JSON object required")
@@ -497,17 +499,36 @@ def mark_cooked(conn: sqlite3.Connection, recipe_id: str, body: dict, *, now: da
         "UPDATE recipes SET queued_at = NULL, updated_at = ? WHERE id = ?",
         (stamp, recipe_id),
     )
-    kitchen_log.record_event(
-        conn,
-        "recipe_cooked",
-        ref_id=recipe_id,
-        at=stamp,
-        title=row["title"] or "",
-        detail=cook_date,
-        extra={"category": row["category"], "date": cook_date},
-    )
+    if not _has_cook_event(conn, recipe_id, cook_date):
+        kitchen_log.record_event(
+            conn,
+            "recipe_cooked",
+            ref_id=recipe_id,
+            at=stamp,
+            title=row["title"] or "",
+            detail=cook_date,
+            extra={"category": row["category"], "date": cook_date},
+        )
     conn.commit()
     return get_recipe(conn, recipe_id)
+
+
+def _has_cook_event(conn: sqlite3.Connection, recipe_id: str, cook_date: str) -> bool:
+    """True when a recipe_cooked event already carries this cook date."""
+    row = conn.execute(
+        """
+        SELECT 1 FROM kitchen_log_events
+        WHERE kind = 'recipe_cooked' AND ref_id = ?
+          AND COALESCE(
+            json_extract(extra_json, '$.date'),
+            CASE WHEN length(detail) >= 10 THEN substr(detail, 1, 10) END,
+            substr(at, 1, 10)
+          ) = ?
+        LIMIT 1
+        """,
+        (recipe_id, cook_date),
+    ).fetchone()
+    return row is not None
 
 
 def clear_queue_and_review(
