@@ -408,9 +408,12 @@ html[data-motion="off"] .pull-refresh.spring,
   .main { border-right: 0; }
 }
 @media (max-width: 560px) {
+  /* Phone: no frieze. A quarter of the width goes back to the slip; the to-cook
+     queue is the Recipes filter. (mektxt.com hides its quick links the same way.) */
+  .frieze-slot { display: none; }
   .app {
-    --frieze-open: 100px;
-    --frieze: 100px;
+    --frieze-open: 0px;
+    --frieze: 0px;
     --bar-px: 4px;
     --bar-gap: 4px;
     --tab-px: 6px;
