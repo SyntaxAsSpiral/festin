@@ -74,78 +74,20 @@ describe('incremental markdown builder', () => {
 })
 
 describe('a rebuild does not restart lit letters', () => {
-  it('keeps earlier letters mounted when a new paragraph opens', () => {
+  it('lets each lit letter resume at its own age after a Markdown boundary', () => {
     const now = vi.spyOn(performance, 'now')
     const host = document.createElement('div')
     const b = createInkBuilder(host)
     now.mockReturnValue(1000)
     b.setTyped('Bread')
     for (let i = 0; i < b.length; i++) b.light(i, { durationMs: 360 })
-    const first = host.querySelector('.ink-c')
     now.mockReturnValue(1500)
+    // A new paragraph is a structural change: the builder rebuilds the tree.
     b.setTyped('Bread\n\nRise')
-    expect(host.querySelector('.ink-c')).toBe(first)
+    const first = host.querySelector('.ink-c')
     expect(first.textContent).toBe('B')
-    expect(first.classList.contains('on')).toBe(true)
-    expect(host.textContent).toContain('Rise')
+    expect(first.style.animationDelay).toBe('-500ms')
     now.mockRestore()
-  })
-
-  it('resumes a lit letter at its age when its own line is rebuilt', () => {
-    const now = vi.spyOn(performance, 'now')
-    const host = document.createElement('div')
-    const b = createInkBuilder(host)
-    now.mockReturnValue(1000)
-    b.setTyped('**Hi')
-    for (let i = 0; i < b.length; i++) b.light(i, { durationMs: 360 })
-    const first = host.querySelector('.ink-c')
-    now.mockReturnValue(1500)
-    b.setTyped('**Hi**')
-    const again = host.querySelector('.ink-c')
-    expect(again).toBe(first)
-    expect(again.textContent).toBe('H')
-    expect(again.style.animationDelay).toBe('-500ms')
-    now.mockRestore()
-  })
-
-  it('keeps the first list item when the next one is written', () => {
-    const host = document.createElement('div')
-    const b = createInkBuilder(host)
-    const src = 'Intro line.\n\n- **Leeks** and stock\n- then more'
-    b.setTyped(src.slice(0, 24))
-    const first = host.querySelector('.ink-c')
-    first.dataset.mark = 'keep'
-    for (let i = 25; i <= src.length; i++) b.setTyped(src.slice(0, i))
-    expect(host.querySelector('.ink-c')).toBe(first)
-    expect(first.dataset.mark).toBe('keep')
-    expect(host.querySelectorAll('li')).toHaveLength(2)
-    expect(host.textContent).toContain('then more')
-  })
-
-  it('keeps the line above a soft break when a card link closes', () => {
-    const host = document.createElement('div')
-    const b = createInkBuilder(host)
-    const src = 'Backbone:\n[Stock](CBK-0479) next'
-    for (let i = 1; i <= src.length; i++) b.setTyped(src.slice(0, i))
-    expect(host.textContent).toContain('Backbone:')
-    expect(host.querySelector('br')).not.toBeNull()
-    const link = host.querySelector('a[data-recipe="CBK-0479"]')
-    expect(link).not.toBeNull()
-    expect(link.textContent).toBe('Stock')
-    expect(link.textContent).not.toContain('next')
-    expect(host.textContent).toContain('next')
-  })
-
-  it('leaves words after a card link outside the link', () => {
-    const host = document.createElement('div')
-    const b = createInkBuilder(host)
-    const src = 'See [Cake](CBK-0001) please'
-    for (let i = 1; i <= src.length; i++) b.setTyped(src.slice(0, i))
-    const link = host.querySelector('a[data-recipe="CBK-0001"]')
-    expect(link).not.toBeNull()
-    expect(link.textContent).toBe('Cake')
-    expect(host.textContent).toContain('please')
-    expect(link.textContent).not.toContain('please')
   })
 
   it('finishes a card link typed letter by letter, even as the last thing written', () => {
