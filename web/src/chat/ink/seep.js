@@ -51,36 +51,17 @@ function levelBlob(field, n, cover) {
   })
 }
 
-// Build noise-mask levels once and inject the seep keyframes. Safe to call often.
-export async function ensureSeepStyles() {
-  if (ready || typeof document === 'undefined') return
-  ready = true
-  const n = MASK_PX
-  const field = buildField(n)
-  const covers = Array.from({ length: LEVELS }, (_, k) => 0.04 + (k / (LEVELS - 1)) * 0.98)
-  const built = await Promise.all(covers.map((cover) => levelBlob(field, n, cover)))
-  // Decode each mask before anything animates with it. The first animation
-  // after a load otherwise paints while its mask images are still undecoded,
-  // and that first trace step flickers before the rest seep in cleanly.
-  await Promise.all(
-    built.map((url) => {
-      if (!url) return null
-      const img = new Image()
-      img.src = url
-      return img.decode().catch(() => {})
-    }),
-  )
-  built.forEach((url, k) => {
-    if (url) {
-      urls.push(url)
-      document.documentElement.style.setProperty('--seep-' + k, `url("${url}")`)
-    }
-  })
-  const frames = covers.map((_, k) => `${((k / LEVELS) * 92).toFixed(2)}% { -webkit-mask-image: var(--seep-${k}); mask-image: var(--seep-${k}); }`)
-  const style = document.createElement('style')
-  style.setAttribute('data-ink-seep', '')
-  style.textContent = `
-@keyframes ink-seep { ${frames.join(' ')} 92%, 100% { -webkit-mask-image: none; mask-image: none; } }
+// True once the mask keyframes are in the page. Until then nothing may animate:
+// a letter lit earlier shows plain, then restarts masked when the keyframes
+// land, and that is the flicker at the start of a reply.
+let styled = false
+export function seepReady() {
+  return styled
+}
+
+// The seep rules that need no generated masks go in at once, so an unlit letter
+// is hidden from the first frame. Only the mask keyframes wait for the build.
+const BASE_RULES = `
 @keyframes ink-seep-dry {
   0% { color: ${WET}; }
   100% { color: ${SEPIA}; }
@@ -117,7 +98,46 @@ export async function ensureSeepStyles() {
   }
 }
 `
-  document.head.append(style)
+
+// Build noise-mask levels once and inject the seep keyframes. Safe to call often.
+export async function ensureSeepStyles() {
+  if (ready || typeof document === 'undefined') return
+  ready = true
+  const base = document.createElement('style')
+  base.setAttribute('data-ink-seep', '')
+  base.textContent = BASE_RULES
+  document.head.append(base)
+  const n = MASK_PX
+  const covers = Array.from({ length: LEVELS }, (_, k) => 0.04 + (k / (LEVELS - 1)) * 0.98)
+  let built = []
+  try {
+    const field = buildField(n)
+    built = await Promise.all(covers.map((cover) => levelBlob(field, n, cover)))
+    // Decode each mask before anything animates with it, so the first animation
+    // does not paint while its mask images are still undecoded.
+    await Promise.all(
+      built.map((url) => {
+        if (!url) return null
+        const img = new Image()
+        img.src = url
+        return img.decode().catch(() => {})
+      }),
+    )
+  } catch {
+    /* no canvas or no blobs: the reply shows without a seep, never without text */
+  }
+  built.forEach((url, k) => {
+    if (url) {
+      urls.push(url)
+      document.documentElement.style.setProperty('--seep-' + k, `url("${url}")`)
+    }
+  })
+  const frames = covers.map((_, k) => `${((k / LEVELS) * 92).toFixed(2)}% { -webkit-mask-image: var(--seep-${k}); mask-image: var(--seep-${k}); }`)
+  const seep = document.createElement('style')
+  seep.setAttribute('data-ink-seep-frames', '')
+  seep.textContent = `@keyframes ink-seep { ${frames.join(' ')} 92%, 100% { -webkit-mask-image: none; mask-image: none; } }`
+  document.head.append(seep)
+  styled = true
 }
 
 export function seepUrlsForTests() {

@@ -1,7 +1,7 @@
 import { DEFAULT_WET_BAND, seepMs as seepMsFor } from './constants.js'
 import { createInkBuilder } from './markdownBuild.js'
 import { planWordSeep, readGrain } from './grain.js'
-import { ensureSeepStyles } from './seep.js'
+import { ensureSeepStyles, seepReady } from './seep.js'
 
 // Owns the live reply DOM outside React: typed Markdown structure with per-letter
 // spans. React keeps an empty host; this module appends into it so re-renders
@@ -55,6 +55,9 @@ export function mountInkLayer(host, { plain = false } = {}) {
       }
       const prefix = text.slice(0, n)
       builder.setTyped(prefix)
+      // Letters wait, hidden, until the masks exist; lit earlier they would show
+      // plain and then restart masked. The next sync lights what has piled up.
+      if (!seepReady()) return
       const duration = seepMsFor(cps, band ?? DEFAULT_WET_BAND)
       // Letters due in the same frame would all start together and the front would
       // advance in clumps (visible at high speed). Spread each batch back across

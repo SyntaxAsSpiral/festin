@@ -7,6 +7,7 @@ import { InkReply } from './InkReply.jsx'
 import { ListenControl } from './ListenControl.jsx'
 import { voiceIsOn } from './listen.js'
 import { renderChatMarkdown } from './markdown.js'
+import { seepReady } from './ink/seep.js'
 import { traceLine } from './turn.js'
 
 const RECIPE_ID = /\b(CBK-\d{4,})\b/g
@@ -51,26 +52,31 @@ function toolBody(step) {
 // Trace steps under a reply. Thinking starts collapsed; while the reply is live,
 // tool steps are open and each new step seeps onto the page as a whole (the
 // letters' seep masks, larger pools), so traces arrive softly instead of popping.
+// A step seeps in only if the masks exist when it first appears. One that mounts
+// earlier shows plain; adding the class later would restart it masked, a flicker.
+function TraceStep({ step, i, open }) {
+  const [seeps] = useState(() => open && seepReady())
+  const thinking = step.kind === 'thinking'
+  const seep = open ? { '--mx': `${(i * 37) % 100}%`, '--my': `${(i * 61) % 100}%` } : undefined
+  return (
+    <details className={'chat-trace' + (seeps ? ' seep-in' : '')} style={seep} open={(open && !thinking) || undefined}>
+      {thinking ? (
+        <>
+          <summary>Thinking</summary>
+          <div className="trace-thinking">{step.text || ''}</div>
+        </>
+      ) : (
+        <>
+          <summary>{toolSummary(step)}</summary>
+          {toolBody(step) && <div className="trace-tool">{toolBody(step)}</div>}
+        </>
+      )}
+    </details>
+  )
+}
+
 function Trace({ steps, open }) {
-  return (steps || []).map((step, i) => {
-    const thinking = step.kind === 'thinking'
-    const seep = open ? { '--mx': `${(i * 37) % 100}%`, '--my': `${(i * 61) % 100}%` } : undefined
-    return (
-      <details key={i} className={'chat-trace' + (open ? ' seep-in' : '')} style={seep} open={(open && !thinking) || undefined}>
-        {thinking ? (
-          <>
-            <summary>Thinking</summary>
-            <div className="trace-thinking">{step.text || ''}</div>
-          </>
-        ) : (
-          <>
-            <summary>{toolSummary(step)}</summary>
-            {toolBody(step) && <div className="trace-tool">{toolBody(step)}</div>}
-          </>
-        )}
-      </details>
-    )
-  })
+  return (steps || []).map((step, i) => <TraceStep key={i} step={step} i={i} open={open} />)
 }
 
 function Markdown({ text }) {
