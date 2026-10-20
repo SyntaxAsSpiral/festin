@@ -217,7 +217,17 @@ export function CardOverlay({ kind, id, onChanged }) {
 
   return (
     <div className="card-layer" onClick={(event) => event.target === event.currentTarget && close()}>
-      <div ref={scope} className={'card card-' + kind} role="dialog" aria-modal="true" aria-label={title}>
+      <div
+        ref={scope}
+        className={
+          'card card-' + kind +
+          (kind === 'recipes' && raw?.favourite ? ' card-is-fav' : '') +
+          (kind === 'recipes' && raw?.kind === 'praxis' ? ' card-is-praxis' : '')
+        }
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
         <div className="card-bar">
           <button type="button" className="card-close" onClick={close} aria-label="Close" title="Close (Esc)">
             <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden="true">

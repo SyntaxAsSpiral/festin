@@ -706,8 +706,21 @@ html[data-motion='off'] .card-layer { transition: none; }
 }
 /* In card view the heart sits beside the title. */
 .nlist-cards li .nfav { top: 10px; right: 4px; }
-/* A favourite recipe card takes a faint wash of the red that means "favourited" in the Log. */
-.nlist-cards .nitem.nitem-fav {
-  background-color: color-mix(in srgb, var(--acc-red) 16%, var(--bb-card));
-  border-color: color-mix(in srgb, var(--acc-red-glyph) 45%, var(--bb-tone-1));
+/* Recipe washes, in card view and on the open card. Red means favourite (as in the Log);
+   lavender means praxis. A favourite praxis takes the favourite's wash. */
+:root {
+  --wash-fav: color-mix(in srgb, var(--acc-red) 16%, var(--bb-card));
+  --wash-fav-edge: color-mix(in srgb, var(--acc-red-glyph) 45%, var(--bb-tone-1));
+  --wash-praxis: color-mix(in srgb, var(--acc-lavender) 20%, var(--bb-card));
+  --wash-praxis-edge: color-mix(in srgb, var(--acc-lavender-glyph) 45%, var(--bb-tone-1));
+}
+.nlist-cards .nitem.nitem-praxis,
+.card.card-is-praxis {
+  background-color: var(--wash-praxis);
+  border-color: var(--wash-praxis-edge);
+}
+.nlist-cards .nitem.nitem-fav,
+.card.card-is-fav {
+  background-color: var(--wash-fav);
+  border-color: var(--wash-fav-edge);
 }
