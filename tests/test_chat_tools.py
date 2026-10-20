@@ -35,7 +35,7 @@ def kit(blank_db, tmp_path):
         INSERT INTO recipes (
             id, title, kind, voice, source, provenance, status, stub,
             needs_practice_review, ingredients_json, method, updated_at
-        ) VALUES (?, ?, 'recipe', 'zk', 'unknown', 'documented', 'draft', 0, 0, ?, '', ?)
+        ) VALUES (?, ?, 'formule', 'zk', 'unknown', 'documented', 'draft', 0, 0, ?, '', ?)
         """,
         ("CBK-0001", "Soup", json.dumps(["water", "salt"]), "2026-01-01T00:00:00+00:00"),
     )
@@ -101,6 +101,43 @@ def test_recipe_tools(kit):
         ctx,
     )
     assert deleted["status"] == "deleted"
+
+
+def test_praxis_form_and_recipe_alias(kit):
+    conn, registry, ctx = kit
+    as_alias = registry.dispatch(
+        "add_recipe",
+        {
+            "title": "Alias loaf",
+            "kind": "recipe",
+            "ingredients": ["flour"],
+            "category": "breads",
+            "searchDescription": "A loaf filed under the old kind name.",
+        },
+        ctx,
+    )
+    assert as_alias["recipe"]["kind"] == "formule"
+
+    praxis = registry.dispatch(
+        "add_recipe",
+        {
+            "title": "Phyllo",
+            "kind": "praxis",
+            "method": "Brush and layer.",
+            "appliesTo": ["pastry", "spanakopita"],
+            "category": "breads",
+            "searchDescription": "Working with phyllo dough.",
+        },
+        ctx,
+    )
+    assert praxis["recipe"]["kind"] == "praxis"
+    assert praxis["recipe"]["appliesTo"] == ["pastry", "spanakopita"]
+
+    found = registry.dispatch("search_cookbook", {"kind": "praxis"}, ctx)
+    assert any(r["id"] == praxis["id"] for r in found["results"])
+    aliased = registry.dispatch("search_cookbook", {"kind": "recipe"}, ctx)
+    assert all(r["kind"] == "formule" for r in aliased["results"])
+    assert any(r["id"] == as_alias["id"] for r in aliased["results"])
 
 
 def test_edit_recipe_favourite_and_search(kit):

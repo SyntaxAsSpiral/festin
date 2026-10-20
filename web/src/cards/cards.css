@@ -230,6 +230,34 @@
   font-variant-numeric: lining-nums tabular-nums;
   color: var(--bb-tone-3);
 }
+.npraxis,
+.form-mark {
+  display: inline-block;
+  margin-right: 0.45em;
+  font-size: 0.72em;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bb-tone-3);
+  vertical-align: 0.08em;
+}
+.form-mark::after {
+  content: ' ·';
+  margin-left: 0.2em;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.page-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.page-form,
+.page-cat {
+  max-width: 100%;
+}
 .card-fav {
   color: var(--acc-red-ink);
   border: 1px solid color-mix(in srgb, var(--acc-red-glyph) 45%, transparent);

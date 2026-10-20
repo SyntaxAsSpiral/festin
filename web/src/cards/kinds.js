@@ -33,14 +33,18 @@ export const CATEGORY_LABELS = {
   'eggs-breakfast': 'Eggs & Breakfast',
   seasonings: 'Seasonings',
   'snacks-sandwiches': 'Snacks & Sandwiches',
+  'kitchen-craft': 'Kitchen Craft',
 }
+
+// Engraved plate art exists for the food subjects; kitchen-craft uses the uncategorized plate.
+const PLATE_ART = new Set(Object.keys(CATEGORY_LABELS).filter((id) => id !== 'kitchen-craft'))
 
 const PLACEHOLDER = /^(unknown|zk-chat|)$/i
 const WEEKDAYS = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 }
 const LIST_KEY = { recipes: 'recipes', notes: 'notes', chats: 'chats' }
 
 export function plateFor(category) {
-  return '/plates/' + (CATEGORY_LABELS[category] ? category : 'uncategorized') + '.jpg'
+  return '/plates/' + (PLATE_ART.has(category) ? category : 'uncategorized') + '.jpg'
 }
 
 // "Casseroles, from Quita's recipe box": the category and the card's From.
@@ -85,12 +89,13 @@ export function chatDate(chat) {
 }
 
 export function recipeItem(r) {
+  const applies = Array.isArray(r.appliesTo) ? r.appliesTo : []
   return {
     id: r.id,
     title: r.title || r.id,
     line: provenance(r),
     tip: r.searchDescription || '',
-    search: [r.id, r.title, r.category, r.source, r.voice, r.searchDescription, r.notes, ...(r.ingredients || [])].join(' ').toLowerCase(),
+    search: [r.id, r.title, r.category, r.source, r.voice, r.searchDescription, r.notes, ...(r.ingredients || []), ...applies].join(' ').toLowerCase(),
     card: null,
     raw: r,
   }
@@ -227,18 +232,31 @@ export function matches(item, query) {
   return words.every((w) => item.search.includes(w) || item.title.toLowerCase().includes(w))
 }
 
+function linesField(text) {
+  return String(text || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+}
+
 export function recipeFields(draft) {
-  return {
+  const kind = draft.kind === 'praxis' ? 'praxis' : 'formule'
+  const fields = {
     title: String(draft.title || '').trim(),
+    kind,
     category: draft.category || '',
-    ingredients: String(draft.ingredients || '')
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean),
     method: draft.method || '',
     notes: draft.notes || '',
     context: draft.context || '',
   }
+  if (kind === 'praxis') {
+    fields.appliesTo = linesField(draft.appliesTo)
+    fields.ingredients = linesField(draft.ingredients)
+  } else {
+    fields.ingredients = linesField(draft.ingredients)
+    fields.appliesTo = []
+  }
+  return fields
 }
 
 export function saveRecipe(recipe, draft) {

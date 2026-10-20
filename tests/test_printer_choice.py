@@ -318,3 +318,23 @@ def test_recipe_slip_skips_placeholder_voice_and_source():
         {"id": "CBK-0001", "voice": "grandma", "source": "Quita's Recipe box", "provenance": "ocr-draft", "ingredients": ["eggs"]}
     )
     assert named.startswith("CBK-0001 · from grandma\nSource: Quita's Recipe box")
+
+
+def test_praxis_slip_puts_method_before_applies_to():
+    from festin.plugins.printer.printing import recipe_slip_text
+
+    plain, marked = recipe_slip_text(
+        {
+            "id": "CBK-0489",
+            "kind": "praxis",
+            "voice": "zk",
+            "method": "Hot wok.",
+            "appliesTo": ["beef", "vegetables"],
+            "ingredients": [],
+        }
+    )
+    assert "Method\nHot wok." in plain
+    assert "Applies to\nbeef\nvegetables" in plain
+    assert plain.index("Method") < plain.index("Applies to")
+    assert "Ingredients" not in plain
+    assert "**Method**" in marked

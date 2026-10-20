@@ -51,6 +51,7 @@
     "eggs-breakfast": "wheat",
     "seasonings": "rosemary",
     "snacks-sandwiches": "wheat",
+    "kitchen-craft": "scroll",
     "misc": "scroll"
   },
   "default": "scroll"

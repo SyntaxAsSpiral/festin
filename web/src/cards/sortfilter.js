@@ -5,7 +5,9 @@ export const STORAGE_KEY = 'festin.sortfilter.'
 
 export const SORT_IDS = ['name', 'id-newest', 'id-oldest', 'date-newest', 'date-oldest']
 
-export const DEFAULT_CHOICE = Object.freeze({ sort: 'name', category: '', showArchived: false, favouritesOnly: false })
+export const DEFAULT_CHOICE = Object.freeze({ sort: 'name', category: '', form: '', showArchived: false, favouritesOnly: false })
+
+export const FORM_IDS = ['formule', 'praxis']
 
 // Chats open on the most recent; recipes and notes on their names.
 const DEFAULT_SORT = { chats: 'date-newest' }
@@ -18,9 +20,10 @@ export function isDefaultChoice(choice, kind = 'recipes') {
   if (!choice) return true
   const sortOk = !choice.sort || choice.sort === defaultChoice(kind).sort
   const catOk = !choice.category
+  const formOk = !choice.form
   const archOk = !choice.showArchived
   const favOk = !choice.favouritesOnly
-  return sortOk && catOk && archOk && favOk
+  return sortOk && catOk && formOk && archOk && favOk
 }
 
 export function cbkNumber(id) {
@@ -68,6 +71,15 @@ export function filterFavourites(items, favouritesOnly) {
   return items.filter((it) => it.raw && it.raw.favourite)
 }
 
+export function filterByForm(items, form) {
+  if (!form || !FORM_IDS.includes(form)) return items
+  return items.filter((it) => {
+    const kind = it.raw && it.raw.kind
+    if (form === 'praxis') return kind === 'praxis'
+    return kind !== 'praxis'
+  })
+}
+
 export function sortItems(items, sort) {
   const out = items.slice()
   if (sort === 'id-newest') out.sort(byIdDesc)
@@ -104,7 +116,8 @@ export function applySortFilter(items, choice, kind = 'recipes') {
   }
 
   const favouritesOnly = Boolean(choice && choice.favouritesOnly)
-  return sortItems(filterFavourites(filterByCategory(list, category), favouritesOnly), sort)
+  const form = choice && FORM_IDS.includes(choice.form) ? choice.form : ''
+  return sortItems(filterFavourites(filterByForm(filterByCategory(list, category), form), favouritesOnly), sort)
 }
 
 export function summarizeChoice(choice, kind = 'recipes') {
@@ -122,6 +135,8 @@ export function summarizeChoice(choice, kind = 'recipes') {
     return parts.join(', ')
   }
   if (choice.favouritesOnly) parts.push('Favourites only')
+  if (choice.form === 'formule') parts.push('Formule')
+  else if (choice.form === 'praxis') parts.push('Praxis')
   if (choice.category && CATEGORY_LABELS[choice.category]) parts.push(CATEGORY_LABELS[choice.category])
   if (choice.sort === 'id-newest') parts.push('by ID, newest first')
   else if (choice.sort === 'id-oldest') parts.push('by ID, oldest first')
@@ -134,6 +149,7 @@ function normalizeChoice(raw, kind) {
   return {
     sort: SORT_IDS.includes(raw.sort) ? raw.sort : defaultChoice(kind).sort,
     category: CATEGORY_LABELS[raw.category] ? raw.category : '',
+    form: FORM_IDS.includes(raw.form) ? raw.form : '',
     showArchived: Boolean(raw.showArchived),
     favouritesOnly: Boolean(raw.favouritesOnly),
   }
