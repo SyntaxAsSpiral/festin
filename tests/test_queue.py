@@ -826,3 +826,29 @@ def test_babette_cooked_true_matches_button(blank_db, tmp_path):
         assert "alone" in str(exc).casefold()
 
     conn.close()
+
+
+def test_close_ended_weeks_reads_queue_stamp_in_household_time(blank_db):
+    # Queued at 6:30 pm Pacific on the 28th: the stamp is already the 29th in UTC.
+    # That dinner on the 28th answered it, so the ended week clears it.
+    conn = connect(blank_db)
+    conn.execute("UPDATE settings SET weather_timezone = 'America/Los_Angeles'")
+    conn.commit()
+    evening = recipes_mod.create_recipe(
+        conn,
+        {"title": "Queued At Dusk", "ingredients": ["a"], "category": "soups-stews", "queued": True},
+        now=datetime(2026, 9, 29, 1, 30, tzinfo=timezone.utc),
+    )
+    conn.execute(
+        "INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at, weather_json)"
+        " VALUES ('2026-09-26', 'Sep', '', NULL, '2026-09-26T12:00:00.000000Z', NULL)"
+    )
+    conn.execute(
+        "INSERT INTO nights (date, week_start, recipe_id, title, cooked, updated_at)"
+        " VALUES ('2026-09-28', '2026-09-26', ?, 'Queued At Dusk', 0, '2026-09-28T12:00:00.000000Z')",
+        (evening["id"],),
+    )
+    conn.commit()
+    assert recipes_mod.close_ended_weeks(conn) == 1
+    assert conn.execute("SELECT queued_at FROM recipes WHERE id = ?", (evening["id"],)).fetchone()[0] is None
+    conn.close()

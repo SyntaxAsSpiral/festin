@@ -12,7 +12,7 @@ from pathlib import Path
 
 from festin import log as kitchen_log
 from festin.errors import NotFound, StaleState
-from festin.settings import get_settings, today as household_today, week_start_for
+from festin.settings import _local_instant, get_settings, today as household_today, week_start_for
 
 PAGE_SIZE = 20
 RECIPE_ID = re.compile(r"^CBK-(\d+)$")
@@ -226,11 +226,12 @@ def close_ended_weeks(conn: sqlite3.Connection) -> int:
     ).fetchall()
     to_clear: set[str] = set()
     for row in rows:
-        queued = str(row["queued_at"] or "")
+        queued = _household_date(conn, row["queued_at"])
         night = _as_iso_date(row["night_date"])
         if not queued or not night:
             continue
-        if queued[:10] < night:
+        # Queued that day or earlier: that dinner answered it. Queued later: wanted again.
+        if queued <= night:
             to_clear.add(row["id"])
     if not to_clear:
         return 0
@@ -241,6 +242,18 @@ def close_ended_weeks(conn: sqlite3.Connection) -> int:
     )
     conn.commit()
     return len(to_clear)
+
+
+def _household_date(conn: sqlite3.Connection, stamp) -> str | None:
+    """A stored UTC stamp as the household's local date (nights are local dates)."""
+    text = str(stamp or "").strip()
+    if not text:
+        return None
+    try:
+        instant = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return _as_iso_date(text)
+    return _local_instant(conn, instant).date().isoformat()
 
 
 def _as_iso_date(value) -> str | None:
