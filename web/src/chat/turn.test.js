@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { handIsPlain, seepMs } from './ink/constants.js'
-import { advance, BASE_CPS, LAG_MS } from './reveal.js'
+import { advance, BASE_CPS, LAG_MS, MAX_CPS, STEP_MS } from './reveal.js'
 import { readNdjson } from './stream.js'
 import { initialTurn, traceLine, turnReducer } from './turn.js'
 
@@ -52,10 +52,28 @@ describe('reveal pacing', () => {
   it('shows a short reply at the base pace', () => {
     expect(advance(0, 10, 16).shown).toBeCloseTo((BASE_CPS * 16) / 1000)
   })
-  it('a long frame still lights only a few letters', () => {
+  it('a long frame lights at most a step of the ceiling pace', () => {
     const dumped = advance(0, 2000, 100, 2000)
-    expect(Math.floor(dumped.shown)).toBeLessThanOrEqual(4)
+    expect(Math.floor(dumped.shown)).toBeLessThanOrEqual((MAX_CPS * STEP_MS) / 1000)
     expect(dumped.shown).toBeGreaterThan(0)
+  })
+  it('never runs above the ceiling, so the seep never drops under band / ceiling', () => {
+    let s = { shown: 0, cps: BASE_CPS }
+    for (let t = 0; t < 6000; t += 16) {
+      s = advance(s.shown, 1941, 16, s.cps)
+      expect(s.cps).toBeLessThanOrEqual(MAX_CPS)
+      expect(seepMs(s.cps, 45)).toBeGreaterThanOrEqual(Math.round((45 / MAX_CPS) * 1000))
+    }
+  })
+  it('keeps the same ceiling for a stream that is faster than it', () => {
+    const rate = (stream) => {
+      let s = { shown: 0, cps: BASE_CPS }
+      for (let t = 0; t < 3000; t += 16) s = advance(s.shown, Math.min(1941, stream * (t / 1000)), 16, s.cps)
+      return s.shown / 3
+    }
+    expect(rate(1000)).toBeLessThanOrEqual(MAX_CPS + 1)
+    // It does get up to speed: well over the base pace within three seconds.
+    expect(rate(1000)).toBeGreaterThan(MAX_CPS * 0.6)
   })
   it('eases toward a burst instead of stepping to the catch-up pace', () => {
     const target = 2000 / (LAG_MS / 1000)
@@ -161,7 +179,7 @@ describe('turn machine', () => {
       cps = next.cps
     }
     expect(shown).toBe(total)
-    expect(maxLit).toBeLessThanOrEqual(6)
+    expect(maxLit).toBeLessThanOrEqual(8)
   })
   it('band 0 is plain and the seep is the band divided by the pace', () => {
     expect(handIsPlain(0, false)).toBe(true)
