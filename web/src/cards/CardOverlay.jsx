@@ -20,6 +20,7 @@ import {
   setRecipeQueued,
   toItem,
   updateRecipePhotos,
+  cookedMeta,
 } from './kinds.js'
 import { copyText } from '../secure.js'
 import { useLookingAt } from './looking.js'
@@ -293,9 +294,28 @@ export function CardOverlay({ kind, id, onChanged }) {
         {(raw || creating) && (
           <div className="card-foot">
             {kind === 'recipes' && raw && !editingRecipe && (
-              <button type="button" className="card-id" title="Copy the ID" onClick={() => copyText(raw.id).then(() => setNote('Copied ' + raw.id), () => setNote('Select the ID to copy it: ' + raw.id))}>
-                {raw.id}
-              </button>
+              <>
+                <button type="button" className="card-id" title="Copy the ID" onClick={() => copyText(raw.id).then(() => setNote('Copied ' + raw.id), () => setNote('Select the ID to copy it: ' + raw.id))}>
+                  {raw.id}
+                </button>
+                {/* The count rides on the button, so a press shows it landed. */}
+                <button
+                  type="button"
+                  className="card-cooked"
+                  title={cookedMeta(raw) || 'Not cooked yet'}
+                  onClick={() =>
+                    act(() =>
+                      markRecipeCooked(raw).then((saved) => {
+                        setNote(cookedNote(raw, saved))
+                        applySaved(saved)
+                      }),
+                    )
+                  }
+                >
+                  <span className="card-cooked-mark" aria-hidden="true" />
+                  Cooked{raw.cookCount ? <span className="card-cooked-n"> · {raw.cookCount}</span> : null}
+                </button>
+              </>
             )}
             {note && (
               <p className="card-note" role="status">
@@ -379,19 +399,6 @@ export function CardOverlay({ kind, id, onChanged }) {
                     }
                   >
                     {raw.queuedAt ? '⚑' : '⚐'} To cook
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      act(() =>
-                        markRecipeCooked(raw).then((saved) => {
-                          setNote(cookedNote(raw, saved))
-                          applySaved(saved)
-                        }),
-                      )
-                    }
-                  >
-                    Cooked
                   </button>
                   <button type="button" disabled={photoBusy} onClick={() => photoPicker.current?.click()}>
                     Add photo

@@ -433,18 +433,18 @@
 }
 .kl h3 {
   font-variant: small-caps;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   font-weight: 500;
-  font-size: 14px;
-  color: var(--bb-tone-4);
+  font-size: 17px;
+  color: var(--bb-tone-5);
   text-align: center;
-  margin: 0 0 10px;
+  margin: 4px 0 14px;
 }
 .kl h3::before,
 .kl h3::after {
   content: '';
   display: inline-block;
-  width: 48px;
+  width: 64px;
   border-top: 1px solid var(--bb-tone-2);
   vertical-align: middle;
   margin: 0 10px;
@@ -890,12 +890,13 @@ html[data-motion='off'] .kl .tcar {
 .kl .tl-photo > .tdot,
 .kl .tl-archived > .tdot { border-color: var(--ec-glyph); }
 .kl .tl-a > .tdot { background: var(--ec-glyph); }
-.kl .tl-cooked > .tdot,
-.kl .tl-fav > .tdot,
-.kl .tl-planned > .tdot,
+/* Log marks: the hue is the genus (index.css), the shape the event. Filled = it happened;
+   open = pending, changed or ended. Circle: recipe added (filled) / updated (ring). Square:
+   photo (filled) / chat (open). Triangle: cooked (filled, alchemical fire) / planned (open,
+   the fire not yet lit). Mandorla: favourited. Leaf: note created (filled) / archived (open).
+   Diamond: a week. Triangles and the mandorla are masks from art/log/. */
 .kl .tl-photo > .tdot {
-  border: 1px solid var(--ec-glyph);
-  border-radius: 50%;
+  border: 0;
   width: 7px;
   height: 7px;
   left: -18px;
@@ -903,19 +904,35 @@ html[data-motion='off'] .kl .tcar {
 }
 .kl .tl-archived > .tdot {
   border: 1px solid var(--ec-glyph);
+  top: 10px;
   width: 8px;
   height: 8px;
+.kl .tl-chat > .tdot {
+  border: 1.3px solid var(--ec-glyph);
+  width: 8px;
+  height: 8px;
+  left: -18.5px;
+}
+.kl .tl-cooked > .tdot,
+.kl .tl-planned > .tdot,
+.kl .tl-fav > .tdot {
+  border: 0;
+  width: 10px;
+  height: 10px;
+  left: -19.5px;
+  top: 8px;
+  background: var(--ec-glyph);
+  -webkit-mask: var(--mark) center / contain no-repeat;
+  mask: var(--mark) center / contain no-repeat;
+}
+.kl .tl-cooked > .tdot { --mark: url(/art/log/triangle.svg); }
+.kl .tl-planned > .tdot { --mark: url(/art/log/triangle-open.svg); }
+.kl .tl-fav > .tdot { --mark: url(/art/log/mandorla.svg); width: 9px; height: 12px; left: -19px; top: 7px; }
+.kl .tl-c > .tdot { background: var(--ec-glyph); }
   left: -19px;
   top: 14px;
   transform: rotate(45deg);
   border-radius: 0 50% 0 50%;
-}
-.kl .tl-chat > .tdot {
-  border: 1.5px solid var(--ec-glyph);
-  border-radius: 50%;
-  width: 8px;
-  height: 8px;
-  left: -18.5px;
 }
 .kl .tn.tl-r small,
 .kl .tn.tl-c small,

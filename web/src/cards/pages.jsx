@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Message } from '../chat/Transcript.jsx'
-import { CATEGORY_LABELS, chatDate, cookedMeta, dayOf, plateFor, provenance, sourceOf } from './kinds.js'
+import { CATEGORY_LABELS, chatDate, dayOf, plateFor, provenance, sourceOf } from './kinds.js'
 
 // Live stores file paths under data/; the kitchen serves them at these URLs.
 function served(path) {
@@ -58,7 +58,6 @@ export function RecipePage({ recipe, onRemovePhoto }) {
           {provenance(recipe)}
         </p>
         {sourceOf(recipe) && <p className="prov prov-source">Source: {sourceOf(recipe)}</p>}
-        {cookedMeta(recipe) ? <p className="prov prov-cooked">{cookedMeta(recipe)}</p> : null}
       </header>
       {recipe.searchDescription && <p className="standfirst">{recipe.searchDescription}</p>}
       <div className="recipe-body">

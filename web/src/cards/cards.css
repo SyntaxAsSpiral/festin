@@ -424,6 +424,16 @@
   color: var(--bb-rose);
   border: var(--btn-danger-border);
 }
+.card-cooked { display: inline-flex; align-items: center; gap: 6px; }
+/* The Log's cooked mark: the table's yellow, the alchemical fire. */
+.card-cooked-mark {
+  width: 10px;
+  height: 10px;
+  background: var(--acc-yellow-glyph);
+  -webkit-mask: url(/art/log/triangle.svg) center / contain no-repeat;
+  mask: url(/art/log/triangle.svg) center / contain no-repeat;
+}
+.card-cooked-n { color: var(--acc-yellow-ink); font-variant-numeric: lining-nums; }
 .card-note { margin: 0; font-style: italic; color: var(--bb-tone-5); }
 button.danger {
   color: var(--btn-danger-fg);
