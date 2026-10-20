@@ -95,9 +95,13 @@ def list_log(
     before: str | None = None,
     limit: int = PAGE_SIZE,
 ) -> dict:
+    from festin import recipes as recipes_mod
+
+    recipes_mod.close_ended_weeks(conn)
     limit = _page_limit(limit)
     cursor = _decode_before(before) if before else None
     entries = _collect(conn)
+    _stamp_cook_ordinals(conn, entries)
     entries.sort(key=_sort_key, reverse=True)
     if cursor is not None:
         entries = [item for item in entries if _sort_key(item) < cursor]
@@ -112,7 +116,7 @@ def list_log(
 EVENT_WORDS = {
     "recipe_added": "recipe added new",
     "recipe_edited": "recipe updated edited",
-    "recipe_cooked": "recipe first cooked made",
+    "recipe_cooked": "recipe cooked made",
     "recipe_favourited": "recipe favourited favourite favorite loved",
     "photo_added": "recipe photo added picture",
     "recipe_planned": "recipe planned queued to-cook to cook",
@@ -136,8 +140,13 @@ def search_events(
     since = None
     if days:
         since = (household_today(conn) - timedelta(days=days)).isoformat()
+    from festin import recipes as recipes_mod
+
+    recipes_mod.close_ended_weeks(conn)
+    collected = _collect(conn)
+    _stamp_cook_ordinals(conn, collected)
     found = []
-    for item in _collect(conn):
+    for item in collected:
         if item["kind"] not in EVENT_WORDS:
             continue
         if since and _as_at(item["at"])[:10] < since:
@@ -462,7 +471,39 @@ def _public(item: dict) -> dict:
         out["type"] = extra["type"]
     if kind == "recipe_cooked" and extra.get("date"):
         out["date"] = extra["date"]
+    if kind == "recipe_cooked" and item.get("ordinal"):
+        out["ordinal"] = item["ordinal"]
     return out
+
+
+def _stamp_cook_ordinals(conn: sqlite3.Connection, entries: list[dict]) -> None:
+    """Ordinal of each recipe_cooked event in the recipe's unified cook-date set."""
+    from festin import recipes as recipes_mod
+
+    cooks = [item for item in entries if item.get("kind") == "recipe_cooked"]
+    if not cooks:
+        return
+    ids = list({item.get("refId") for item in cooks if item.get("refId")})
+    dates_by = recipes_mod.cook_dates_for(conn, ids)
+    for item in cooks:
+        ref = item.get("refId") or ""
+        day = _event_cook_date(item)
+        dates = list(dates_by.get(ref) or [])
+        if day and day not in dates:
+            dates = sorted(set(dates) | {day})
+        if day and day in dates:
+            item["ordinal"] = dates.index(day) + 1
+        else:
+            item["ordinal"] = 1
+
+
+def _event_cook_date(item: dict) -> str | None:
+    extra = item.get("extra") or {}
+    for candidate in (extra.get("date"), item.get("detail"), item.get("at")):
+        text = str(candidate or "").strip()
+        if len(text) >= 10 and text[4] == "-" and text[7] == "-":
+            return text[:10]
+    return None
 
 
 def _sort_key(item: dict) -> tuple:

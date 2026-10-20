@@ -24,6 +24,7 @@ _WEEKDAY_NUMBER = {
 
 
 def get_plan(conn: sqlite3.Connection, week_start: str) -> dict:
+    recipes_mod.close_ended_weeks(conn)
     start = _parse_week_start(week_start)
     week = conn.execute("SELECT * FROM weeks WHERE start_date = ?", (start.isoformat(),)).fetchone()
     if week is None:

@@ -74,6 +74,20 @@ export function dayOf(iso) {
   return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''
 }
 
+/** Open-card meta: "Cooked 3 times · last 12 Oct". Empty when never cooked. */
+export function cookedMeta(recipe) {
+  const n = Number(recipe?.cookCount) || 0
+  if (n < 1) return ''
+  const times = n === 1 ? '1 time' : `${n} times`
+  const last = recipe?.lastCooked
+  const d = last ? new Date(last.length === 10 ? last + 'T12:00:00' : last) : null
+  const when =
+    d && !Number.isNaN(d.getTime())
+      ? d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+      : ''
+  return when ? `Cooked ${times} · last ${when}` : `Cooked ${times}`
+}
+
 // A chat's date. A real createdAt is the day. Imported chats are an approximation
 // (dateApprox, or the older created_at plus the earliest planned week).
 export function chatDate(chat) {

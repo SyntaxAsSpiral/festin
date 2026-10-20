@@ -74,13 +74,20 @@ def recipe_public(row) -> dict:
         "appliesTo": applies_to,
         "tattva": tattva,
         "photos": photos,
+        "cookCount": 0,
+        "lastCooked": None,
         "createdAt": row["created_at"],
         "updatedAt": row["updated_at"],
     }
 
 
 def load_recipes(conn) -> list[dict]:
-    return [recipe_public(row) for row in conn.execute("SELECT * FROM recipes")]
+    from festin import recipes as recipes_mod
+
+    recipes_mod.close_ended_weeks(conn)
+    return recipes_mod.attach_cook_stats_many(
+        conn, [recipe_public(row) for row in conn.execute("SELECT * FROM recipes")]
+    )
 
 
 def normalize_search(value) -> str:
@@ -226,6 +233,8 @@ def compact_card(recipe: dict) -> dict:
         "searchDescription": description if isinstance(description, str) else "",
         "favourite": bool(recipe.get("favourite")),
         "queuedAt": recipe.get("queuedAt"),
+        "cookCount": int(recipe.get("cookCount") or 0),
+        "lastCooked": recipe.get("lastCooked"),
     }
 
 
@@ -554,31 +563,25 @@ def _apply_changes_to_public(row: dict, changes: dict) -> dict:
 
 
 def _tool_edit_log_kind(original: dict, changes: dict) -> str | None:
-    """One log line per Babette edit: first cook, then planned, then favourite, else edit."""
-    was_review = bool(original.get("needsPracticeReview"))
-    if (
-        "needsPracticeReview" in changes
-        and was_review
-        and changes.get("needsPracticeReview") is False
-    ):
-        return "recipe_cooked"
+    """One log line per Babette edit: planned, then favourite, else edit.
+
+    Clearing practice review is quiet — cooks are /cooked or the slip toggle.
+    """
     was_queued = bool(original.get("queuedAt"))
     if "queued" in changes and not was_queued and changes.get("queued") is True:
         return "recipe_planned"
     was_favourite = bool(original.get("favourite"))
     if "favourite" in changes and not was_favourite and changes.get("favourite") is True:
         return "recipe_favourited"
-    if set(changes) <= {"favourite", "needsPracticeReview", "queued"}:
-        favourite_noop = "favourite" not in changes or bool(changes.get("favourite")) == was_favourite or (
-            was_favourite and changes.get("favourite") is False
+    material = {key: value for key, value in changes.items() if key != "needsPracticeReview"}
+    if set(material) <= {"favourite", "queued"}:
+        favourite_noop = "favourite" not in material or bool(material.get("favourite")) == was_favourite or (
+            was_favourite and material.get("favourite") is False
         )
-        review_noop = "needsPracticeReview" not in changes or bool(
-            changes.get("needsPracticeReview")
-        ) == was_review
-        queue_noop = "queued" not in changes or bool(changes.get("queued")) == was_queued or (
-            was_queued and changes.get("queued") is False
+        queue_noop = "queued" not in material or bool(material.get("queued")) == was_queued or (
+            was_queued and material.get("queued") is False
         )
-        if favourite_noop and review_noop and queue_noop:
+        if favourite_noop and queue_noop:
             return None
     return "recipe_edited"
 
@@ -718,10 +721,32 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
         changes = args.get("changes") if name == "edit_recipe" else {}
     if not isinstance(changes, dict) or (name == "edit_recipe" and not changes):
         raise ValueError("Supply recipe fields to change.")
+    if creating and "cooked" in changes:
+        raise ValueError("Record a cook on an existing card with edit_recipe {cooked: true}.")
     for field, value in changes.items():
         _validate_field(field, value)
+    if name == "edit_recipe" and "cooked" in changes:
+        if changes.get("cooked") is not True:
+            raise ValueError("Set cooked true to record a cook.")
+        if set(changes) != {"cooked"}:
+            raise ValueError("Record a cook with changes {cooked: true} alone.")
+        from festin import recipes as recipes_mod
+        from festin.errors import StaleState
+
+        now = ctx_get(ctx, "now")
+        try:
+            saved = recipes_mod.mark_cooked(
+                conn,
+                row["id"],
+                {"expected_updated_at": args.get("expected_updated_at")},
+                now=now if isinstance(now, datetime) else None,
+            )
+        except StaleState as exc:
+            raise ValueError(stale_recipe_edit(row, changes)) from exc
+        return {"status": "saved", "id": saved["id"], "title": saved["title"], "recipe": saved}
     row = _apply_changes_to_public(row, changes)
     row.pop("queued", None)
+    row.pop("cooked", None)
     if "kind" in changes or creating:
         raw_kind = changes.get("kind", row.get("kind"))
         if raw_kind == "recipe":
@@ -784,7 +809,9 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
                 extra={"category": row.get("category")},
             )
     conn.commit()
-    saved = recipe_public(_recipe_row(conn, row["id"]))
+    from festin import recipes as recipes_mod
+
+    saved = recipes_mod.attach_cook_stats(conn, recipe_public(_recipe_row(conn, row["id"])))
     return {"status": "saved", "id": saved["id"], "title": saved["title"], "recipe": saved}
 
 
@@ -826,7 +853,9 @@ def append_recipe_context(args: dict, ctx: Any) -> dict:
         (combined, stamp, row["id"]),
     )
     conn.commit()
-    saved = recipe_public(_recipe_row(conn, row["id"]))
+    from festin import recipes as recipes_mod
+
+    saved = recipes_mod.attach_cook_stats(conn, recipe_public(_recipe_row(conn, row["id"])))
     return {"status": "saved", "id": saved["id"], "title": saved["title"], "recipe": saved}
 
 
@@ -894,7 +923,7 @@ def attach_recipe_photos(args: dict, ctx: Any) -> dict:
     if row.get("needsPracticeReview"):
         result["message"] = (
             "Cooking photos are on this card. If the household cooked this dish, "
-            "call edit_recipe with only needsPracticeReview set to false. "
+            "call edit_recipe with only cooked true. "
             "Do not change provenance or status. If more than one card could be meant, ask which one."
         )
     return result

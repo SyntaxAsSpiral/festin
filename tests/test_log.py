@@ -579,7 +579,7 @@ def test_first_cook_favourite_archive_and_photo_log_once(kitchen, tmp_path):
     assert by_kind["photo_added"][0]["detail"] == "1"
 
 
-def test_cook_wins_over_other_fields_in_one_save(kitchen):
+def test_edit_clearing_review_is_not_a_cook(kitchen):
     client = Client(kitchen.server_address[1])
     status, recipe = client.request(
         "POST",
@@ -591,11 +591,23 @@ def test_cook_wins_over_other_fields_in_one_save(kitchen):
         },
     )
     assert status == 201
-    status, saved = client.request(
+    status, cleared = client.request(
         "POST",
         f"/api/recipes/{recipe['id']}",
         {
             "expected_updated_at": recipe["updatedAt"],
+            "changes": {"needsPracticeReview": False},
+        },
+    )
+    assert status == 200
+    assert cleared["needsPracticeReview"] is False
+    assert cleared["cookCount"] == 0
+
+    status, saved = client.request(
+        "POST",
+        f"/api/recipes/{recipe['id']}",
+        {
+            "expected_updated_at": cleared["updatedAt"],
             "changes": {
                 "needsPracticeReview": False,
                 "favourite": True,
@@ -610,7 +622,8 @@ def test_cook_wins_over_other_fields_in_one_save(kitchen):
         for entry in body["entries"]
         if entry.get("id") == recipe["id"] and entry["kind"] != "recipe_added"
     ]
-    assert kinds == ["recipe_cooked"]
+    assert "recipe_cooked" not in kinds
+    assert kinds == ["recipe_favourited"]
 
 
 def test_approx_chats_fold_into_week_summary(kitchen):

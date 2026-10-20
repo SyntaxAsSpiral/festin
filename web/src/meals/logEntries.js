@@ -12,7 +12,7 @@ export const RECIPE_EVENT_KINDS = new Set([
 const META = {
   recipe_added: { label: 'Recipe added', rowClass: 'tl-r', modClass: 'tl-a' },
   recipe_edited: { label: 'Recipe updated', rowClass: 'tl-r', modClass: 'tl-u' },
-  recipe_cooked: { label: 'Recipe first cooked', rowClass: 'tl-cooked' },
+  recipe_cooked: { label: 'Cooked', rowClass: 'tl-cooked' },
   recipe_favourited: { label: 'Recipe favourited', rowClass: 'tl-fav' },
   recipe_planned: { label: 'Recipe planned', rowClass: 'tl-planned' },
   photo_added: { label: 'Recipe photo added', rowClass: 'tl-photo' },
@@ -23,6 +23,17 @@ const META = {
 
 export function entryMeta(kind) {
   return META[kind] || { label: 'Recipe updated', rowClass: 'tl-r', modClass: 'tl-u' }
+}
+
+/** Quiet ordinal for a cook past the first: "3rd time". Empty when ≤ 1. */
+export function cookOrdinalDetail(ordinal) {
+  const n = Number(ordinal)
+  if (!Number.isFinite(n) || n < 2) return ''
+  const mod100 = n % 100
+  const mod10 = n % 10
+  const suf =
+    mod100 >= 11 && mod100 <= 13 ? 'th' : mod10 === 1 ? 'st' : mod10 === 2 ? 'nd' : mod10 === 3 ? 'rd' : 'th'
+  return `${n}${suf} time`
 }
 
 export function conversationSummary(conversations) {

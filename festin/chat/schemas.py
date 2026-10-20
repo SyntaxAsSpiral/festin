@@ -106,9 +106,9 @@ RECIPE_FIELDS = {
     "needsPracticeReview": {
         "type": "boolean",
         "description": (
-            "True for OCR-batch cards until the household cooks or checks them in "
-            "practice. Typos are expected. Flip to false after the first real cook, "
-            "not after a photo pass."
+            "True for OCR-batch cards until the household cooks or checks them. Typos "
+            "are expected. Recording a cook (cooked true) clears this; do not clear it "
+            "by hand to mean a cook."
         ),
     },
     "favourite": {
@@ -124,6 +124,15 @@ RECIPE_FIELDS = {
             "To-cook queue mark. Set true only when the cook asks to plan or remember a "
             "dish to cook. Clear when asked or when it has been cooked. Needing practice "
             "review is not a reason to queue."
+        ),
+    },
+    "cooked": {
+        "type": "boolean",
+        "description": (
+            "Record a cook (edit_recipe only). Set cooked true alone when the household "
+            "says the dish was made or cooking photos land on the card. Same as the "
+            "Cooked button: clears queue and practice review, marks a matching slip night "
+            "when present, and writes one Kitchen Log cook. cooked false is invalid."
         ),
     },
     "tattva": {"type": "array", "items": {"type": "string"}},
@@ -245,9 +254,9 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
             "photo if ambiguous. Appends without replacing existing photos; repeated "
             "attachments are deduplicated. Claim success only after this tool succeeds. "
             "If the card still needs practice review and these photos are the cooked "
-            "dish, the result asks you to mark it cooked: call edit_recipe with only "
-            "needsPracticeReview false. If you are not sure which card, ask. Do not "
-            "change provenance or status."
+            "dish, the result asks you to record a cook: call edit_recipe with only "
+            "cooked true. If you are not sure which card, ask. Do not change "
+            "provenance or status."
         ),
         {
             "type": "object",
@@ -293,15 +302,17 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
             "Save requested changes to an existing cookbook card (recipe or praxis). "
             "Read it first and pass its updatedAt as expected_updated_at. Supply only "
             "changed fields; ingredients replaces the whole list. Set stub=false "
-            "explicitly when expansion is complete. Preserve source attribution. Set "
-            "needsPracticeReview false in the same turn the household says the dish "
-            "was made, or just after attach_recipe_photos of the cooked dish, without "
-            "waiting to be asked again. Set favourite true when someone loved the dish "
-            "(a shared household heart). Clear favourite only when asked. Set queued true "
-            "only when the cook asks to put a dish on the to-cook queue; needing practice "
-            "review is not a reason to queue. Clear queued when asked. If more than "
-            "one card could be meant, ask which one. Never change provenance away from "
-            "ocr-draft, and never change status. A cook is only needsPracticeReview false."
+            "explicitly when expansion is complete. Preserve source attribution. Record "
+            "a cook with changes {cooked: true} alone in the same turn the household "
+            "says the dish was made, or just after attach_recipe_photos of the cooked "
+            "dish, without waiting to be asked again. That clears queue and practice "
+            "review and may mark a slip night — same as the Cooked button. Set "
+            "favourite true when someone loved the dish (a shared household heart). "
+            "Clear favourite only when asked. Set queued true only when the cook asks "
+            "to put a dish on the to-cook queue; needing practice review is not a "
+            "reason to queue. Clear queued when asked. If more than one card could be "
+            "meant, ask which one. Never change provenance away from ocr-draft, and "
+            "never change status. A cook is cooked true, not needsPracticeReview false."
         ),
         {
             "type": "object",
@@ -356,7 +367,7 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
         (
             "Search the household's past: saved chats (including older messages in "
             "this chat) and the Kitchen Log of recipe and note events (added, updated, "
-            "first cooked, favourited, planned, photo added, note created, note archived). All "
+            "cooked, favourited, planned, photo added, note created, note archived). All "
             "words must match. Pass days alone to list recent Log events. Returns chat "
             "IDs and message positions (read_chat_history for context) and dated Log "
             "events with their recipe or note IDs. Past dinners come from analyze_cookbook."
