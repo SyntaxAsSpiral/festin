@@ -384,9 +384,10 @@
   object-fit: cover;
   display: block;
   border: 1px solid var(--bb-tone-1);
-  /* The plates' paper (about #e0dbd5) lifts to white, then multiplies away into the
-     ground beneath, leaving the engraving on the page. */
-  filter: brightness(1.14) contrast(1.06);
+  /* Contrast alone pushes the plates' paper (about #e0dbd5) past white and the
+     engraving's lines darker, so the drawing stays sharp; the white then multiplies
+     away into the ground beneath. (Brightening lifted the lines too and softened them.) */
+  filter: contrast(1.35);
   mix-blend-mode: multiply;
 }
 .frieze .tile b {
