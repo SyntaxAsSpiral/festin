@@ -54,10 +54,33 @@ function toolBody(step) {
 // letters' seep masks, larger pools), so traces arrive softly instead of popping.
 // A step seeps in only if the masks exist when it first appears. One that mounts
 // earlier shows plain; adding the class later would restart it masked, a flicker.
-function TraceStep({ step, i, open }) {
+// Steps that arrive close together start one after another, at least
+// TRACE_STAGGER_MS apart, not as three or four large masks on the same frame.
+// By time, not by batch: React may render each arrival on its own. A step's delay
+// is fixed at mount, because changing a running animation's delay would jump it.
+export const TRACE_STAGGER_MS = 140
+export function traceStagger(seen, total, now, free, gap = TRACE_STAGGER_MS) {
+  const delays = []
+  let next = free
+  for (let i = 0; i < total; i++) {
+    if (i < seen) {
+      delays.push(0)
+      continue
+    }
+    const start = Math.max(now, next)
+    delays.push(Math.round(start - now))
+    next = start + gap
+  }
+  return { delays, free: next }
+}
+
+function TraceStep({ step, i, open, delay }) {
   const [seeps] = useState(() => open && seepReady())
+  const [wait] = useState(delay)
   const thinking = step.kind === 'thinking'
-  const seep = open ? { '--mx': `${(i * 37) % 100}%`, '--my': `${(i * 61) % 100}%` } : undefined
+  const seep = open
+    ? { '--mx': `${(i * 37) % 100}%`, '--my': `${(i * 61) % 100}%`, ...(wait ? { animationDelay: wait + 'ms' } : null) }
+    : undefined
   return (
     <details className={'chat-trace' + (seeps ? ' seep-in' : '')} style={seep} open={(open && !thinking) || undefined}>
       {thinking ? (
@@ -76,7 +99,15 @@ function TraceStep({ step, i, open }) {
 }
 
 function Trace({ steps, open }) {
-  return (steps || []).map((step, i) => <TraceStep key={i} step={step} i={i} open={open} />)
+  const list = steps || []
+  const seen = useRef(0)
+  const free = useRef(0)
+  const plan = traceStagger(seen.current, list.length, performance.now(), free.current)
+  useLayoutEffect(() => {
+    seen.current = list.length
+    free.current = plan.free
+  })
+  return list.map((step, i) => <TraceStep key={i} step={step} i={i} open={open} delay={plan.delays[i]} />)
 }
 
 function Markdown({ text }) {
