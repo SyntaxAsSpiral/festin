@@ -59,6 +59,17 @@ export async function ensureSeepStyles() {
   const field = buildField(n)
   const covers = Array.from({ length: LEVELS }, (_, k) => 0.04 + (k / (LEVELS - 1)) * 0.98)
   const built = await Promise.all(covers.map((cover) => levelBlob(field, n, cover)))
+  // Decode each mask before anything animates with it. The first animation
+  // after a load otherwise paints while its mask images are still undecoded,
+  // and that first trace step flickers before the rest seep in cleanly.
+  await Promise.all(
+    built.map((url) => {
+      if (!url) return null
+      const img = new Image()
+      img.src = url
+      return img.decode().catch(() => {})
+    }),
+  )
   built.forEach((url, k) => {
     if (url) {
       urls.push(url)

@@ -120,6 +120,12 @@ function distanceFromBottom(scroller) {
   return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
 }
 
+// Follow the page when it grew and its end now lies past the visible bottom:
+// a typed letter, a new trace step, a tool result filling in.
+export function followGrowth(height, lastHeight, distance) {
+  return height > lastHeight + 1 && distance > 4
+}
+
 export function Transcript({ messages, turn, wetBand = DEFAULT_WET_BAND }) {
   const end = useRef(null)
   const height = useRef(0)
@@ -156,10 +162,9 @@ export function Transcript({ messages, turn, wetBand = DEFAULT_WET_BAND }) {
     const node = end.current
     const scroller = node?.parentElement
     if (!node || !scroller) return
-    const grown = scroller.scrollHeight > height.current + 1
-    if (grown && distanceFromBottom(scroller) > 4) node.scrollIntoView({ block: 'end' })
+    if (followGrowth(scroller.scrollHeight, height.current, distanceFromBottom(scroller))) node.scrollIntoView({ block: 'end' })
     height.current = scroller.scrollHeight
-  }, [shownCount])
+  }, [shownCount, turn.trace])
 
   // Recipe links inside rendered Markdown route in-app instead of reloading.
   function onClick(event) {
