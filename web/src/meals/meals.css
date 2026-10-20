@@ -348,6 +348,9 @@
   flex-direction: column;
   gap: 0;
   will-change: transform;
+  /* The track is its own layer, so the plates can only blend with a ground inside it. */
+  background: var(--frieze-ground) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
   cursor: grab;
 }
 .frieze .track:active {
@@ -364,7 +367,7 @@
   justify-content: center;
   padding: 10px 10px 8px;
   cursor: pointer;
-  background: transparent;
+  background: var(--frieze-tile);
   border-left: 0;
   border-right: 0;
   border-top: 0;
@@ -381,6 +384,10 @@
   object-fit: cover;
   display: block;
   border: 1px solid var(--bb-tone-1);
+  /* The plates' paper (about #e0dbd5) lifts to white, then multiplies away into the
+     ground beneath, leaving the engraving on the page. */
+  filter: brightness(1.14) contrast(1.06);
+  mix-blend-mode: multiply;
 }
 .frieze .tile b {
   font-weight: 500;
@@ -395,8 +402,7 @@
   padding: 10px 6px 0;
   border-bottom: 0 !important;
   flex: none;
-  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
-  background-blend-mode: multiply;
+  background: transparent;
   cursor: default;
 }
 .frieze .tile.orn img.sh {

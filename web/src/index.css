@@ -28,6 +28,10 @@
   --bb-ink: #514b43; /* L*32.2 */
   /* Cards sit a shade lighter than the ivory page: linen (zk, 2026-10-19). */
   --bb-card: #f7efe3; /* L*94.8 */
+  /* Frieze: the ivory page itself; plates multiply onto each tile's wash, so their white
+     grounds vanish into it. Tune the highlight with --frieze-tile. */
+  --frieze-ground: var(--bb-paper);
+  --frieze-tile: transparent;
   --bb-sepia: #7a5a3a; /* Babette's dried ink: chat replies settle to it */
   /* Colour genera (zk 2026-10-19; study: showroom festin-colour). A hue names the kind of
      meaning; the mark (filled dot, ring, wash, glyph) names which one. One genus per hue:
@@ -192,7 +196,7 @@ kbd {
 .frieze {
   width: var(--frieze-open);
   height: 100%;
-  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background: var(--frieze-ground) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
   background-blend-mode: multiply;
 }
 .slot-label {
