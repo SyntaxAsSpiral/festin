@@ -26,14 +26,7 @@ def model_key_is_set(data_dir: str | Path) -> bool:
 
 def model_key_source(data_dir: str | Path, base_url: str) -> str:
     """Where the effective key comes from: 'env', 'file', or 'none'. Never the key."""
-    host = urlparse(base_url).hostname
-    if host == "openrouter.ai":
-        for name in ("OPENROUTER_API_KEY", "FESTIN_MODEL_KEY"):
-            if os.environ.get(name, "").strip():
-                return "env"
-    elif os.environ.get("FESTIN_MODEL_KEY", "").strip():
-        return "env"
-    if _key_from_env_file():
+    if _host_key(base_url):
         return "env"
     if model_key_is_set(data_dir):
         return "file"
@@ -97,20 +90,25 @@ def _key_from_env_file() -> str:
         return ""
 
 
-def resolve_model_key(data_dir: str | Path, base_url: str) -> str:
-    """Prefer env, then a host key file (FESTIN_MODEL_KEY_FILE), then a 0600
-    model.key file next to the DB data dir."""
-    host = urlparse(base_url).hostname
-    if host == "openrouter.ai":
-        for name in ("OPENROUTER_API_KEY", "FESTIN_MODEL_KEY"):
-            value = os.environ.get(name, "").strip()
-            if value:
-                return value
-    else:
-        value = os.environ.get("FESTIN_MODEL_KEY", "").strip()
-        if value:
-            return value
+def _host_key(base_url: str) -> str:
+    """A key the host set for Festin. Festin's own settings come first, so a
+    generic OPENROUTER_API_KEY inherited from a login shell (another tool's key)
+    never overrides the kitchen's: FESTIN_MODEL_KEY, then FESTIN_MODEL_KEY_FILE,
+    then OPENROUTER_API_KEY for an openrouter.ai endpoint."""
+    value = os.environ.get("FESTIN_MODEL_KEY", "").strip()
+    if value:
+        return value
     value = _key_from_env_file()
+    if value:
+        return value
+    if urlparse(base_url).hostname == "openrouter.ai":
+        return os.environ.get("OPENROUTER_API_KEY", "").strip()
+    return ""
+
+
+def resolve_model_key(data_dir: str | Path, base_url: str) -> str:
+    """The host's key (see _host_key), else a 0600 model.key next to the DB."""
+    value = _host_key(base_url)
     if value:
         return value
     key_file = model_key_path(data_dir)

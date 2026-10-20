@@ -185,6 +185,10 @@ def test_model_key_from_host_secret_file(kitchen, monkeypatch, tmp_path):
     assert status == 200
     assert body["model"]["keySource"] == "env"
     assert "sk-secret-file-do-not-echo" not in json.dumps(body)
+    # Festin's own key file beats a generic OPENROUTER_API_KEY from a login shell.
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-inherited-other-tool")
+    assert resolve_model_key(tmp_path / "data", DEFAULT_MODEL_BASE_URL) == "sk-secret-file-do-not-echo"
+    monkeypatch.delenv("OPENROUTER_API_KEY")
     # A missing secret file is no key, never an error.
     monkeypatch.setenv("FESTIN_MODEL_KEY_FILE", str(tmp_path / "absent"))
     assert resolve_model_key(tmp_path / "data", DEFAULT_MODEL_BASE_URL) == ""
