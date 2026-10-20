@@ -679,6 +679,12 @@ def _replace_recipes(conn: sqlite3.Connection, document) -> None:
         rows,
     )
     conn.execute("UPDATE catalog_meta SET next_numeric_id = ? WHERE id = 1", (next_id,))
+    # A card linked on a slip night has that night as its cook (counted once its week
+    # ends); carrying a pre-Log cook as well would count one dinner twice. Same rule as v16.
+    conn.execute(
+        "UPDATE recipes SET cooks_before_log = 0"
+        " WHERE id IN (SELECT recipe_id FROM nights WHERE recipe_id IS NOT NULL AND recipe_id != '')"
+    )
 
 
 def _counts(conn: sqlite3.Connection) -> dict[str, int]:
