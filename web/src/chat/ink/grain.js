@@ -5,10 +5,21 @@ import { MASK_SIZE_EM } from './constants.js'
 // continuous pool. A trial: pick with ?grain=word (or letter) once; it is kept.
 export const GRAIN_KEY = 'festin.inkGrain'
 
-export function readGrain() {
+// The app redirects / to /meals and drops the query, so the request is taken the
+// moment this module loads (page start), not when a reply first needs it.
+function takeRequest() {
   try {
     const asked = new URLSearchParams(window.location.search).get('grain')
     if (asked === 'word' || asked === 'letter') localStorage.setItem(GRAIN_KEY, asked)
+  } catch {
+    /* no window or storage */
+  }
+}
+takeRequest()
+
+export function readGrain() {
+  takeRequest()
+  try {
     return localStorage.getItem(GRAIN_KEY) === 'word' ? 'word' : 'letter'
   } catch {
     return 'letter'

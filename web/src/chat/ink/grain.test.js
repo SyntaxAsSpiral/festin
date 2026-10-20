@@ -49,4 +49,14 @@ describe('grain choice', () => {
     expect(readGrain()).toBe('word')
     vi.unstubAllGlobals()
   })
+
+  it('takes the request when the page loads, before a redirect drops it', async () => {
+    const store = {}
+    vi.stubGlobal('window', { location: { search: '?grain=word' } })
+    vi.stubGlobal('localStorage', { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) })
+    vi.resetModules()
+    await import('./grain.js')
+    expect(store[GRAIN_KEY]).toBe('word')
+    vi.unstubAllGlobals()
+  })
 })
