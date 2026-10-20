@@ -142,9 +142,8 @@ a.msg-file:hover { border-color: var(--bb-rose); color: var(--bb-rose); }
   border: 1px solid color-mix(in srgb, var(--bb-rose) 55%, transparent);
 }
 .composer .send:disabled { background: transparent; border-color: var(--bb-tone-2); }
-@media (max-width: 560px) {
-  .composer-bar { justify-content: center; }
-}
+/* Whenever the chat is the bottom drawer, its buttons sit centred under the box. */
+.surface-panel[data-layout='drawer'] .composer-bar { justify-content: center; }
 .composer-note,
 .failed p {
   margin: 0 0 6px;
