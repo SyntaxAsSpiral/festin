@@ -43,7 +43,7 @@ export function Meals() {
   return (
     <div className="meals">
       <Slip settings={settings} recipesById={recipesById} recipesByTitle={recipesByTitle} />
-      <KitchenLog />
+      <KitchenLog settings={settings} />
     </div>
   )
 }

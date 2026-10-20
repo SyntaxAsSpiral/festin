@@ -480,10 +480,72 @@
 }
 .kl .tn {
   position: relative;
+  /* The mark's z-index stays inside the row, so a later row cannot cover the slip. */
+  isolation: isolate;
   margin: 0 0 16px;
+}
+/* Treatment B: a paper patch behind each mark, over the trunk, so the dash
+   stops at the shape. The patch is a sibling of the mark; a mask would clip a child.
+   Week diamonds and note mandorlas rotate with their marks. */
+.kl .tn::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--bb-paper);
+  left: -22px;
+  top: 6px;
+  width: 15px;
+  height: 15px;
+}
+.kl .tl-day::before {
+  content: none;
+}
+.kl .tl-r::before {
+  left: -21px;
+  top: 6px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+}
+.kl .tl-photo::before {
+  left: -21px;
+  top: 7px;
+  width: 13px;
+  height: 13px;
+}
+.kl .tl-chat::before {
+  left: -21.5px;
+  top: 6px;
+  width: 14px;
+  height: 14px;
+}
+.kl .tl-cooked::before,
+.kl .tl-planned::before,
+.kl .tl-fav::before {
+  left: -22.5px;
+  top: 5px;
+  width: 16px;
+  height: 16px;
+}
+.kl .tl-w::before {
+  left: -22px;
+  top: 9px;
+  width: 15px;
+  height: 15px;
+  transform: rotate(45deg);
+}
+.kl .tl-c::before,
+.kl .tl-archived::before {
+  left: -22px;
+  top: 11px;
+  width: 14px;
+  height: 14px;
+  transform: rotate(45deg);
 }
 .kl .tdot {
   position: absolute;
+  z-index: 1;
   left: -19px;
   top: 9px;
   width: 9px;
@@ -550,6 +612,24 @@
   color: inherit;
   font-family: inherit;
   padding: 0;
+}
+/* The genus class is on the row and the button, so the row is a flex line.
+   A fold's list is the second flex item; give it the whole next line. */
+.kl .tn.tl-r,
+.kl .tn.tl-c,
+.kl .tn.tl-chat,
+.kl .tn.tl-cooked,
+.kl .tn.tl-fav,
+.kl .tn.tl-planned,
+.kl .tn.tl-photo,
+.kl .tn.tl-archived {
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+.kl .tn > .tlk,
+.kl .tn > .twb {
+  flex: 1 1 100%;
+  min-width: 0;
 }
 .kl .tlk img {
   width: 30px;
@@ -699,7 +779,7 @@
   display: inline-block;
   transition: transform 0.3s;
 }
-.kl .tl-w.open .tcar {
+.kl .tn.open .tcar {
   transform: rotate(180deg);
 }
 .kl .twb {
@@ -958,6 +1038,45 @@ html[data-motion='off'] .kl .tcar {
 .kl .tl-planned small,
 .kl .tl-photo small,
 .kl .tl-archived small { color: var(--ec-ink); }
+
+/* Day headings sit on the trunk. Routine rows are one quieter line, no plate. */
+.kl .tl-day {
+  margin: 18px 0 8px;
+}
+.kl .tl-day:first-child {
+  margin-top: 2px;
+}
+.kl .tl-day h4 {
+  margin: 0;
+  font-variant: small-caps;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--bb-tone-5);
+}
+.kl .tn.tl-quiet {
+  margin-bottom: 6px;
+}
+.kl .tl-quiet small {
+  display: inline;
+  font-size: 13px;
+}
+.kl .tl-quiet .tq {
+  color: var(--bb-tone-4);
+  font-size: 14px;
+}
+.kl .tl-quiet .tlk {
+  align-items: baseline;
+}
+.kl .tlk .tcar {
+  margin-left: auto;
+  flex: none;
+}
+.kl .tmore {
+  display: block;
+  font-size: 13px;
+  color: var(--bb-tone-4);
+}
 
 /* Ultrawide: the slip and Log sit to the left, leaving the right for the chat. */
 @media (min-width: 1800px) {
