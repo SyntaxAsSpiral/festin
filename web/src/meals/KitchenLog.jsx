@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { rememberOrigin } from '../cards/origin.js'
 import { CATEGORY_LABELS, plateFor } from '../cards/kinds.js'
@@ -167,7 +167,10 @@ function LogEntry({ block, onOpen }) {
 
 export function KitchenLogList({ entries, timeZone, weekStart, now, onOpen, sentinelRef, ended, loading }) {
   const [openWeek, setOpenWeek] = useState(null)
-  const blocks = groupLogEntries(entries, { timeZone, weekStart, now })
+  const blocks = useMemo(
+    () => groupLogEntries(entries, { timeZone, weekStart, now }),
+    [entries, timeZone, weekStart, now],
+  )
   return (
     <ol className="tlo">
       {blocks.map((block, index) => {

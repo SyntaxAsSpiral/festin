@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import { dateTimeFormatCache, householdDate } from '../cards/kinds.js'
 import { formatLogWhen } from './logDate.js'
 import {
   conversationSummary,
   cookOrdinalDetail,
   entryMeta,
   entryWeight,
+  formatClock,
+  formatDayHeading,
   groupLogEntries,
   RECIPE_EVENT_KINDS,
 } from './logEntries.js'
@@ -264,5 +267,26 @@ describe('groupLogEntries', () => {
     expect(chatFold.title).toBe('Later 5')
     expect(chatFold.timeLabel).toBe('11:00 pm')
     expect(chatFold.more).toBe('and 5 more, 6:00–11:00 pm')
+  })
+})
+
+describe('date formatter cache', () => {
+  it('builds each DateTimeFormat once per locale, options, and zone', () => {
+    dateTimeFormatCache.clear()
+    const day = new Date('2026-06-01T15:04:00Z')
+    expect(householdDate('UTC', day)).toBe('2026-06-01')
+    expect(householdDate('UTC', new Date('2026-06-02T03:00:00Z'))).toBe('2026-06-02')
+    expect(dateTimeFormatCache.size).toBe(1)
+    expect(householdDate('Europe/Paris', day)).toBe('2026-06-01')
+    expect(dateTimeFormatCache.size).toBe(2)
+    expect(formatDayHeading('2026-06-01')).toBe('Monday 1 June')
+    formatDayHeading('2026-07-01')
+    expect(dateTimeFormatCache.size).toBe(4)
+    expect(formatClock('2026-06-01T15:04:00Z', 'UTC')).toBe('3:04 pm')
+    formatClock('2026-06-01T18:04:00Z', 'UTC')
+    expect(dateTimeFormatCache.size).toBe(5)
+    formatClock('2026-06-01T15:04:00Z', 'Europe/Paris')
+    formatClock('2026-06-01T18:04:00Z', 'Europe/Paris')
+    expect(dateTimeFormatCache.size).toBe(6)
   })
 })

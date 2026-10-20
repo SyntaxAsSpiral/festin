@@ -2,7 +2,7 @@
  *  Loose rows of the household's current week group under a day heading.
  *  Consecutive events of one kind on one day fold; key kinds keep a full row. */
 
-import { householdDate, weekStartOn } from '../cards/kinds.js'
+import { dateTimeFormat, householdDate, weekStartOn } from '../cards/kinds.js'
 import { weekDates } from './plan.js'
 import { formatLogWhen } from './logDate.js'
 
@@ -85,8 +85,8 @@ export function formatDayHeading(dayKey) {
   const [y, m, d] = String(dayKey || '').split('-').map(Number)
   if (!y || !m || !d) return String(dayKey || '')
   const date = new Date(Date.UTC(y, m - 1, d, 12))
-  const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'UTC' }).format(date)
-  const month = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: 'UTC' }).format(date)
+  const weekday = dateTimeFormat('en-GB', { weekday: 'long', timeZone: 'UTC' }).format(date)
+  const month = dateTimeFormat('en-GB', { month: 'long', timeZone: 'UTC' }).format(date)
   return `${weekday} ${d} ${month}`
 }
 
@@ -95,13 +95,13 @@ function clockParts(iso, timeZone) {
   if (Number.isNaN(d.getTime())) return null
   let parts
   try {
-    parts = new Intl.DateTimeFormat('en-US', withZone(timeZone, {
+    parts = dateTimeFormat('en-US', withZone(timeZone, {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
     })).formatToParts(d)
   } catch {
-    parts = new Intl.DateTimeFormat('en-US', {
+    parts = dateTimeFormat('en-US', {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,

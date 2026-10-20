@@ -355,13 +355,34 @@ export function removeItem(kind, raw) {
   })
 }
 
+// One formatter per locale and options. Kitchen Log used to construct these
+// for every event on every render.
+export const dateTimeFormatCache = new Map()
+
+function dateTimeFormatKey(locale, options) {
+  const keys = options ? Object.keys(options).sort() : []
+  return locale + '\0' + keys.map((key) => key + ':' + options[key]).join('|')
+}
+
+export function dateTimeFormat(locale, options) {
+  const key = dateTimeFormatKey(locale, options)
+  let fmt = dateTimeFormatCache.get(key)
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat(locale, options)
+    dateTimeFormatCache.set(key, fmt)
+  }
+  return fmt
+}
+
 // Calendar date in the household zone. en-CA formats as YYYY-MM-DD.
 export function householdDate(timeZone, now = new Date()) {
   const zone = timeZone && timeZone !== 'auto' ? timeZone : undefined
+  const options = { year: 'numeric', month: '2-digit', day: '2-digit' }
+  if (zone) options.timeZone = zone
   try {
-    return new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+    return dateTimeFormat('en-CA', options).format(now)
   } catch {
-    return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+    return dateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
   }
 }
 

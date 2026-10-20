@@ -63,7 +63,8 @@ export function turnReducer(state, action) {
       // Reduced motion: show everything received, no typist animation.
       if (action.instant) {
         const shown = state.text.length
-        if (state.done && shown >= state.text.length) return { ...state, shown, phase: 'settled' }
+        if (state.done) return { ...state, shown, phase: 'settled' }
+        if (state.shown === shown) return state
         return { ...state, shown }
       }
       const cps = action.cps ?? DEFAULT_TYPE_CPS
@@ -73,10 +74,16 @@ export function turnReducer(state, action) {
         { received: state.text.length, text: state.text, now },
       )
       const shown = typed.lit
+      const nextKey = typed.nextKey
       if (state.done && shown >= state.text.length) {
-        return { ...state, shown, nextKey: typed.nextKey, phase: 'settled' }
+        return { ...state, shown, nextKey, phase: 'settled' }
       }
-      return { ...state, shown, nextKey: typed.nextKey }
+      // Same shown, nextKey, and phase: the frame typed nothing. Once the
+      // typist has caught the buffer, the schedule clamp slides nextKey to
+      // now every frame; that is not a new stroke, so keep this object and
+      // let the next tick apply the clamp when text actually arrives.
+      if (shown === state.shown && (nextKey === state.nextKey || shown >= state.text.length)) return state
+      return { ...state, shown, nextKey }
     }
     case 'absorbed': {
       // The settled reply is now in the reloaded transcript.
