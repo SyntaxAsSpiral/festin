@@ -4,6 +4,7 @@ import {
   ConflictError,
   chatDate,
   chatItem,
+  cookedMeta,
   KINDS,
   loadItems,
   matches,
@@ -28,6 +29,15 @@ describe('recipe provenance', () => {
   it('says only the category when nobody is known', () => {
     expect(provenance({ category: 'cakes', source: 'unknown', voice: 'unknown' })).toBe('Cakes')
     expect(provenance({ category: 'misc' })).toBe('Uncategorized')
+  })
+})
+
+describe('cookedMeta', () => {
+  it('stays empty when never cooked, and names count with last date', () => {
+    expect(cookedMeta({})).toBe('')
+    expect(cookedMeta({ cookCount: 0 })).toBe('')
+    expect(cookedMeta({ cookCount: 1, lastCooked: '2026-10-12' })).toMatch(/^Cooked 1 time · last /)
+    expect(cookedMeta({ cookCount: 3, lastCooked: '2026-10-12' })).toMatch(/^Cooked 3 times · last /)
   })
 })
 

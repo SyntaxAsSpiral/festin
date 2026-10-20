@@ -4,7 +4,7 @@ import { rememberOrigin } from '../cards/origin.js'
 import { CATEGORY_LABELS, plateFor } from '../cards/kinds.js'
 import { fetchLogPage } from './plan.js'
 import { formatLogWhen } from './logDate.js'
-import { conversationSummary, entryMeta, RECIPE_EVENT_KINDS } from './logEntries.js'
+import { conversationSummary, cookOrdinalDetail, entryMeta, RECIPE_EVENT_KINDS } from './logEntries.js'
 
 // Weeks are one entry type, so one accent: rosewater, unless the tattva plugin
 // colours the week (tokens in index.css).
@@ -245,6 +245,8 @@ export function KitchenLog() {
           const meta = entryMeta(entry.kind)
           const cat = CATEGORY_LABELS[entry.category] || entry.category || ''
           const showPlate = RECIPE_EVENT_KINDS.has(entry.kind) && entry.kind !== 'photo_added'
+          const cookOrdinal =
+            entry.kind === 'recipe_cooked' ? cookOrdinalDetail(entry.ordinal) : ''
           return (
             <li
               key={'r-' + entry.id + entry.at + entry.kind}
@@ -261,11 +263,14 @@ export function KitchenLog() {
                   <small>
                     {formatWhen(entry.at)} · {meta.label}
                     {entry.kind === 'photo_added' && entry.detail ? ` · ${entry.detail}` : ''}
+                    {cookOrdinal ? ` · ${cookOrdinal}` : ''}
                   </small>
                   <span className="trl">
                     <b>{entry.title}</b> <code>{entry.id}</code> <i>{cat}</i>
                   </span>
-                  {entry.kind !== 'photo_added' && entry.detail ? <em>{entry.detail}</em> : null}
+                  {entry.kind !== 'photo_added' && entry.kind !== 'recipe_cooked' && entry.detail ? (
+                    <em>{entry.detail}</em>
+                  ) : null}
                 </span>
               </button>
             </li>

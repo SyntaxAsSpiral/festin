@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatLogWhen } from './logDate.js'
-import { conversationSummary, entryMeta, RECIPE_EVENT_KINDS } from './logEntries.js'
+import { conversationSummary, cookOrdinalDetail, entryMeta, RECIPE_EVENT_KINDS } from './logEntries.js'
 
 describe('formatLogWhen', () => {
   it('shows around the week of for approximate dates, with no clock time', () => {
@@ -25,7 +25,7 @@ describe('formatLogWhen', () => {
 describe('entryMeta', () => {
   it('labels and classes the new kitchen log kinds', () => {
     expect(entryMeta('recipe_cooked')).toEqual({
-      label: 'Recipe first cooked',
+      label: 'Cooked',
       rowClass: 'tl-cooked',
     })
     expect(entryMeta('note_archived')).toEqual({
@@ -53,6 +53,17 @@ describe('entryMeta', () => {
     expect(RECIPE_EVENT_KINDS.has('recipe_favourited')).toBe(true)
     expect(RECIPE_EVENT_KINDS.has('recipe_planned')).toBe(true)
     expect(RECIPE_EVENT_KINDS.has('note_archived')).toBe(false)
+  })
+})
+
+describe('cookOrdinalDetail', () => {
+  it('stays quiet for the first cook and names later ones', () => {
+    expect(cookOrdinalDetail(0)).toBe('')
+    expect(cookOrdinalDetail(1)).toBe('')
+    expect(cookOrdinalDetail(2)).toBe('2nd time')
+    expect(cookOrdinalDetail(3)).toBe('3rd time')
+    expect(cookOrdinalDetail(11)).toBe('11th time')
+    expect(cookOrdinalDetail(21)).toBe('21st time')
   })
 })
 
