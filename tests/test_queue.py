@@ -296,9 +296,32 @@ def test_slip_toggle_clears_queue_and_review(kitchen):
         },
     )
     saved = recipes_mod.get_recipe(conn, recipe["id"])
-    conn.close()
     assert saved["queuedAt"] is None
     assert saved["needsPracticeReview"] is False
+
+    # Queued again after that cook: re-saving the slip with the night still cooked is
+    # not a new cook, so the queue mark stays.
+    status, again = client.request(
+        "POST",
+        "/api/recipes/" + recipe["id"],
+        {"expected_updated_at": saved["updatedAt"], "queued": True},
+    )
+    assert status == 200 and again["queuedAt"]
+    plan = plans_mod.get_plan(conn, start.isoformat())
+    plans_mod.save_plan(
+        conn,
+        start.isoformat(),
+        {
+            "weekStart": start.isoformat(),
+            "expected_updated_at": plan["updatedAt"],
+            "days": [dict(slot) for slot in plan["days"]],
+            "slipTitle": "",
+            "notes": "re-saved",
+        },
+    )
+    kept = recipes_mod.get_recipe(conn, recipe["id"])
+    conn.close()
+    assert kept["queuedAt"]
 
 
 def test_babette_queue_via_edit_recipe(blank_db, tmp_path):

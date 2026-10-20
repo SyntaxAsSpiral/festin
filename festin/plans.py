@@ -117,6 +117,16 @@ def save_plan(conn: sqlite3.Connection, week_start: str, body: dict, *, now: dat
     # Replace the week and its nights.
     dates = [start + timedelta(days=i) for i in range(7)]
     iso_dates = [d.isoformat() for d in dates]
+    # Nights already cooked with this recipe before the rewrite: re-saving them is
+    # not a new cook, so it must not clear a recipe queued again since.
+    marks = ",".join("?" * len(iso_dates))
+    was_cooked = {
+        (row["date"], row["recipe_id"])
+        for row in conn.execute(
+            f"SELECT date, recipe_id FROM nights WHERE cooked = 1 AND date IN ({marks})",
+            iso_dates,
+        )
+    }
     conn.executemany("DELETE FROM night_ingredients WHERE date = ?", [(d,) for d in iso_dates])
     conn.executemany("DELETE FROM nights WHERE date = ?", [(d,) for d in iso_dates])
     conn.execute("DELETE FROM weeks WHERE start_date = ?", (start.isoformat(),))
@@ -147,8 +157,8 @@ def save_plan(conn: sqlite3.Connection, week_start: str, body: dict, *, now: dat
                 "INSERT INTO night_ingredients (date, position, text) VALUES (?, ?, ?)",
                 (slot["date"], position, item),
             )
-        # One rule with /cooked: a cooked night with a recipe clears its queue and review.
-        if slot["cooked"] and slot["recipe"]:
+        # One rule with /cooked: a night newly marked cooked clears its recipe's queue and review.
+        if slot["cooked"] and slot["recipe"] and (slot["date"], slot["recipe"]) not in was_cooked:
             recipes_mod.clear_queue_and_review(
                 conn, slot["recipe"], stamp=stamp, cook_date=slot["date"]
             )
