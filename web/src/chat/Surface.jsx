@@ -30,6 +30,12 @@ export function drawerSnaps({ dragging, viewportMoved, keyboard, reduced }) {
   return Boolean(dragging || viewportMoved || keyboard || reduced)
 }
 
+// Opening by tap, B, or from a card brings up the composer (and a phone's
+// keyboard). A drag only moves the drawer; it never summons the keyboard.
+export function focusComposer(state, fromDrag) {
+  return state !== 'tucked' && !fromDrag
+}
+
 function clamp(n, lo, hi) {
   return Math.min(hi, Math.max(lo, n))
 }
@@ -117,6 +123,7 @@ function SurfaceView({ peekLine, lookingAt, header, children }) {
   const { height: viewH, keyboard } = useBox()
   const panelRef = useRef(null)
   const drag = useRef({ y: 0, h: 0, moved: false })
+  const draggedTo = useRef(false)
   const widthDrag = useRef(420)
   const [liveH, setLiveH] = useState(null)
   const [liveW, setLiveW] = useState(null)
@@ -178,24 +185,33 @@ function SurfaceView({ peekLine, lookingAt, header, children }) {
   }, [narrow, state, tuck])
 
   useEffect(() => {
-    if (state === 'tucked') return undefined
+    const fromDrag = draggedTo.current
+    draggedTo.current = false
+    if (!focusComposer(state, fromDrag)) return
     const field = panelRef.current?.querySelector('textarea, input')
     field?.focus({ preventScroll: true })
-    return undefined
   }, [state])
+
+  // Mark the state a drag lands on, so the focus effect leaves the keyboard down.
+  // Only a real change runs that effect; a drag within Peek just resizes.
+  function settleDrag(next) {
+    if (next !== state) draggedTo.current = true
+    if (next === 'tucked') tuck()
+    else setState(next)
+  }
 
   function finishHeight(next) {
     setLiveH(null)
     if (next < viewH * 0.2) {
-      tuck()
+      settleDrag('tucked')
       return
     }
     if (next > viewH * 0.78) {
-      setState('full')
+      settleDrag('full')
       return
     }
     setPeekPx(clamp(next, STRIP, fullPx))
-    setState('peek')
+    settleDrag('peek')
   }
 
   const looking = lookingAt ? 'looking at ' + lookingAt : ''
