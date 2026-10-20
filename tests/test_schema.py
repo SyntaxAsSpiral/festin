@@ -373,8 +373,20 @@ def test_v16_carries_cleared_review_without_event_as_cooks_before_log(tmp_path):
              '2026-01-02T00:00:00Z', '2026-01-02T00:00:00Z', '{}'),
             ('CBK-0003', 'Logged cook', 'formule', 'soups-stews', '', '', 'documented', 'ok', 0,
              0, 0, NULL, '', '', '', '', '', '[]', '[]', '[]', '[]',
+             '2026-01-03T00:00:00Z', '2026-01-03T00:00:00Z', '{}'),
+            ('CBK-0004', 'Slip night', 'formule', 'soups-stews', '', '', 'documented', 'ok', 0,
+             0, 0, NULL, '', '', '', '', '', '[]', '[]', '[]', '[]',
              '2026-01-03T00:00:00Z', '2026-01-03T00:00:00Z', '{}')
         """
+    )
+    # Cleared review with a linked slip night: that night is the cook, not a carried one.
+    conn.execute(
+        "INSERT INTO weeks (start_date, slip_title, notes, plates_json, updated_at, weather_json)"
+        " VALUES ('2026-01-03', '', '', NULL, '2026-01-03T00:00:00Z', NULL)"
+    )
+    conn.execute(
+        "INSERT INTO nights (date, week_start, recipe_id, title, cooked, updated_at)"
+        " VALUES ('2026-01-05', '2026-01-03', 'CBK-0004', 'Slip night', 0, '2026-01-05T00:00:00Z')"
     )
     conn.execute(
         """
@@ -394,5 +406,5 @@ def test_v16_carries_cleared_review_without_event_as_cooks_before_log(tmp_path):
         row["id"]: row["cooks_before_log"]
         for row in conn.execute("SELECT id, cooks_before_log FROM recipes")
     }
-    assert by_id == {"CBK-0001": 1, "CBK-0002": 0, "CBK-0003": 0}
+    assert by_id == {"CBK-0001": 1, "CBK-0002": 0, "CBK-0003": 0, "CBK-0004": 0}
     conn.close()

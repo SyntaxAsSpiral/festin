@@ -562,6 +562,10 @@ def _version_16(conn: sqlite3.Connection) -> None:
                     SELECT 1 FROM kitchen_log_events e
                     WHERE e.kind = 'recipe_cooked' AND e.ref_id = recipes.id
                  )
+                 -- A linked slip night is that cook, counted once its week ends.
+                 AND NOT EXISTS (
+                    SELECT 1 FROM nights n WHERE n.recipe_id = recipes.id
+                 )
                 THEN 1
                 ELSE 0
             END,
