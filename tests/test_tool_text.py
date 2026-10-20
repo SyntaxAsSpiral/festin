@@ -41,6 +41,12 @@ EXPECTED_DIFFS = {
     "delete_recipe": {
         "one recipe or praxis card": "one formule or praxis card",
     },
+    "search_history": {
+        "Pass days alone to list recent Log events.": (
+            "Pass days alone to list recent Log events and the saved chats from "
+            "those days (id, title, date, message count)."
+        ),
+    },
 }
 
 

@@ -357,6 +357,42 @@ def test_search_history_lists_recent_days_without_words(kit):
         registry.dispatch("search_history", {}, ctx)
 
 
+def test_search_history_days_alone_lists_recent_chats(kit):
+    conn, registry, ctx = kit
+    from unittest.mock import patch
+    from datetime import date
+
+    ensure_chat(conn, "old-chat", title="Pho and the long winter")
+    append_message(conn, "old-chat", {"role": "user", "content": "Tell me about the broth"})
+    ensure_chat(conn, "empty-chat", title="Never said anything")
+    conn.execute(
+        "UPDATE chats SET updated_at = '2026-10-18T10:00:00+00:00', created_at = '2026-10-18T10:00:00+00:00' WHERE id = 'old-chat'"
+    )
+    ensure_chat(conn, "ancient-chat", title="Last spring")
+    append_message(conn, "ancient-chat", {"role": "user", "content": "Hello"})
+    conn.execute(
+        "UPDATE chats SET updated_at = '2026-03-01T10:00:00+00:00', created_at = '2026-03-01T10:00:00+00:00' WHERE id = 'ancient-chat'"
+    )
+    conn.commit()
+    with patch("festin.log.household_today", return_value=date(2026, 10, 19)):
+        recent = registry.dispatch("search_history", {"days": 30}, ctx)
+        wide = registry.dispatch("search_history", {"days": 365}, ctx)
+    # Days alone names the chats of the window; no words means no message matches.
+    assert recent["matches"] == []
+    assert [c["chat_id"] for c in recent["chats"]] == ["old-chat"]
+    assert recent["chats"][0] == {
+        "chat_id": "old-chat", "title": "Pho and the long winter", "date": "2026-10-18", "messages": 1,
+    }
+    assert {c["chat_id"] for c in wide["chats"]} == {"old-chat", "ancient-chat"}
+    assert recent["limit_reached"] is False
+
+
+def test_trace_shows_days(kit):
+    from festin.chat.trace import public_args
+
+    assert public_args({"days": 365}) == {"days": 365}
+
+
 def test_kept_note_starts_pinned_unless_asked_closed(kit):
     conn, registry, ctx = kit
     pinned = registry.dispatch("keep_note", {"text": "Buy lemons", "type": "shopping"}, ctx)

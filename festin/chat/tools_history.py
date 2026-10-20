@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 from typing import Any
 
 from festin import log as kitchen_log
@@ -31,9 +32,48 @@ def search_history(args: dict, ctx: Any) -> dict:
     conn = ctx_get(ctx, "conn")
     log = kitchen_log.search_events(conn, words=words, days=days, limit=limit)
     if not words:
-        return {"matches": [], "log": log, "limit_reached": False}
+        # Days alone lists the recent past: Log events and the chats of those days.
+        # Message search needs words, so without them "matches" is always empty and
+        # says nothing about whether any chat exists.
+        chats = _recent_chats(conn, days, limit + 1, ctx_get(ctx, "chat_id"))
+        return {
+            "matches": [],
+            "chats": chats[:limit],
+            "log": log,
+            "limit_reached": len(chats) > limit,
+        }
     found = _search_messages(conn, words, limit, ctx_get(ctx, "chat_id"))
     return {**found, "log": log}
+
+
+def _recent_chats(conn, days: int, limit: int, current: str | None) -> list[dict]:
+    """Saved chats touched within days, newest first; the open chat is already in view."""
+    since = (kitchen_log.household_today(conn) - timedelta(days=days)).isoformat()
+    rows = conn.execute(
+        """
+        SELECT c.id, c.title, COALESCE(c.updated_at, c.created_at) AS at,
+               (SELECT COUNT(*) FROM chat_messages m WHERE m.chat_id = c.id) AS messages
+        FROM chats c
+        ORDER BY at DESC
+        """
+    ).fetchall()
+    found = []
+    for row in rows:
+        if row["id"] == current or row["messages"] == 0:
+            continue
+        if (row["at"] or "")[:10] < since:
+            continue
+        found.append(
+            {
+                "chat_id": row["id"],
+                "title": row["title"],
+                "date": (row["at"] or "")[:10],
+                "messages": row["messages"],
+            }
+        )
+        if len(found) >= limit:
+            break
+    return found
 
 
 def _search_messages(conn, words: list[str], limit: int, current: str | None = None) -> dict:

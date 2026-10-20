@@ -16,6 +16,7 @@ def public_args(arguments):
         "slip_id",
         "chat_id",
         "start",
+        "days",
         "limit",
         "offset",
         "category",
