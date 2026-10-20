@@ -27,6 +27,7 @@ npm run kitchen        # or FESTIN_DB=<path> npm run kitchen
 - Work only in your own git worktree and branch. The foreman merges.
 - Read the bead you were given (`bd show <id>`) and the `ref/state-machine.md` sections it cites before writing code.
 - Do not close, create or edit beads. Report back to the foreman instead.
+- A bead you are given is approved. Implement it as written; do not stop to ask for confirmation or offer a design pause. Make reasonable calls yourself and list them in your report. Ask only when the bead contradicts itself or the code makes it impossible.
 - Every image is a normal file. No base64 in HTML, CSS or JS.
 - Tests ship with the code. Backend: `pytest`. Front end: `npm run build` must pass.
 - No personal config in code: no adeck addresses, webhook URLs or tailnet names. Defaults are neutral ("Babette's Table").
