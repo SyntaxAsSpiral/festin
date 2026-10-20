@@ -1,8 +1,8 @@
 import { MASK_SIZE_EM } from './constants.js'
 
-// How the seep is grained. 'letter' is each letter on its own noise pool (today).
-// 'word' lights a word as one unit: its letters start together and read one
-// continuous pool. A trial: pick with ?grain=word (or letter) once; it is kept.
+// How the seep is grained. 'word' (the default, on trial) lights a word as one
+// unit: its letters start together and read one continuous pool. 'letter' is each
+// letter on its own noise pool. ?grain=letter (or word) picks one and is kept.
 export const GRAIN_KEY = 'festin.inkGrain'
 
 // The app redirects / to /meals and drops the query, so the request is taken the
@@ -20,15 +20,15 @@ takeRequest()
 export function readGrain() {
   takeRequest()
   try {
-    return localStorage.getItem(GRAIN_KEY) === 'word' ? 'word' : 'letter'
+    return localStorage.getItem(GRAIN_KEY) === 'letter' ? 'letter' : 'word'
   } catch {
-    return 'letter'
+    return 'word'
   }
 }
 
 export function writeGrain(grain) {
   try {
-    localStorage.setItem(GRAIN_KEY, grain === 'word' ? 'word' : 'letter')
+    localStorage.setItem(GRAIN_KEY, grain === 'letter' ? 'letter' : 'word')
   } catch {
     /* private mode */
   }

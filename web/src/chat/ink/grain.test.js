@@ -35,28 +35,28 @@ describe('word seep plan', () => {
 })
 
 describe('grain choice', () => {
-  it('is letter without storage or a request', () => {
-    expect(readGrain()).toBe('letter')
+  it('is word without storage or a request', () => {
+    expect(readGrain()).toBe('word')
   })
 
-  it('keeps ?grain=word once asked', () => {
+  it('keeps ?grain=letter once asked', () => {
     const store = {}
-    vi.stubGlobal('window', { location: { search: '?grain=word' } })
+    vi.stubGlobal('window', { location: { search: '?grain=letter' } })
     vi.stubGlobal('localStorage', { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) })
-    expect(readGrain()).toBe('word')
-    expect(store[GRAIN_KEY]).toBe('word')
+    expect(readGrain()).toBe('letter')
+    expect(store[GRAIN_KEY]).toBe('letter')
     vi.stubGlobal('window', { location: { search: '' } })
-    expect(readGrain()).toBe('word')
+    expect(readGrain()).toBe('letter')
     vi.unstubAllGlobals()
   })
 
   it('takes the request when the page loads, before a redirect drops it', async () => {
     const store = {}
-    vi.stubGlobal('window', { location: { search: '?grain=word' } })
+    vi.stubGlobal('window', { location: { search: '?grain=letter' } })
     vi.stubGlobal('localStorage', { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) })
     vi.resetModules()
     await import('./grain.js')
-    expect(store[GRAIN_KEY]).toBe('word')
+    expect(store[GRAIN_KEY]).toBe('letter')
     vi.unstubAllGlobals()
   })
 })
