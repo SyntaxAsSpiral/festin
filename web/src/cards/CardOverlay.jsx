@@ -232,7 +232,30 @@ export function CardOverlay({ kind, id, onChanged }) {
         aria-label={title}
       >
         <div className="card-bar">
-          <button type="button" className="card-close" onClick={close} aria-label="Close" title="Close (Esc)">
+          {raw && (kind === 'recipes' ? !editingRecipe : kind === 'notes' ? !editingNote : false) && (
+            <button
+              type="button"
+              className="card-icon"
+              aria-label="Edit"
+              data-tip="Edit"
+              onClick={() =>
+                kind === 'recipes' ? (setRecipeDraft(draftFrom(raw)), setPhase('editing')) : (setDraft(raw.text || ''), setPhase('editing'))
+              }
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10.5 2.5l3 3L6 13l-3.5.5L3 10z" />
+                <path d="M9 4l3 3" />
+              </svg>
+            </button>
+          )}
+          {raw && !editingRecipe && (
+            <button type="button" className="card-icon danger" aria-label="Delete" data-tip="Delete" onClick={() => setConfirming({ type: 'delete' })}>
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9M6.6 7v4.5M9.4 7v4.5" />
+              </svg>
+            </button>
+          )}
+          <button type="button" className="card-icon card-close" onClick={close} aria-label="Close" data-tip="Close (Esc)">
             <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden="true">
               <path d="M4 4l8 8M12 4l-8 8" />
             </svg>
@@ -313,9 +336,6 @@ export function CardOverlay({ kind, id, onChanged }) {
                   </button>
                 ) : (
                   <>
-                    <button type="button" onClick={() => (setDraft(raw.text || ''), setPhase('editing'))}>
-                      Edit
-                    </button>
                     {raw && (
                       <button
                         type="button"
@@ -360,9 +380,6 @@ export function CardOverlay({ kind, id, onChanged }) {
                   >
                     {raw.queuedAt ? '⚑' : '⚐'} To cook
                   </button>
-                  <button type="button" onClick={() => (setRecipeDraft(draftFrom(raw)), setPhase('editing'))}>
-                    Edit
-                  </button>
                   <button
                     type="button"
                     onClick={() =>
@@ -396,11 +413,6 @@ export function CardOverlay({ kind, id, onChanged }) {
               {kind === 'chats' && raw && (
                 <button type="button" onClick={() => act(() => pointSessionAt(raw.id).then(() => open()))}>
                   Reopen in Babette
-                </button>
-              )}
-              {raw && !editingRecipe && (
-                <button type="button" className="danger" onClick={() => setConfirming({ type: 'delete' })}>
-                  Delete
                 </button>
               )}
             </div>

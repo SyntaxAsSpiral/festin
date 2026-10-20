@@ -346,9 +346,12 @@
   top: 8px;
   right: 8px;
   z-index: 2;
+  display: flex;
+  gap: 6px;
 }
-/* Close is an icon in the top bar's manner: a square, the light rule, a drawn cross. */
-.card-close {
+/* Edit, Delete and Close are icons in the top bar's manner: a square, the light rule, a
+   drawn mark, and a small label on hover. */
+.card-icon {
   all: unset;
   box-sizing: border-box;
   display: inline-flex;
@@ -361,8 +364,26 @@
   color: var(--bb-tone-4);
   cursor: pointer;
 }
-.card-close:hover { color: var(--bb-rose); border-color: var(--bb-tone-3); }
-.card-close:focus-visible { outline: 2px solid var(--bb-rose); outline-offset: 2px; }
+.card-icon:hover { color: var(--bb-ink); border-color: var(--bb-tone-3); }
+.card-icon.card-close:hover,
+.card-icon.danger:hover { color: var(--bb-rose); }
+.card-icon:focus-visible { outline: 2px solid var(--bb-rose); outline-offset: 2px; }
+.card-icon { position: relative; }
+.card-icon[data-tip]:hover::after,
+.card-icon[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  padding: 2px 7px;
+  white-space: nowrap;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--bb-tone-5);
+  background: var(--bb-card);
+  border: 1px solid var(--bb-tone-2);
+  pointer-events: none;
+}
 .card-scroll { overflow: auto; overscroll-behavior: contain; }
 .card-foot {
   display: flex;
@@ -440,6 +461,8 @@ button.danger {
 }
 .page .quiet { color: var(--bb-tone-4); font-style: italic; padding-top: 28px; }
 .page-head { padding-top: 26px; }
+/* On an open card the icon bar (8px + 30px) has its own row above the title. */
+.card .page-head { padding-top: 46px; }
 .page h1 {
   margin: 0;
   font-weight: 400;
