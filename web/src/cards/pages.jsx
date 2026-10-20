@@ -47,6 +47,7 @@ export function RecipePage({ recipe, onRemovePhoto }) {
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : []
   const appliesTo = Array.isArray(recipe.appliesTo) ? recipe.appliesTo : []
   const praxis = recipe.kind === 'praxis'
+  const seeAlso = praxis || !Array.isArray(recipe.seeAlso) ? [] : recipe.seeAlso.filter((item) => item && item.id && item.title)
   const empty = praxis ? !recipe.method && !appliesTo.length : !ingredients.length && !recipe.method
   return (
     <article className={'page page-recipe' + (praxis ? ' page-praxis' : '')}>
@@ -121,6 +122,19 @@ export function RecipePage({ recipe, onRemovePhoto }) {
                 <h2>Method</h2>
                 <Paragraphs text={recipe.method} />
               </section>
+            )}
+            {seeAlso.length > 0 && (
+              <p className="see-also">
+                See also:{' '}
+                {seeAlso.map((item, i) => (
+                  <span key={item.id}>
+                    {i > 0 ? ', ' : null}
+                    <a className="cbk cbk-title" href={'/recipes/' + encodeURIComponent(item.id)} data-recipe={item.id}>
+                      {item.title}
+                    </a>
+                  </span>
+                ))}
+              </p>
             )}
           </>
         )}

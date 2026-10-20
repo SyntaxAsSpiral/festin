@@ -135,6 +135,21 @@ def test_praxis_form_and_recipe_alias(kit):
 
     found = registry.dispatch("search_cookbook", {"kind": "praxis"}, ctx)
     assert any(r["id"] == praxis["id"] for r in found["results"])
+    eggs = registry.dispatch(
+        "add_recipe",
+        {
+            "title": "Fats",
+            "kind": "praxis",
+            "method": "Render slowly.",
+            "appliesTo": ["eggs"],
+            "category": "kitchen-craft",
+            "searchDescription": "How a pan holds fat.",
+        },
+        ctx,
+    )
+    by_applies = registry.dispatch("search_cookbook", {"query": "eggs"}, ctx)
+    assert any(r["id"] == eggs["id"] for r in by_applies["results"])
+    assert all("egg" not in (r.get("title") or "").casefold() for r in by_applies["results"] if r["id"] == eggs["id"])
     aliased = registry.dispatch("search_cookbook", {"kind": "recipe"}, ctx)
     assert all(r["kind"] == "formule" for r in aliased["results"])
     assert any(r["id"] == as_alias["id"] for r in aliased["results"])

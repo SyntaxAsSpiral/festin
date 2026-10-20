@@ -58,6 +58,7 @@ def test_load_blocks_persona_and_tools_share_parser():
     tools = load_blocks(DEFAULT_TOOLS)
     assert "search_cookbook" in tools
     assert tools["search_cookbook"].startswith("Find cookbook cards.")
+    assert "applies to" in tools["search_cookbook"]
 
 
 def test_placeholders_resolve_and_unknown_raises():

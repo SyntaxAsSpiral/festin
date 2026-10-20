@@ -517,6 +517,20 @@ button.danger {
   font-variant-numeric: oldstyle-nums diagonal-fractions;
 }
 .method p { margin: 0 0 10px; max-width: 34em; font-variant-numeric: oldstyle-nums; }
+.see-also {
+  margin: 8px 0 0;
+  max-width: 34em;
+  color: var(--bb-tone-4);
+  font-style: italic;
+  font-size: 15.5px;
+}
+.see-also a {
+  color: inherit;
+  font-style: normal;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 0.15em;
+}
 .from-box {
   float: right;
   width: min(42%, 220px);
