@@ -88,6 +88,31 @@ describe('turn machine', () => {
     expect(s.phase).toBe('settled')
     expect(s.shown).toBe(6)
   })
+  it('a tick that moves nothing returns the same state', () => {
+    let s = run(sending(), ev({ type: 'delta', text: 'Hi.' }))
+    s = turnReducer(s, { type: 'tick', now: 0, cps: 55, rng: () => 0.5 })
+    expect(s.shown).toBe(1)
+    const waiting = turnReducer(s, { type: 'tick', now: 1, cps: 55, rng: () => 0.5 })
+    expect(waiting).toBe(s)
+    const instant = turnReducer(s, { type: 'tick', instant: true })
+    const instantAgain = turnReducer(instant, { type: 'tick', instant: true })
+    expect(instant.shown).toBe(3)
+    expect(instant.phase).toBe('revealing')
+    expect(instantAgain).toBe(instant)
+  })
+  it('a tick once the typist has caught the buffer returns the same state', () => {
+    let s = run(sending(), ev({ type: 'delta', text: 'Hi.' }))
+    let now = 0
+    for (let i = 0; i < 40 && s.shown < s.text.length; i++) {
+      s = turnReducer(s, { type: 'tick', now, cps: 55, rng: () => 0.5 })
+      now += 40
+    }
+    expect(s.phase).toBe('revealing')
+    expect(s.shown).toBe(s.text.length)
+    const parked = turnReducer(s, { type: 'tick', now: now + 80, cps: 55, rng: () => 0.5 })
+    expect(parked).toBe(s)
+    expect(parked.nextKey).toBe(s.nextKey)
+  })
   it('stopped settles at once with what arrived', () => {
     const s = run(sending(), ev({ type: 'delta', text: 'half a reply' }), ev({ type: 'stopped' }))
     expect(s.phase).toBe('settled')
@@ -167,5 +192,11 @@ describe('chat markdown', async () => {
   })
   it('refuses unsafe links', () => {
     expect(renderChatMarkdown('[x](javascript:alert(1))')).not.toContain('href="javascript')
+  })
+  it('links an id after a link and leaves the id inside the link as its text', () => {
+    const html = renderChatMarkdown('See [CBK-0001](/recipes/CBK-0001) then CBK-0002.')
+    expect(html.match(/data-recipe="CBK-0001"/g)).toHaveLength(1)
+    expect(html).toContain('data-recipe="CBK-0002"')
+    expect(html).not.toContain('data-recipe="CBK-0001">CBK-0001</a></a>')
   })
 })

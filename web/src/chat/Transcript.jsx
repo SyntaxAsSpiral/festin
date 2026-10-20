@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { fetchPlugins } from '../meals/plan.js'
 import { useReducedMotion } from '../useReducedMotion.js'
@@ -115,8 +115,13 @@ export function Message({ message, live, body, voiceOn }) {
   )
 }
 
+function distanceFromBottom(scroller) {
+  return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
+}
+
 export function Transcript({ messages, turn }) {
   const end = useRef(null)
+  const height = useRef(0)
   const navigate = useNavigate()
   const reduced = useReducedMotion()
   const [voiceOn, setVoiceOn] = useState(false)
@@ -135,9 +140,24 @@ export function Transcript({ messages, turn }) {
     }
   }, [messages.length])
 
-  useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end' })
-  }, [messages.length, shownCount, turn.phase])
+  // A new message, or a phase change (the reply starting, settling), jumps to
+  // the end. Shown characters do not: only a growth that passes the visible
+  // bottom does, so the typist does not scroll once per stroke.
+  useLayoutEffect(() => {
+    const scroller = end.current?.parentElement
+    if (!end.current || !scroller) return
+    end.current.scrollIntoView({ block: 'end' })
+    height.current = scroller.scrollHeight
+  }, [messages.length, turn.phase])
+
+  useLayoutEffect(() => {
+    const node = end.current
+    const scroller = node?.parentElement
+    if (!node || !scroller) return
+    const grown = scroller.scrollHeight > height.current + 1
+    if (grown && distanceFromBottom(scroller) > 4) node.scrollIntoView({ block: 'end' })
+    height.current = scroller.scrollHeight
+  }, [shownCount])
 
   // Recipe links inside rendered Markdown route in-app instead of reloading.
   function onClick(event) {

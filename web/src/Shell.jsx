@@ -153,6 +153,22 @@ export function Shell({ boot }) {
   )
 }
 
+// Draft keystrokes and reveal ticks live here, so they render the chat and
+// leave the route (Meals, the Frieze, the Kitchen Log) alone.
+function ChatDock({ tab, card }) {
+  const chat = useChat({ tab: tab?.id || null, card: card?.id ? { kind: card.kind, id: card.id } : null })
+  const header = chatHeader(chat)
+  return (
+    <Surface
+      peekLine={peekLine(chat)}
+      lookingAt={card?.title || LOOK[tab?.id] || 'the kitchen'}
+      header={header ? <ModelLink text={header} /> : null}
+    >
+      <ChatPanel chat={chat} />
+    </Surface>
+  )
+}
+
 function ShellFrame({ boot }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -166,8 +182,6 @@ function ShellFrame({ boot }) {
     if (document.fullscreenElement) setFresh((n) => n + 1)
     else defaultReload()
   }, [])
-  // Each message carries what the cook is looking at: the tab plus a pointer to the open card.
-  const chat = useChat({ tab: tab?.id || null, card: card?.id ? { kind: card.kind, id: card.id } : null })
   const trouble = boot.phase === 'trouble'
   const meals = tab?.id === 'meals'
   const reduced = useReducedMotion()
@@ -234,9 +248,7 @@ function ShellFrame({ boot }) {
           </LookingContext.Provider>
         </div>
       </div>
-      <Surface peekLine={peekLine(chat)} lookingAt={card?.title || LOOK[tab?.id] || 'the kitchen'} header={chatHeader(chat) ? <ModelLink text={chatHeader(chat)} /> : null}>
-        <ChatPanel chat={chat} />
-      </Surface>
+      <ChatDock tab={tab} card={card} />
       <SettingsSidebar />
     </div>
   )
