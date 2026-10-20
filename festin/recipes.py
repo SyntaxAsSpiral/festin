@@ -6,6 +6,7 @@ import base64
 import json
 import re
 import sqlite3
+import unicodedata
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,7 +16,9 @@ from festin.errors import NotFound, StaleState
 from festin.settings import _local_instant, get_settings, today as household_today, week_start_for
 
 PAGE_SIZE = 20
+SEE_ALSO_CAP = 3
 RECIPE_ID = re.compile(r"^CBK-(\d+)$")
+_WORD = re.compile(r"[^\W_]+", re.UNICODE)
 
 # Writable fields on create/edit (API camelCase → column).
 _STRING_FIELDS = {
@@ -124,7 +127,83 @@ def list_recipes(
 def get_recipe(conn: sqlite3.Connection, recipe_id: str) -> dict:
     close_ended_weeks(conn)
     row = _row(conn, recipe_id)
-    return attach_cook_stats(conn, _public(row))
+    recipe = attach_cook_stats(conn, _public(row))
+    if recipe["kind"] == "formule":
+        recipe["seeAlso"] = see_also(conn, recipe)
+    return recipe
+
+
+def _fold_word(token: str) -> str:
+    text = unicodedata.normalize("NFKD", token.casefold())
+    return "".join(char for char in text if not unicodedata.combining(char))
+
+
+def _word_keys(token: str) -> frozenset[str]:
+    """Case- and accent-folded forms, plus one English plural step.
+
+    eggs shares a key with egg; berries with berry; glasses with glass;
+    potatoes with potato. A longer word (eggplant) does not share egg's key.
+    """
+    word = _fold_word(token)
+    if not word:
+        return frozenset()
+    keys = {word}
+    if len(word) > 4 and word.endswith("ies"):
+        keys.add(word[:-3] + "y")
+    if len(word) > 3 and word.endswith("es"):
+        keys.add(word[:-2])
+    if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+        keys.add(word[:-1])
+    return frozenset(keys)
+
+
+def _line_keys(text: str) -> list[frozenset[str]]:
+    return [keys for token in _WORD.findall(str(text)) if (keys := _word_keys(token))]
+
+
+def _phrase_in(phrase: list[frozenset[str]], tokens: list[frozenset[str]]) -> bool:
+    width = len(phrase)
+    if not width or width > len(tokens):
+        return False
+    for start in range(len(tokens) - width + 1):
+        if all(phrase[offset] & tokens[start + offset] for offset in range(width)):
+            return True
+    return False
+
+
+def see_also(conn: sqlite3.Connection, recipe: dict) -> list[dict]:
+    """Praxis whose applies-to nouns occur as whole words in this card's ingredients.
+
+    A praxis never lists itself. At most SEE_ALSO_CAP, title order.
+    """
+    lines = [_line_keys(line) for line in (recipe.get("ingredients") or []) if isinstance(line, str)]
+    lines = [line for line in lines if line]
+    if not lines:
+        return []
+    own_id = recipe.get("id")
+    found = []
+    rows = conn.execute(
+        """
+        SELECT id, title, applies_to_json
+        FROM recipes
+        WHERE kind = 'praxis' AND id != ?
+        ORDER BY title COLLATE NOCASE, id
+        """,
+        (own_id,),
+    ).fetchall()
+    for row in rows:
+        try:
+            nouns = json.loads(row["applies_to_json"] or "[]")
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(nouns, list):
+            continue
+        phrases = [_line_keys(noun) for noun in nouns if isinstance(noun, str)]
+        if any(phrase and _phrase_in(phrase, line) for phrase in phrases for line in lines):
+            found.append({"id": row["id"], "title": row["title"]})
+            if len(found) == SEE_ALSO_CAP:
+                break
+    return found
 
 
 def cook_dates_for(conn: sqlite3.Connection, recipe_ids: list[str] | None = None) -> dict[str, list[str]]:
