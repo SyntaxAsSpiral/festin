@@ -36,6 +36,10 @@ describe('entryMeta', () => {
       label: 'Recipe favourited',
       rowClass: 'tl-fav',
     })
+    expect(entryMeta('recipe_planned')).toEqual({
+      label: 'Recipe planned',
+      rowClass: 'tl-planned',
+    })
     expect(entryMeta('photo_added')).toEqual({
       label: 'Recipe photo added',
       rowClass: 'tl-photo',
@@ -47,6 +51,7 @@ describe('entryMeta', () => {
   it('treats photo and favourite events as recipe navigations', () => {
     expect(RECIPE_EVENT_KINDS.has('photo_added')).toBe(true)
     expect(RECIPE_EVENT_KINDS.has('recipe_favourited')).toBe(true)
+    expect(RECIPE_EVENT_KINDS.has('recipe_planned')).toBe(true)
     expect(RECIPE_EVENT_KINDS.has('note_archived')).toBe(false)
   })
 })

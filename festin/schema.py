@@ -474,6 +474,40 @@ def _version_14(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_15(conn: sqlite3.Connection) -> None:
+    """To-cook queue stamp on recipes; Recipe planned log kind."""
+    conn.execute("ALTER TABLE recipes ADD COLUMN queued_at TEXT")
+    conn.executescript(
+        """
+        CREATE TABLE kitchen_log_events_v15 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kind TEXT NOT NULL
+                CHECK (kind IN (
+                    'recipe_added', 'recipe_edited', 'note_created',
+                    'recipe_cooked', 'note_archived', 'recipe_favourited', 'photo_added',
+                    'recipe_planned'
+                )),
+            at TEXT NOT NULL,
+            ref_id TEXT NOT NULL,
+            title TEXT NOT NULL DEFAULT '',
+            detail TEXT NOT NULL DEFAULT '',
+            extra_json TEXT NOT NULL DEFAULT '{}'
+        );
+
+        INSERT INTO kitchen_log_events_v15
+            (id, kind, at, ref_id, title, detail, extra_json)
+        SELECT id, kind, at, ref_id, title, detail, extra_json
+        FROM kitchen_log_events;
+
+        DROP TABLE kitchen_log_events;
+        ALTER TABLE kitchen_log_events_v15 RENAME TO kitchen_log_events;
+
+        CREATE INDEX IF NOT EXISTS kitchen_log_events_by_at
+            ON kitchen_log_events (at DESC, id DESC);
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
 # v6 is the Kitchen Log. Plugin tables are v7. Shared favourites are v8.
 # v9 widens the kitchen log event kinds CHECK.
@@ -482,6 +516,7 @@ def _version_14(conn: sqlite3.Connection) -> None:
 # v12 files every chat that has a message (chats now file with their first).
 # v13 moves household context sections out of notes into household_context.
 # v14 renames recipe→formule and adds applies_to for praxis cards.
+# v15 adds recipes.queued_at and the recipe_planned log kind.
 MIGRATIONS = (
     _version_1,
     _version_2,
@@ -497,6 +532,7 @@ MIGRATIONS = (
     _version_12,
     _version_13,
     _version_14,
+    _version_15,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

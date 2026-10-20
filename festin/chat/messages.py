@@ -371,9 +371,12 @@ def build_chat_messages(
         messages.append({"role": "system", "content": block})
     stored = load_messages(conn, chat_id)
     if inject_household(len(stored)):
+        from festin.recipes import queued_titles
+
         opening = {
             "household_context": _context_lanes(conn),
             "current_week_dinners": current_week_dinners(conn, on),
+            "to_cook": queued_titles(conn),
             "selected_dinner_week": week,
             "model_accepts_images": image_support,
             "five_day_weather": weather_context(settings),

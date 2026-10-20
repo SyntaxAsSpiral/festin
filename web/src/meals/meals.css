@@ -512,6 +512,7 @@
 .kl .tl-chat small,
 .kl .tl-cooked small,
 .kl .tl-fav small,
+.kl .tl-planned small,
 .kl .tl-photo small,
 .kl .tl-archived small {
   display: block;
@@ -525,6 +526,7 @@
 .kl .tl-chat,
 .kl .tl-cooked,
 .kl .tl-fav,
+.kl .tl-planned,
 .kl .tl-photo,
 .kl .tl-archived {
   display: flex;
@@ -559,6 +561,7 @@
 .kl .tl-chat b,
 .kl .tl-cooked b,
 .kl .tl-fav b,
+.kl .tl-planned b,
 .kl .tl-photo b,
 .kl .tl-archived b {
   font-weight: 600;
@@ -578,6 +581,7 @@
 .kl .tl-c i,
 .kl .tl-cooked i,
 .kl .tl-fav i,
+.kl .tl-planned i,
 .kl .tl-photo i,
 .kl .tl-archived i {
   color: var(--bb-tone-4);
@@ -871,22 +875,25 @@ html[data-motion='off'] .kl .tcar {
    index.css). The dot takes the glyph tone, the small-caps kind the ink tone.
    Tattva's five (red, yellow, blue, mauve, lavender) stay free for weeks. */
 .kl .tl-r { --ec-ink: var(--acc-peach-ink); --ec-glyph: var(--acc-peach-glyph); }
-.kl .tl-r.tl-a { --ec-ink: var(--acc-green-ink); --ec-glyph: var(--acc-green-glyph); }
+.kl .tl-r.tl-a { --ec-ink: var(--acc-flamingo-ink); --ec-glyph: var(--acc-flamingo-glyph); }
 .kl .tl-c { --ec-ink: var(--acc-teal-ink); --ec-glyph: var(--acc-teal-glyph); }
 .kl .tl-chat { --ec-ink: var(--acc-pink-ink); --ec-glyph: var(--acc-pink-glyph); }
 .kl .tl-cooked { --ec-ink: var(--acc-yellow-ink); --ec-glyph: var(--acc-yellow-glyph); }
-.kl .tl-fav { --ec-ink: var(--acc-red-ink); --ec-glyph: var(--acc-red-glyph); }
+.kl .tl-fav { --ec-ink: var(--acc-mauve-ink); --ec-glyph: var(--acc-mauve-glyph); }
+.kl .tl-planned { --ec-ink: var(--acc-green-ink); --ec-glyph: var(--acc-green-glyph); }
 .kl .tl-photo { --ec-ink: var(--acc-sapphire-ink); --ec-glyph: var(--acc-sapphire-glyph); }
 .kl .tl-archived { --ec-ink: var(--acc-sky-ink); --ec-glyph: var(--acc-sky-glyph); }
 .kl .tl-r > .tdot,
 .kl .tl-c > .tdot,
 .kl .tl-cooked > .tdot,
 .kl .tl-fav > .tdot,
+.kl .tl-planned > .tdot,
 .kl .tl-photo > .tdot,
 .kl .tl-archived > .tdot { border-color: var(--ec-glyph); }
 .kl .tl-a > .tdot { background: var(--ec-glyph); }
 .kl .tl-cooked > .tdot,
 .kl .tl-fav > .tdot,
+.kl .tl-planned > .tdot,
 .kl .tl-photo > .tdot {
   border: 1px solid var(--ec-glyph);
   border-radius: 50%;
@@ -916,6 +923,7 @@ html[data-motion='off'] .kl .tcar {
 .kl .tn.tl-chat small,
 .kl .tn.tl-cooked small,
 .kl .tn.tl-fav small,
+.kl .tn.tl-planned small,
 .kl .tn.tl-photo small,
 .kl .tn.tl-archived small,
 .kl .tl-r small,
@@ -923,6 +931,7 @@ html[data-motion='off'] .kl .tcar {
 .kl .tl-chat small,
 .kl .tl-cooked small,
 .kl .tl-fav small,
+.kl .tl-planned small,
 .kl .tl-photo small,
 .kl .tl-archived small { color: var(--ec-ink); }
 

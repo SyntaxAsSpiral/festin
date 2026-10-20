@@ -204,15 +204,15 @@
 .nitem-archived:hover { opacity: 0.78; }
 /* Title line: the title, and a recipe's ID right-aligned and quiet. */
 .nhead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-/* A recipe row's heart: a toggle beside the ID, faint until loved. */
+/* A recipe row's heart, and the to-cook flag under it — quiet glyphs, no wash. */
 .nlist li:has(> .nfav) { position: relative; }
 .nlist li:has(> .nfav) .nhead { padding-right: 26px; }
-.nfav {
+.nfav,
+.nqueue {
   position: absolute;
-  top: 6px;
   right: 0;
   width: 28px;
-  height: 28px;
+  height: 22px;
   padding: 0;
   border: 0;
   background: none;
@@ -221,8 +221,12 @@
   color: var(--bb-tone-2);
   cursor: pointer;
 }
-.nfav:hover { color: var(--acc-red-glyph); }
-.nfav.on { color: var(--acc-red-glyph); }
+.nfav { top: 6px; }
+.nqueue { top: 26px; font-size: 13px; }
+.nfav:hover { color: var(--acc-mauve-glyph); }
+.nfav.on { color: var(--acc-mauve-glyph); }
+.nqueue:hover { color: var(--acc-green-glyph); }
+.nqueue.on { color: var(--acc-green-glyph); }
 .nid {
   flex: none;
   font-size: 12.5px;
@@ -258,12 +262,20 @@
   max-width: 100%;
 }
 .card-fav {
-  color: var(--acc-red-ink);
-  border: 1px solid color-mix(in srgb, var(--acc-red-glyph) 45%, transparent);
+  color: var(--acc-mauve-ink);
+  border: 1px solid color-mix(in srgb, var(--acc-mauve-glyph) 45%, transparent);
 }
 .card-fav.on {
-  color: var(--acc-red-ink);
-  background: color-mix(in srgb, var(--acc-red) 18%, var(--bb-paper));
+  color: var(--acc-mauve-ink);
+  background: color-mix(in srgb, var(--acc-mauve) 18%, var(--bb-paper));
+}
+.card-queue {
+  color: var(--acc-green-ink);
+  border: 1px solid color-mix(in srgb, var(--acc-green-glyph) 45%, transparent);
+}
+.card-queue.on {
+  color: var(--acc-green-ink);
+  background: color-mix(in srgb, var(--acc-green) 18%, var(--bb-paper));
 }
 .nline { font-style: italic; font-size: 13.5px; color: var(--bb-tone-4); }
 .ntip { font-size: 14.5px; color: var(--bb-tone-5); }
@@ -703,13 +715,16 @@ html[data-motion='off'] .card-layer { transition: none; }
   height: 1px;
   background: color-mix(in srgb, var(--acc-pink-glyph) 55%, transparent);
 }
-/* In card view the heart sits beside the title. */
+/* In card view the heart sits beside the title; the to-cook flag sits under it. */
 .nlist-cards li .nfav { top: 10px; right: 4px; }
-/* Recipe washes, in card view and on the open card. Red means favourite (as in the Log);
-   lavender means praxis. A favourite praxis takes the favourite's wash. */
+.nlist-cards li .nqueue { top: 30px; right: 4px; }
+/* Recipe washes, in card view and on the open card. Mauve = favourite (as in the Log);
+   green = queued; lavender = praxis. Precedence: favourite, then queued, then praxis. */
 :root {
-  --wash-fav: color-mix(in srgb, var(--acc-red) 16%, var(--bb-card));
-  --wash-fav-edge: color-mix(in srgb, var(--acc-red-glyph) 45%, var(--bb-tone-1));
+  --wash-fav: color-mix(in srgb, var(--acc-mauve) 16%, var(--bb-card));
+  --wash-fav-edge: color-mix(in srgb, var(--acc-mauve-glyph) 45%, var(--bb-tone-1));
+  --wash-queued: color-mix(in srgb, var(--acc-green) 16%, var(--bb-card));
+  --wash-queued-edge: color-mix(in srgb, var(--acc-green-glyph) 45%, var(--bb-tone-1));
   --wash-praxis: color-mix(in srgb, var(--acc-lavender) 20%, var(--bb-card));
   --wash-praxis-edge: color-mix(in srgb, var(--acc-lavender-glyph) 45%, var(--bb-tone-1));
 }
@@ -717,6 +732,11 @@ html[data-motion='off'] .card-layer { transition: none; }
 .card.card-is-praxis {
   background-color: var(--wash-praxis);
   border-color: var(--wash-praxis-edge);
+}
+.nlist-cards .nitem.nitem-queued,
+.card.card-is-queued {
+  background-color: var(--wash-queued);
+  border-color: var(--wash-queued-edge);
 }
 .nlist-cards .nitem.nitem-fav,
 .card.card-is-fav {
