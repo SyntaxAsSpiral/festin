@@ -486,8 +486,9 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
         "keep_note",
         (
             "Save a note (projects, tasks, news, plans, shopping). Pass type and, when "
-            "one fits, a Catppuccin accent color. Suggested: shopping green, leftovers "
-            "sky, to-do peach. none leaves it uncolored. Another short label is fine. A "
+            "one fits, a Catppuccin accent color. Suggested: shopping green, dinner "
+            "yellow, cookbook peach, leftovers sky, blacklists and do-not-buy red. none "
+            "leaves it uncolored. Another short label is fine. A "
             "kept note starts pinned; pass open=false only when the household asks for a "
             "closed (archived) note. At most 25 pinned. Lasting household facts "
             "(who lives here, tastes, standing preferences, dietary restrictions) use "

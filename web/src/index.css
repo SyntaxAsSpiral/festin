@@ -29,6 +29,18 @@
   /* Cards sit a shade lighter than the ivory page: linen (zk, 2026-10-19). */
   --bb-card: #f7efe3; /* L*94.8 */
   --bb-sepia: #7a5a3a; /* Babette's dried ink: chat replies settle to it */
+  /* Colour genera (zk 2026-10-19; study: showroom festin-colour). A hue names the kind of
+     meaning; the mark (filled dot, ring, wash, glyph) names which one. One genus per hue:
+       peach  the box: Recipes tab, recipe added / updated / photo
+       yellow the table: cooked, first cooked, dinner
+       mauve  the heart: favourite
+       green  intent: to cook, recipe planned, shopping
+       blue   form: praxis (formule has no colour)
+       teal   notes: Notes tab, note created; sky is its archived fade
+       pink   conversation: Chats tab, chats
+       red    warning: blacklists, never (maroon is its darker shade, not a meaning)
+     Rosewater is the Meals tab and plain weeks. Tattva's five colour weeks only, a layer of
+     their own. Flamingo, lavender and sapphire carry no meaning yet. */
   /* Accents: Catppuccin Frappé washed toward sepia #a08a6e, the mock's tattva rule.
      wash = OKLab mix 35% to sepia (stripes, tints); ink = wash at L 0.514, chroma x1.35
      (text on ivory paper, >= 4.5:1; was L 0.54 on the old near-white); glyph = L 0.645, chroma x1.3 (dots, icons). */
