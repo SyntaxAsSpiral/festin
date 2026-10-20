@@ -421,6 +421,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                       'nitem' +
                       (archived ? ' nitem-archived' : '') +
                       (kind === 'recipes' && item.raw?.favourite ? ' nitem-fav' : '') +
+                      (kind === 'recipes' && item.raw?.queuedAt ? ' nitem-queued' : '') +
                       (kind === 'recipes' && item.raw?.kind === 'praxis' ? ' nitem-praxis' : '')
                     }
                     data-cursor={i === cursor || undefined}

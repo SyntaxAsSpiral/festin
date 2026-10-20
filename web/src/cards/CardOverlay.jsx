@@ -224,6 +224,7 @@ export function CardOverlay({ kind, id, onChanged }) {
         className={
           'card card-' + kind +
           (kind === 'recipes' && raw?.favourite ? ' card-is-fav' : '') +
+          (kind === 'recipes' && raw?.queuedAt ? ' card-is-queued' : '') +
           (kind === 'recipes' && raw?.kind === 'praxis' ? ' card-is-praxis' : '')
         }
         role="dialog"
