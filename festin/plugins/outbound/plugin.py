@@ -3,21 +3,26 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 
+from festin.chat.persona import load_blocks
 from festin.plugins.outbound import webhooks
 
 PLUGIN_ID = "outbound"
 PLUGIN_NAME = "Cloud agents"
+_TOOLS_YAML = Path(__file__).resolve().parent / "tools.yaml"
+_OUTBOUND_TOOL_KEYS = ("send_list",)
 
-_SEND = (
-    "Send one named notebook list to one configured cloud agent. Call only when the "
-    "user explicitly asks to send that list. list_name is the note type, for example "
-    'shopping; a trailing " list" is ignored. Omit agent to use the default destination '
-    "chosen in Settings. Pass agent only when the user names one. Items are the note "
-    "lines. Exactly one destination receives the list, once. Does not purchase, print, "
-    "or change the note. Tell the household it was sent, or the plain error, with no "
-    "webhook details."
-)
+
+def tool_text() -> dict[str, str]:
+    blocks = load_blocks(_TOOLS_YAML)
+    orphans = sorted(set(blocks) - set(_OUTBOUND_TOOL_KEYS))
+    if orphans:
+        raise ValueError("Orphan outbound tool text keys: " + ", ".join(orphans))
+    missing = sorted(set(_OUTBOUND_TOOL_KEYS) - set(blocks))
+    if missing:
+        raise ValueError("Missing outbound tool text keys: " + ", ".join(missing))
+    return blocks
 
 
 class OutboundPlugin:
@@ -46,9 +51,10 @@ class OutboundPlugin:
         ]
 
     def register(self, registry) -> None:
+        text = tool_text()
         registry.register_tool(
             "send_list",
-            _SEND,
+            text["send_list"],
             {
                 "type": "object",
                 "properties": {
