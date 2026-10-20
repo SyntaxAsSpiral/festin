@@ -16,7 +16,8 @@ export const PACE_EASE_MS = 140
 
 // shown is fractional; render Math.floor(shown) characters. cps is the pace
 // carried from the previous frame.
-export function advance(shown, total, dtMs, cps = BASE_CPS) {
+// maxLetters is the per-frame limit; the study page sweeps it.
+export function advance(shown, total, dtMs, cps = BASE_CPS, maxLetters = MAX_LETTERS_PER_FRAME) {
   const safeTotal = Math.max(0, Number(total) || 0)
   if (shown >= safeTotal) return { shown: safeTotal, cps: BASE_CPS }
   const dt = Math.min(Math.max(Number(dtMs) || 0, 0), MAX_FRAME_MS)
@@ -30,6 +31,6 @@ export function advance(shown, total, dtMs, cps = BASE_CPS) {
   const k = dt === 0 ? 0 : 1 - Math.exp(-dt / PACE_EASE_MS)
   const pace = Math.max(BASE_CPS, carried + (aim - carried) * k)
   const stepped = shown + (pace * dt) / 1000
-  const next = Math.min(safeTotal, stepped, shown + MAX_LETTERS_PER_FRAME)
+  const next = Math.min(safeTotal, stepped, shown + maxLetters)
   return { shown: next, cps: next >= safeTotal ? BASE_CPS : pace }
 }

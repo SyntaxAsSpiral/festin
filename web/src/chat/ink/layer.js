@@ -1,13 +1,24 @@
 import { DEFAULT_WET_BAND, seepMs as seepMsFor } from './constants.js'
 import { createInkBuilder } from './markdownBuild.js'
+import { planWordSeep, readGrain } from './grain.js'
 import { ensureSeepStyles } from './seep.js'
 
 // Owns the live reply DOM outside React: typed Markdown structure with per-letter
 // spans. React keeps an empty host; this module appends into it so re-renders
 // do not restart letter animations.
+// The first letter of the word letter i belongs to: the run of letters before it
+// that are not blank and sit on the same line.
+function wordStart(spans, i) {
+  const top = spans[i].offsetTop
+  let s = i
+  while (s > 0 && i - s < 24 && /\S/.test(spans[s - 1].textContent) && Math.abs(spans[s - 1].offsetTop - top) < 3) s--
+  return s
+}
+
 export function mountInkLayer(host, { plain = false } = {}) {
   if (!host) return { sync() {}, reset() {}, destroy() {} }
   const builder = createInkBuilder(host)
+  const grain = readGrain()
   let lit = 0
   let litSpans = 0
   let destroyed = false
@@ -56,10 +67,26 @@ export function mountInkLayer(host, { plain = false } = {}) {
       for (let i = litSpans; i < builder.length; i++) {
         if (!builder.spans[i].classList.contains('on')) fresh.push(i)
       }
-      fresh.forEach((i, j) => {
-        const lateMs = fresh.length > 1 ? (elapsed * (fresh.length - 1 - j)) / fresh.length : 0
-        builder.light(i, { durationMs: duration, lateMs })
-      })
+      if (grain === 'word' && fresh.length) {
+        const { spans } = builder
+        const plan = planWordSeep({
+          fresh,
+          elapsed,
+          startOf: (i) => wordStart(spans, i),
+          offsetOf: (i, s) => spans[i].offsetLeft - spans[s].offsetLeft,
+          baseOf: (s) => (spans[s].dataset.wbx ? { x: Number(spans[s].dataset.wbx), y: Number(spans[s].dataset.wby) } : null),
+        })
+        for (const { index, start, base, lateMs, mx, my } of plan) {
+          spans[start].dataset.wbx = String(base.x)
+          spans[start].dataset.wby = String(base.y)
+          builder.light(index, { durationMs: duration, lateMs, mx, my })
+        }
+      } else {
+        fresh.forEach((i, j) => {
+          const lateMs = fresh.length > 1 ? (elapsed * (fresh.length - 1 - j)) / fresh.length : 0
+          builder.light(i, { durationMs: duration, lateMs })
+        })
+      }
       lit = n
       litSpans = builder.length
     },
