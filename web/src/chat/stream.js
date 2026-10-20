@@ -1,6 +1,9 @@
 // Chat transport: this device's chat on the Festin backend.
 import { readJson } from '../backend.js'
 
+// Fired on window when this device's session moves to another chat.
+export const CHAT_SESSION_EVENT = 'festin-chat-session'
+
 async function postJson(path, body, signal) {
   const res = await fetch(path, {
     method: 'POST',

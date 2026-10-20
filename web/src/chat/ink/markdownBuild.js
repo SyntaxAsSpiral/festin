@@ -4,7 +4,8 @@ import { renderChatMarkdown } from '../markdown.js'
 const FLOW = new Set(['P', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'TD', 'TH', 'PRE', 'BLOCKQUOTE'])
 const PHRASE = new Set(['STRONG', 'EM', 'A', 'CODE', 'SPAN', 'DEL', 'S', 'I', 'B', 'U'])
 // Characters that may reshape Markdown; a delta containing these forces a remount.
-const STRUCT = /[\n*`_\[\]#>|!~\\]/
+// The parens close a link: [Title](CBK-####) only becomes one at its ')'.
+const STRUCT = /[\n*`_\[\]()#>|!~\\]/
 
 function inTextContext(tagName) {
   return FLOW.has(tagName) || PHRASE.has(tagName)

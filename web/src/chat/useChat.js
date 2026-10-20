@@ -3,7 +3,7 @@ import { prefersReducedMotion } from '../useReducedMotion.js'
 import { ensureSeepStyles } from './ink/seep.js'
 import { readWritingSpeed } from './ink/speed.js'
 import { newId } from '../secure.js'
-import { loadKitchenChat, newChat, sendChat, stopChat } from './stream.js'
+import { CHAT_SESSION_EVENT, loadKitchenChat, newChat, sendChat, stopChat } from './stream.js'
 import { initialTurn, turnReducer } from './turn.js'
 
 const DRAFT_KEY = 'festin.draft'
@@ -48,8 +48,13 @@ export function useChat(context = null) {
   useEffect(() => {
     let gone = false
     loadKitchenChat().then((next) => !gone && setKitchen(next), () => {})
+    // Reopening a filed chat points the session at it elsewhere (a chat card);
+    // the panel then loads that chat instead of keeping the one it started with.
+    const onSession = () => loadKitchenChat().then((next) => !gone && setKitchen(next), () => {})
+    window.addEventListener(CHAT_SESSION_EVENT, onSession)
     return () => {
       gone = true
+      window.removeEventListener(CHAT_SESSION_EVENT, onSession)
       flight.current?.abort()
     }
   }, [])

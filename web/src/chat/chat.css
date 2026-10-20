@@ -74,6 +74,13 @@ a.msg-file:hover { border-color: var(--bb-rose); color: var(--bb-rose); }
   text-decoration: none;
   border-bottom: 1px dotted var(--bb-rose);
 }
+/* A card named by its title reads as a title: bold ink, the link's dotted rose rule. */
+.cbk.cbk-title {
+  color: var(--bb-ink);
+  font-variant: normal;
+  font-weight: 600;
+}
+.cbk.cbk-title:hover { color: var(--bb-rose); }
 .progress {
   margin: 0 0 12px;
   color: var(--bb-tone-4);

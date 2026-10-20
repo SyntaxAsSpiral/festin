@@ -89,4 +89,16 @@ describe('a rebuild does not restart lit letters', () => {
     expect(first.style.animationDelay).toBe('-500ms')
     now.mockRestore()
   })
+
+  it('finishes a card link typed letter by letter, even as the last thing written', () => {
+    const host = document.createElement('div')
+    const b = createInkBuilder(host)
+    const src = 'Try [Raw Apple Cake](CBK-0605)'
+    for (let i = 1; i <= src.length; i++) b.setTyped(src.slice(0, i))
+    const link = host.querySelector('a[data-recipe="CBK-0605"]')
+    expect(link).not.toBeNull()
+    expect(link.textContent).toBe('Raw Apple Cake')
+    expect(host.textContent).not.toContain('CBK-0605')
+    expect(host.textContent).not.toContain('[')
+  })
 })

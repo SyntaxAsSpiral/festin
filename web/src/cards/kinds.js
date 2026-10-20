@@ -3,6 +3,8 @@
 // Lists page through GET /api/<kind>. Writes send expected_updated_at and turn
 // a 409 into one conflict the card can show, then reload.
 
+import { CHAT_SESSION_EVENT } from '../chat/stream.js'
+
 export const CONFLICT_MESSAGE = 'Changed on another device. Reloaded.'
 
 export class ConflictError extends Error {
@@ -377,5 +379,8 @@ export function weekStartOn(iso, startDay) {
 
 // Points this device's session at the chat. A mid-turn 409 stays the server's words.
 export function pointSessionAt(chatId) {
-  return send('PUT', '/api/session', { chat_id: chatId }, { conflict: false })
+  return send('PUT', '/api/session', { chat_id: chatId }, { conflict: false }).then((saved) => {
+    window.dispatchEvent(new Event(CHAT_SESSION_EVENT))
+    return saved
+  })
 }
