@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 import shutil
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from http.client import HTTPConnection
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import pytest
 
+from festin.log import _opens_visible_row, list_log
 from festin.schema import connect
 from festin.server import COOKIE
 from tests.conftest import reset_db_file, start_kitchen, stop_kitchen
@@ -691,3 +693,145 @@ def test_week_in_progress_has_no_box_and_its_events_stay_loose(kitchen):
     # The week in progress gets no box; its events, imported chats included, stay loose.
     assert not [e for e in body["entries"] if e["kind"] == "week"]
     assert [e["id"] for e in body["entries"] if e["kind"] == "chat"] == ["old-1"]
+
+
+def _stamp(when: datetime) -> str:
+    return when.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000000Z")
+
+
+def _plant_events(db_path, rows):
+    conn = connect(db_path)
+    conn.execute("UPDATE settings SET weather_timezone = 'UTC'")
+    conn.executemany(
+        """
+        INSERT INTO kitchen_log_events (kind, at, ref_id, title, detail, extra_json)
+        VALUES (?, ?, ?, ?, '', '{}')
+        """,
+        rows,
+    )
+    conn.commit()
+    return conn
+
+
+def _walk_log(conn, limit=20):
+    pages = []
+    before = None
+    while len(pages) < 40:
+        body = list_log(conn, before=before, limit=limit)
+        pages.append(body["entries"])
+        before = body["nextCursor"]
+        if not before:
+            return pages
+    raise AssertionError("log cursor did not finish")
+
+
+def _ids(entries, kind):
+    return [entry["id"] for entry in entries if entry["kind"] == kind]
+
+
+def test_visible_row_follows_the_screen_fold():
+    """Twin of logEntries.js runKey: day, kind, record, chat, week."""
+    la = ZoneInfo("America/Los_Angeles")
+    utc = ZoneInfo("UTC")
+    newer = {"kind": "recipe_edited", "at": "2026-10-10T07:30:00.000000Z", "refId": "a"}
+    older = {"kind": "recipe_edited", "at": "2026-10-10T06:30:00.000000Z", "refId": "b"}
+    # 00:30 and 23:30 Pacific: two household days, one UTC day.
+    assert _opens_visible_row(newer, older, la)
+    assert not _opens_visible_row(newer, older, utc)
+
+    cook = {"kind": "recipe_cooked", "at": "2026-10-10T18:00:00.000000Z", "refId": "pie"}
+    cook_again = {"kind": "recipe_cooked", "at": "2026-10-10T17:00:00.000000Z", "refId": "pie"}
+    other = {"kind": "recipe_cooked", "at": "2026-10-10T16:00:00.000000Z", "refId": "stew"}
+    assert not _opens_visible_row(cook, cook_again, utc)
+    assert _opens_visible_row(cook_again, other, utc)
+
+    photo_a = {"kind": "photo_added", "at": "2026-10-10T18:00:00.000000Z", "refId": "a"}
+    photo_b = {"kind": "photo_added", "at": "2026-10-10T17:00:00.000000Z", "refId": "b"}
+    assert not _opens_visible_row(photo_a, photo_b, utc)
+
+    note_a = {"kind": "note_created", "at": "2026-10-10T18:00:00.000000Z", "refId": "n1"}
+    note_b = {"kind": "note_created", "at": "2026-10-10T17:00:00.000000Z", "refId": "n2"}
+    assert _opens_visible_row(note_a, note_b, utc)
+
+    chat = {"kind": "chat", "at": "2026-10-10T18:00:00.000000Z", "refId": "c1", "dateApprox": False}
+    chat_b = {"kind": "chat", "at": "2026-10-10T17:00:00.000000Z", "refId": "c2", "dateApprox": False}
+    approx = {"kind": "chat", "at": "2026-10-10T16:00:00.000000Z", "refId": "c3", "dateApprox": True}
+    assert not _opens_visible_row(chat, chat_b, utc)
+    assert _opens_visible_row(chat_b, approx, utc)
+
+    week = {"kind": "week", "at": "2026-10-10T12:00:00.000000Z", "refId": "2026-10-03"}
+    week_b = {"kind": "week", "at": "2026-10-10T12:00:00.000000Z", "refId": "2026-10-10"}
+    assert _opens_visible_row(chat, week, utc)
+    assert _opens_visible_row(week, chat_b, utc)
+    assert _opens_visible_row(week, week_b, utc)
+
+
+def test_same_day_edits_fill_one_row_then_the_rows_after(blank_db):
+    base = datetime(2026, 10, 10, 16, 0, tzinfo=timezone.utc)
+    edits = [
+        ("recipe_edited", "2026-10-10T18:00:00.000000Z", f"EDIT-{i:04d}", f"Edit {i}")
+        for i in range(500)
+    ]
+    cooks = [
+        ("recipe_cooked", _stamp(base - timedelta(seconds=i)), f"COOK-{i:02d}", f"Cook {i}")
+        for i in range(25)
+    ]
+    conn = _plant_events(blank_db, edits + cooks)
+    try:
+        pages = _walk_log(conn)
+    finally:
+        conn.close()
+
+    assert len(pages) == 2
+    assert set(_ids(pages[0], "recipe_edited")) == {f"EDIT-{i:04d}" for i in range(500)}
+    assert _ids(pages[0], "recipe_cooked") == [f"COOK-{i:02d}" for i in range(19)]
+    assert _ids(pages[1], "recipe_edited") == []
+    assert _ids(pages[1], "recipe_cooked") == [f"COOK-{i:02d}" for i in range(19, 25)]
+    flat = [entry["id"] for page in pages for entry in page]
+    assert len(flat) == len(set(flat)) == 525
+
+
+def test_mixed_kinds_page_about_twenty_visible_rows(blank_db):
+    base = datetime(2026, 10, 11, 12, 0, tzinfo=timezone.utc)
+    rows = []
+    for i in range(45):
+        kind = "recipe_edited" if i % 2 == 0 else "recipe_favourited"
+        rows.append((kind, _stamp(base - timedelta(minutes=i)), f"MIX-{i:02d}", f"Mix {i}"))
+    conn = _plant_events(blank_db, rows)
+    try:
+        pages = _walk_log(conn)
+    finally:
+        conn.close()
+
+    assert [len(page) for page in pages] == [20, 20, 5]
+    flat = [(entry["kind"], entry["id"]) for page in pages for entry in page]
+    assert len(flat) == len(set(flat)) == 45
+    assert [entry["id"] for entry in pages[0]] == [f"MIX-{i:02d}" for i in range(20)]
+
+
+def test_raw_page_cap_advances_through_a_huge_run(blank_db):
+    edits = [
+        ("recipe_edited", "2026-10-08T12:00:00.000000Z", f"CAP-{i:04d}", "bulk")
+        for i in range(5001)
+    ]
+    base = datetime(2026, 10, 7, 12, 0, tzinfo=timezone.utc)
+    cooks = [
+        ("recipe_cooked", _stamp(base - timedelta(minutes=i)), f"AFTER-{i}", "after")
+        for i in range(3)
+    ]
+    conn = _plant_events(blank_db, edits + cooks)
+    try:
+        pages = _walk_log(conn)
+    finally:
+        conn.close()
+
+    assert len(pages[0]) == 5000
+    assert {entry["kind"] for entry in pages[0]} == {"recipe_edited"}
+    assert len(pages) == 2
+    assert _ids(pages[1], "recipe_edited") != []
+    assert _ids(pages[1], "recipe_cooked") == ["AFTER-0", "AFTER-1", "AFTER-2"]
+    flat = [entry["id"] for page in pages for entry in page]
+    assert len(flat) == len(set(flat)) == 5004
+    assert set(_ids(pages[0], "recipe_edited")) | set(_ids(pages[1], "recipe_edited")) == {
+        f"CAP-{i:04d}" for i in range(5001)
+    }

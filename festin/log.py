@@ -1,6 +1,7 @@
 """Kitchen Log: timeline of weeks, recipe/note events, and chats.
 
-GET /api/log?before= pages newest first. Week rows come from saved plans.
+GET /api/log?before= pages newest first, about twenty visible rows
+(the Kitchen Log fold), not twenty raw events. Week rows come from saved plans.
 Recipe and note transitions are written into kitchen_log_events when they
 happen through the API or Babette's tools; imported history is derived from
 recipes, notes, and chats. Approximate imported chats fold into their week.
@@ -15,10 +16,24 @@ import base64
 import json
 import sqlite3
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from festin.settings import today as household_today, week_start_for, get_settings
 
 PAGE_SIZE = 20
+# A folded run may be thousands of events. Past this the cursor still advances.
+RAW_PAGE_CAP = 5000
+# Cooked, favourited, planned, added, and note created fold only with the same
+# record. Chat is visually key but folds the whole run (see _opens_visible_row).
+_KEY_RECORD_KINDS = frozenset(
+    {
+        "recipe_cooked",
+        "recipe_favourited",
+        "recipe_planned",
+        "recipe_added",
+        "note_created",
+    }
+)
 EVENT_KINDS = frozenset(
     {
         "recipe_added",
@@ -98,16 +113,16 @@ def list_log(
     from festin import recipes as recipes_mod
 
     recipes_mod.close_ended_weeks(conn)
-    limit = _page_limit(limit)
+    row_limit = _page_limit(limit)
     cursor = _decode_before(before) if before else None
     entries = _collect(conn)
     _stamp_cook_ordinals(conn, entries)
     entries.sort(key=_sort_key, reverse=True)
     if cursor is not None:
         entries = [item for item in entries if _sort_key(item) < cursor]
-    page = entries[:limit]
+    page = _page_by_visible_rows(entries, row_limit, _household_zone(conn))
     next_cursor = None
-    if len(entries) > limit:
+    if len(page) < len(entries):
         next_cursor = _encode_before(_sort_key(page[-1]))
     return {"entries": [_public(item) for item in page], "nextCursor": next_cursor}
 
@@ -544,9 +559,87 @@ def _weather_summary(days: list[dict]) -> str:
 
 
 def _page_limit(limit: int) -> int:
+    """Visible rows, not raw events. Same default and cap as before."""
     if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
         return PAGE_SIZE
     return min(limit, 100)
+
+
+def _page_by_visible_rows(entries: list[dict], row_limit: int, zone) -> list[dict]:
+    """Keep events that fold into the current row. Stop before row row_limit + 1.
+
+    A single run may be large. RAW_PAGE_CAP ends the response mid-run and the
+    caller still advances nextCursor from the last event included.
+    """
+    page: list[dict] = []
+    rows = 0
+    prev = None
+    for item in entries:
+        if _opens_visible_row(prev, item, zone):
+            if rows >= row_limit:
+                break
+            rows += 1
+        page.append(item)
+        prev = item
+        if len(page) >= RAW_PAGE_CAP:
+            break
+    return page
+
+
+def _opens_visible_row(prev: dict | None, item: dict, zone) -> bool:
+    """True when the Kitchen Log screen would start a new row.
+
+    Twin of groupLogEntries / foldRun / runKey in web/src/meals/logEntries.js
+    (festin-3d6.49). A week box is one row and breaks the run on both sides.
+    Otherwise a row continues while the household day, the kind, and the
+    approximate/timed flag stay the same, and — for cooked, favourited,
+    planned, added, and note created — the record stays the same. Chats and
+    routine kinds (recipe updated, photo added, note archived) fold the whole
+    consecutive run.
+    """
+    if prev is None or prev.get("kind") == "week" or item.get("kind") == "week":
+        return True
+    return _fold_run_key(prev, zone) != _fold_run_key(item, zone)
+
+
+def _fold_run_key(item: dict, zone) -> tuple:
+    approx = "a" if item.get("dateApprox") else "t"
+    kind = item.get("kind") or ""
+    record = str(item.get("refId") or "") if kind in _KEY_RECORD_KINDS else ""
+    return (_household_day(item.get("at"), zone), kind, approx, record)
+
+
+def _household_zone(conn: sqlite3.Connection):
+    """Settings weather timezone. Blank, auto, or unknown matches settings.today."""
+    name = (get_settings(conn).get("weather") or {}).get("timezone") or ""
+    if not name or name == "auto":
+        return None
+    try:
+        return ZoneInfo(name)
+    except ZoneInfoNotFoundError:
+        return None
+
+
+def _household_day(at, zone) -> str:
+    """Calendar day of a log stamp in the household zone.
+
+    Date-only stamps are UTC midnight, matching householdDayKey's Date parse.
+    A zone-less clock is UTC, which is how the kitchen stores stamps.
+    """
+    text = str(at or "").strip()
+    fallback = text[:10] if len(text) >= 10 and text[4] == "-" and text[7] == "-" else text
+    if len(text) == 10 and text[4] == "-" and text[7] == "-":
+        text = text + "T00:00:00+00:00"
+    else:
+        text = text.replace("Z", "+00:00")
+    try:
+        instant = datetime.fromisoformat(text)
+    except ValueError:
+        return fallback
+    if instant.tzinfo is None:
+        instant = instant.replace(tzinfo=timezone.utc)
+    local = instant.astimezone() if zone is None else instant.astimezone(zone)
+    return local.date().isoformat()
 
 
 def _encode_before(key: tuple) -> str:
