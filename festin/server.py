@@ -4,6 +4,9 @@ ThreadingHTTPServer, stdlib only. Shared kitchen data lives in SQLite. Each
 device has a cookie session (chat, turn, pane, surface, draft). Writes need
 same-origin JSON and an Origin on the allowlist when Origin is sent. There is
 no host gate. Default bind is 0.0.0.0.
+
+Pass --web (or FESTIN_WEB) to also serve a built front end. Without it, static
+files stay with Vite.
 """
 
 from __future__ import annotations
@@ -49,6 +52,33 @@ CHAT_HELD = "Babette is answering this chat on another device."
 BODY_LIMIT = 57_000_000
 BUSY = "Babette is still answering."
 FILE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$")
+# Vite content hashes are at least eight url-safe characters before the extension.
+_HASHED_ASSET = re.compile(r"-[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9]+)+$")
+# Kitchen routes stay on the API even when --web is set. The inbox is a separate
+# listener (InboxServer); it is not this handler.
+_WEB_RESERVED = ("/api", "/photos", "/files", "/cards")
+WEB_CACHE_LONG = "public, max-age=31536000, immutable"
+WEB_CACHE_SHORT = "no-cache"
+_WEB_TYPES = {
+    ".js": "text/javascript; charset=utf-8",
+    ".mjs": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".woff2": "font/woff2",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".webmanifest": "application/manifest+json",
+    ".ico": "image/x-icon",
+    ".html": "text/html; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".txt": "text/plain; charset=utf-8",
+    ".map": "application/json",
+    ".otf": "font/otf",
+    ".ttf": "font/ttf",
+    ".gif": "image/gif",
+}
 TERMINAL = frozenset({"done", "stopped", "error"})
 _GUARDS: dict[str, threading.Lock] = {}
 _GUARDS_LOCK = threading.Lock()
@@ -72,6 +102,7 @@ class KitchenServer(ThreadingHTTPServer):
         photos_dir=None,
         inbox_port=None,
         inbox_url=None,
+        web_dir=None,
     ):
         self.db_path = str(db_path)
         self.origins = tuple(origin.rstrip("/") for origin in (origins or ()) if origin)
@@ -88,6 +119,7 @@ class KitchenServer(ThreadingHTTPServer):
         # Where agents reach the inbox when the host exposes it (a tunnel, Funnel, a
         # router); Settings and the agent instructions show this instead of the local port.
         self.inbox_url = (inbox_url or "").rstrip("/") or None
+        self.web_dir = Path(web_dir).expanduser().resolve() if web_dir else None
         self._inbox_httpd = None
         self._inbox_thread = None
         self._inbox_lock = threading.Lock()
@@ -166,6 +198,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         return
+
+    def do_HEAD(self):
+        return self.do_GET()
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -259,11 +294,14 @@ class Handler(BaseHTTPRequestHandler):
                             limit=_limit(query),
                         ),
                     )
+            if self._serve_web(path):
+                return
             return self._send(404, {"error": "Not found"})
         except (NotFound, KeyError) as exc:
             return self._send(404, {"error": str(exc) or "Not found"})
         except ValueError as exc:
             return self._send(400, {"error": str(exc)})
+
     def do_POST(self):
         path = urlparse(self.path).path
         if not self._write_allowed():
@@ -503,7 +541,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
-        self.wfile.write(data)
+        self._write_body(data)
 
     def _plugins_get(self, path: str):
         with self._db() as conn:
@@ -778,7 +816,63 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "private, max-age=86400")
         self.end_headers()
-        self.wfile.write(data)
+        self._write_body(data)
+
+    def _serve_web(self, path: str) -> bool:
+        """Serve the built front end. True when this request was answered."""
+        web_dir = self.server.web_dir
+        if web_dir is None or _web_skipped(path):
+            return False
+        rel = _web_relative(path)
+        if rel is None:
+            self._send(403, {"error": "Not found"})
+            return True
+        root = web_dir.resolve()
+        if rel in ("", "index.html"):
+            self._send_web_file(root / "index.html", root, long_cache=False)
+            return True
+        candidate = (root / rel).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            self._send(403, {"error": "Not found"})
+            return True
+        if candidate.is_file():
+            self._send_web_file(candidate, root, long_cache=_web_long_cache(rel))
+            return True
+        # A missing hashed bundle must not become the shell (the client would
+        # treat HTML as a script). Anything else is an app route.
+        if rel == "assets" or rel.startswith("assets/"):
+            self._send(404, {"error": "Not found"})
+            return True
+        self._send_web_file(root / "index.html", root, long_cache=False)
+        return True
+
+    def _send_web_file(self, file: Path, root: Path, *, long_cache: bool) -> None:
+        try:
+            file = file.resolve()
+            file.relative_to(root)
+        except ValueError:
+            self._send(403, {"error": "Not found"})
+            return
+        if not file.is_file():
+            self._send(404, {"error": "Not found"})
+            return
+        try:
+            data = file.read_bytes()
+        except OSError:
+            self._send(404, {"error": "Not found"})
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", _web_type(file))
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", WEB_CACHE_LONG if long_cache else WEB_CACHE_SHORT)
+        self.end_headers()
+        self._write_body(data)
+
+    def _write_body(self, data: bytes) -> None:
+        if self.command != "HEAD":
+            self.wfile.write(data)
 
     def _db(self):
         conn = connect(self.server.db_path)
@@ -826,7 +920,7 @@ class Handler(BaseHTTPRequestHandler):
         if token:
             self.send_header("Set-Cookie", f"{COOKIE}={token}; HttpOnly; Path=/; SameSite=Lax")
         self.end_headers()
-        self.wfile.write(body)
+        self._write_body(body)
 
 
 class _closing:
@@ -1054,6 +1148,35 @@ def _short(value, label: str):
     return text
 
 
+def _web_skipped(path: str) -> bool:
+    return any(path == prefix or path.startswith(prefix + "/") for prefix in _WEB_RESERVED)
+
+
+def _web_relative(path: str) -> str | None:
+    """URL path as a relative posix path, or None when it tries to leave the root."""
+    decoded = unquote(path)
+    if "\x00" in decoded or "\\" in decoded or not decoded.startswith("/"):
+        return None
+    parts: list[str] = []
+    for part in decoded.split("/"):
+        if part in ("", "."):
+            continue
+        if part == "..":
+            return None
+        parts.append(part)
+    return "/".join(parts)
+
+
+def _web_long_cache(rel: str) -> bool:
+    if not rel.startswith("assets/"):
+        return False
+    return _HASHED_ASSET.search(rel.rsplit("/", 1)[-1]) is not None
+
+
+def _web_type(path: Path) -> str:
+    return _WEB_TYPES.get(path.suffix.lower()) or mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+
+
 def _surface(value):
     if value is None:
         return None
@@ -1134,15 +1257,24 @@ def main(argv: list[str] | None = None) -> int:
         default=[],
         help="Allowed Origin for writes (repeatable). Same-host Origin is always allowed.",
     )
+    parser.add_argument(
+        "--web",
+        default=os.environ.get("FESTIN_WEB") or None,
+        help="Serve the built front end from this directory (or FESTIN_WEB).",
+    )
     args = parser.parse_args(argv)
+    web = args.web.strip() if isinstance(args.web, str) else None
     server = KitchenServer(
         (args.host, args.port),
         args.db_path,
         origins=args.origin,
         inbox_port=args.inbox_port,
         inbox_url=args.inbox_url,
+        web_dir=web or None,
     )
     print(f"listening on http://{args.host}:{args.port}", flush=True)
+    if server.web_dir is not None:
+        print(f"web from {server.web_dir}", flush=True)
     if server.inbox_bound_port() is not None:
         print(f"inbox on {server.inbox_address()}", flush=True)
     try:

@@ -39,6 +39,8 @@ python -m festin.server data/kitchen.db --host 127.0.0.1 --port 8879
 npm run dev
 ```
 
+To serve the built app from the kitchen (one process): `npm run build`, then `python -m festin.server data/kitchen.db --web web/dist` (`FESTIN_WEB` is the same switch). Leave `--web` off in development; Vite still serves the front end and proxies `/api`.
+
 Chat needs a model key: set `OPENROUTER_API_KEY` or `FESTIN_MODEL_KEY` in the kitchen's environment, or put it in a `model.key` file (mode 0600) next to the database. Choose the model in Settings.
 
 Everything else lives in Settings: the table's name, the week's first day, the weather location, plugins and the incoming-recipes switch.
