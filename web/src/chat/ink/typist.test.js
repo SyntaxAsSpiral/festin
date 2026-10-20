@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_TYPE_CPS, KEYS_PER_FRAME, OVERLAP, STALL_RESET_MS } from './constants.js'
+import { DEFAULT_TYPE_CPS, KEYS_PER_FRAME, MIN_SEEP_PACE, OVERLAP, STALL_RESET_MS } from './constants.js'
 import { createTypist, keystrokeDelay, typistTick } from './typist.js'
 
 describe('ghost typist', () => {
@@ -50,6 +50,6 @@ describe('ghost typist', () => {
 
   it('reports the wet-band seep duration from the current pace', () => {
     const t = createTypist({ cps: DEFAULT_TYPE_CPS, now: 0 })
-    expect(t.seepMs).toBe(Math.round((OVERLAP / DEFAULT_TYPE_CPS) * 1000))
+    expect(t.seepMs).toBe(Math.round((OVERLAP / Math.max(MIN_SEEP_PACE, DEFAULT_TYPE_CPS)) * 1000))
   })
 })

@@ -45,7 +45,9 @@ describe('ink constants', () => {
   it('derives seep length from pace and the wet band', () => {
     expect(seepMs(160, 45)).toBe(281)
     expect(seepMs(160, 0)).toBe(0)
-    expect(seepMs(55, 20)).toBe(Math.round((20 / 55) * 1000))
-    expect(seepMs(40, 20)).toBe(Math.round((20 / 40) * 1000))
+    expect(seepMs(400, 60)).toBe(150)
+    // A slow pace seeps as if it were the tuned one, never longer.
+    expect(seepMs(55, 20)).toBe(125)
+    expect(seepMs(40, 60)).toBe(375)
   })
 })

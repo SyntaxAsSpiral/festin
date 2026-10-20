@@ -187,7 +187,7 @@ describe('turn machine', () => {
     expect(handIsPlain(45, true)).toBe(true)
     expect(seepMs(160, 45)).toBe(281)
     expect(seepMs(160, 0)).toBe(0)
-    expect(seepMs(80, 20)).toBe(250)
+    expect(seepMs(80, 20)).toBe(125)
     let s = run(sending(), ev({ type: 'delta', text: 'Plain words.' }), ev({ type: 'done' }))
     s = turnReducer(s, { type: 'tick', dt: 16, band: 0 })
     expect(s.phase).toBe('settled')

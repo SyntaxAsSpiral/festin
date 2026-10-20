@@ -33,10 +33,16 @@ export function clampWetBand(value, fallback = DEFAULT_WET_BAND) {
   return n
 }
 
-// Per-letter seep. Duration is the band divided by the pace, as on the study.
+// Per-letter seep. Duration is the band divided by the pace, as on the study,
+// but the pace counts as at least this. zk tuned the look at 160 letters a second
+// (281 ms at a band of 45). A reply starts at the 60-a-second base pace, so its
+// first letters would otherwise seep for a full second, a lone letter fading in
+// patchily on an empty page, and read as a flicker.
+export const MIN_SEEP_PACE = 160
+
 export function seepMs(pace, band = DEFAULT_WET_BAND) {
   const b = clampWetBand(band)
-  const p = Math.max(1, Number(pace) || 1)
+  const p = Math.max(MIN_SEEP_PACE, Number(pace) || 1)
   return Math.round((b / p) * 1000)
 }
 
