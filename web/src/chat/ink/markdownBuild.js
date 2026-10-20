@@ -61,7 +61,11 @@ function cloneShell(node, takeChar, inText) {
   if (node.nodeType === Node.TEXT_NODE) {
     if (!inText || isBreakGap(node)) return null
     const frag = document.createDocumentFragment()
-    for (let i = 0; i < node.textContent.length; i++) {
+    // One span per character, as charsIn counts. An emoji is two UTF-16 units but
+    // one character; taking a span per unit shifted every letter after it by one,
+    // and the first letter after a paragraph break landed in the paragraph above.
+    for (const unused of node.textContent) {
+      void unused
       const span = takeChar()
       if (span) frag.append(span)
     }
@@ -381,7 +385,14 @@ export function createInkBuilder(host) {
       return spans
     },
     setTyped(text) {
-      const src = String(text || '')
+      let src = String(text || '')
+      // The reveal counts UTF-16 units, so it can stop between the halves of an
+      // emoji. Show nothing of a half character; the next frame completes it.
+      if (/[\ud800-\udbff]$/.test(src)) src = src.slice(0, -1)
+      // Markdown drops trailing spaces, so a space at the edge gets no letter and
+      // the next delta would add only the word after it ("ink!My"). Hold it back
+      // until a letter follows; it then arrives with that word.
+      src = src.replace(/[ \t]+$/, '')
       if (src === lastSrc) return
       if (!src.startsWith(lastSrc)) {
         reset()
