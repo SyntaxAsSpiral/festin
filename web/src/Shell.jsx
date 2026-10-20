@@ -98,7 +98,7 @@ function Gear() {
         openSettings('model')
       }}
     >
-      ⚙
+      <span className="bar-art" style={{ '--art': 'url(/art/icons/settings.svg)' }} aria-hidden="true" />
     </button>
   )
 }
@@ -129,12 +129,7 @@ function PrintButton({ onMeals, card }) {
   return (
     <>
       <button type="button" className="ic" id="pr" aria-label="Print" title="Print" onClick={onPrint}>
-        <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
-          <path d="M4 6V2h8v4" />
-          <rect x="1.5" y="6" width="13" height="6" rx="1" />
-          <path d="M4 10h8v4H4z" fill="var(--bb-paper)" />
-          <circle cx="12" cy="8" r=".6" fill="currentColor" stroke="none" />
-        </svg>
+        <span className="bar-art" style={{ '--art': 'url(/art/icons/printer.svg)' }} aria-hidden="true" />
       </button>
       {toast ? (
         <div className="print-toast" role="status">

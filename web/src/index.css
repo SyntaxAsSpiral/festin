@@ -286,6 +286,15 @@ kbd {
   color: var(--bb-tone-4);
   font-size: 15px;
 }
+/* Artist's engraved UI icons, drawn as files in the bar's ink colour. */
+.bar-art {
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: currentColor;
+  -webkit-mask: var(--art) center / contain no-repeat;
+  mask: var(--art) center / contain no-repeat;
+}
 .bar .ic:hover {
   background: color-mix(in srgb, var(--bb-tone-1) 70%, var(--bb-paper));
   color: var(--bb-ink);

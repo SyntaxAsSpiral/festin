@@ -49,12 +49,29 @@
   flex: none;
 }
 .llayout { display: flex; }
+/* The tools are drawn icons centred in a box as tall as + new, so the space above
+   and below matches on every device (font symbols sat on each font's baseline). */
 .llayout button,
 .lsort-btn {
-  padding: 2px 9px;
+  box-sizing: border-box;
+  height: var(--btn-h);
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: 1px solid var(--bb-tone-2);
   color: var(--bb-tone-4);
+}
+.ltool-ic {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .llayout button + button { border-left: 0; }
 .llayout button[aria-pressed='true'],

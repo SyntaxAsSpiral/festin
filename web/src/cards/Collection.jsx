@@ -309,7 +309,9 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                 title="Sort and filter"
                 onClick={() => setSortOpen((o) => !o)}
               >
-                ⇅
+                <svg className="ltool-ic" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M5 13V3M2.5 5.5 5 3l2.5 2.5M11 3v10M8.5 10.5 11 13l2.5-2.5" />
+                </svg>
               </button>
               {sortOpen && (
                 <div id="lsort-panel" className="lsort-panel" role="dialog" aria-label="Sort and filter">
@@ -401,11 +403,18 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
             </div>
           )}
           <div className="llayout" role="group" aria-label="Layout">
-            <button type="button" aria-pressed={layout === 'list'} onClick={() => (rememberLayout(kind, 'list'), setLayout('list'))} title="List">
-              ☰
+            <button type="button" aria-pressed={layout === 'list'} onClick={() => (rememberLayout(kind, 'list'), setLayout('list'))} title="List" aria-label="List">
+              <svg className="ltool-ic" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M2.5 4h11M2.5 8h11M2.5 12h11" />
+              </svg>
             </button>
-            <button type="button" aria-pressed={layout === 'cards'} onClick={() => (rememberLayout(kind, 'cards'), setLayout('cards'))} title="Cards">
-              ▦
+            <button type="button" aria-pressed={layout === 'cards'} onClick={() => (rememberLayout(kind, 'cards'), setLayout('cards'))} title="Cards" aria-label="Cards">
+              <svg className="ltool-ic" viewBox="0 0 16 16" aria-hidden="true">
+                <rect x="2.5" y="2.5" width="4.5" height="4.5" rx=".6" />
+                <rect x="9" y="2.5" width="4.5" height="4.5" rx=".6" />
+                <rect x="2.5" y="9" width="4.5" height="4.5" rx=".6" />
+                <rect x="9" y="9" width="4.5" height="4.5" rx=".6" />
+              </svg>
             </button>
           </div>
         </div>
