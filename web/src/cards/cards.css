@@ -218,11 +218,12 @@
   background: none;
   font-size: 15px;
   line-height: 1;
-  color: var(--bb-tone-2);
+  /* tone-4: 3.4:1 on ivory, legible when off; the genus hue when on. */
+  color: var(--bb-tone-4);
   cursor: pointer;
 }
 .nfav { top: 6px; }
-.nqueue { top: 26px; font-size: 13px; }
+.nqueue { top: 27px; }
 .nfav:hover { color: var(--acc-mauve-glyph); }
 .nfav.on { color: var(--acc-mauve-glyph); }
 .nqueue:hover { color: var(--acc-green-glyph); }
@@ -232,7 +233,7 @@
   font-size: 12.5px;
   letter-spacing: 0.03em;
   font-variant-numeric: lining-nums tabular-nums;
-  color: var(--bb-tone-3);
+  color: var(--bb-tone-5);
 }
 .form-mark {
   display: inline-block;
@@ -721,6 +722,9 @@ html[data-motion='off'] .card-layer { transition: none; }
   color: var(--bb-sepia);
 }
 /* The category's engraved icon, drawn in the sepia ink through a mask. */
+/* List rows keep their italic line and gain the category's icon in front of it. */
+.nline-icon { display: flex; align-items: center; gap: 6px; }
+.nline-icon .ncat-icon { color: var(--bb-sepia); }
 .ncat-icon {
   flex: none;
   width: 18px;
@@ -761,17 +765,17 @@ html[data-motion='off'] .card-layer { transition: none; }
   --wash-praxis: color-mix(in srgb, var(--acc-blue) 20%, var(--bb-card));
   --wash-praxis-edge: color-mix(in srgb, var(--acc-blue-glyph) 45%, var(--bb-tone-1));
 }
-.nlist-cards .nitem.nitem-praxis,
+.nitem.nitem-praxis,
 .card.card-is-praxis {
   background-color: var(--wash-praxis);
   border-color: var(--wash-praxis-edge);
 }
-.nlist-cards .nitem.nitem-queued,
+.nitem.nitem-queued,
 .card.card-is-queued {
   background-color: var(--wash-queued);
   border-color: var(--wash-queued-edge);
 }
-.nlist-cards .nitem.nitem-fav,
+.nitem.nitem-fav,
 .card.card-is-fav {
   background-color: var(--wash-fav);
   border-color: var(--wash-fav-edge);

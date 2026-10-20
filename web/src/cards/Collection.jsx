@@ -471,6 +471,15 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                           <span className="nline nfrom">{String(face.line || '').replace(/^[^,]*,?\s*/, '')}</span>
                         )}
                       </>
+                    ) : kind === 'recipes' ? (
+                      <span className="nline nline-icon">
+                        <i
+                          className="ncat-icon"
+                          aria-hidden="true"
+                          style={{ '--icon': `url(/art/icons/${CATEGORY_LABELS[item.raw?.category] ? item.raw.category : 'uncategorized'}.svg)` }}
+                        />
+                        {face.line}
+                      </span>
                     ) : (
                       <span className="nline">{face.line}</span>
                     )}
