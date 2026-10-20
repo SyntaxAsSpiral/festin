@@ -403,8 +403,7 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
             "offset. The page defaults to 40 compact cards: id, title, category, kind, "
             "voice, tattva, searchDescription, favourite, queuedAt. Set full true only to read a "
             "whole card. favourite=true limits to hearts; queued=true limits to the to-cook "
-            "queue. When you name a card, write "
-            "its id beside the title as CBK-####."
+            "queue. When you name a card, link its title as [Title](CBK-####)."
         ),
         SEARCH_COOKBOOK_SCHEMA,
     ),
@@ -424,7 +423,7 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
             "record. The per-card list comes back only when a scope is set or list is "
             "true, never the whole catalog by default. not_cooked lists up to 3 example "
             "cards per category absent from the dinner window, varied each call. When "
-            "you name a card, write its id beside the title as CBK-####."
+            "you name a card, link its title as [Title](CBK-####)."
         ),
         ANALYZE_COOKBOOK_SCHEMA,
     ),

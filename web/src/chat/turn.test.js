@@ -157,6 +157,14 @@ describe('chat markdown', async () => {
     expect(renderChatMarkdown('`CBK-0012`')).not.toContain('data-recipe')
     expect(renderChatMarkdown('[see CBK-0012](/x)')).not.toContain('data-recipe')
   })
+  it('links a card on its title, without showing the id', () => {
+    const html = renderChatMarkdown('Make [Zuni Chicken](CBK-1408) tonight.')
+    expect(html).toContain('data-recipe="CBK-1408"')
+    expect(html).toContain('href="/recipes/CBK-1408"')
+    expect(html).toContain('>Zuni Chicken</a>')
+    expect(html).not.toContain('>CBK-1408<')
+    expect(html).not.toContain('target="_blank"')
+  })
   it('refuses unsafe links', () => {
     expect(renderChatMarkdown('[x](javascript:alert(1))')).not.toContain('href="javascript')
   })
