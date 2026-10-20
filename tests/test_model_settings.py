@@ -171,6 +171,25 @@ def test_model_key_source_env(kitchen, monkeypatch):
     assert "sk-env-only-do-not-echo" not in json.dumps(body)
 
 
+def test_model_key_from_host_secret_file(kitchen, monkeypatch, tmp_path):
+    from festin.chat.keys import resolve_model_key
+
+    for name in ("OPENROUTER_API_KEY", "FESTIN_MODEL_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    secret = tmp_path / "festin-model-key"
+    secret.write_text("sk-secret-file-do-not-echo\n", encoding="utf-8")
+    monkeypatch.setenv("FESTIN_MODEL_KEY_FILE", str(secret))
+    assert resolve_model_key(tmp_path / "data", DEFAULT_MODEL_BASE_URL) == "sk-secret-file-do-not-echo"
+    client = Client(kitchen.server_address[1])
+    status, body = client.request("GET", "/api/settings")
+    assert status == 200
+    assert body["model"]["keySource"] == "env"
+    assert "sk-secret-file-do-not-echo" not in json.dumps(body)
+    # A missing secret file is no key, never an error.
+    monkeypatch.setenv("FESTIN_MODEL_KEY_FILE", str(tmp_path / "absent"))
+    assert resolve_model_key(tmp_path / "data", DEFAULT_MODEL_BASE_URL) == ""
+
+
 class _Provider(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 

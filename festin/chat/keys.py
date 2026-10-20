@@ -33,6 +33,8 @@ def model_key_source(data_dir: str | Path, base_url: str) -> str:
                 return "env"
     elif os.environ.get("FESTIN_MODEL_KEY", "").strip():
         return "env"
+    if _key_from_env_file():
+        return "env"
     if model_key_is_set(data_dir):
         return "file"
     return "none"
@@ -84,8 +86,20 @@ def write_model_key(data_dir: str | Path, key: str) -> None:
             tmp.unlink(missing_ok=True)
 
 
+def _key_from_env_file() -> str:
+    """FESTIN_MODEL_KEY_FILE: a host secret holding only the key (e.g. /run/secrets/...)."""
+    name = os.environ.get("FESTIN_MODEL_KEY_FILE", "").strip()
+    if not name:
+        return ""
+    try:
+        return Path(name).read_text(encoding="utf-8").strip()[:_MAX_KEY]
+    except OSError:
+        return ""
+
+
 def resolve_model_key(data_dir: str | Path, base_url: str) -> str:
-    """Prefer env, then a 0600 model.key file next to the DB data dir."""
+    """Prefer env, then a host key file (FESTIN_MODEL_KEY_FILE), then a 0600
+    model.key file next to the DB data dir."""
     host = urlparse(base_url).hostname
     if host == "openrouter.ai":
         for name in ("OPENROUTER_API_KEY", "FESTIN_MODEL_KEY"):
@@ -96,6 +110,9 @@ def resolve_model_key(data_dir: str | Path, base_url: str) -> str:
         value = os.environ.get("FESTIN_MODEL_KEY", "").strip()
         if value:
             return value
+    value = _key_from_env_file()
+    if value:
+        return value
     key_file = model_key_path(data_dir)
     if key_file.is_file():
         return key_file.read_text(encoding="utf-8").strip()
