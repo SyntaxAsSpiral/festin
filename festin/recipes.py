@@ -121,20 +121,6 @@ def list_recipes(
     return {"recipes": [_card(item) for item in items], "nextCursor": next_cursor}
 
 
-def queued_titles(conn: sqlite3.Connection, *, limit: int = 12) -> list[dict]:
-    """Short queue for Babette's planning context: oldest first."""
-    rows = conn.execute(
-        """
-        SELECT id, title FROM recipes
-        WHERE queued_at IS NOT NULL
-        ORDER BY queued_at ASC, id ASC
-        LIMIT ?
-        """,
-        (max(1, min(limit, 40)),),
-    ).fetchall()
-    return [{"id": row["id"], "title": row["title"]} for row in rows]
-
-
 def get_recipe(conn: sqlite3.Connection, recipe_id: str) -> dict:
     close_ended_weeks(conn)
     row = _row(conn, recipe_id)
