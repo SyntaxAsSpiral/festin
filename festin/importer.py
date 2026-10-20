@@ -41,7 +41,7 @@ RECIPE_FIELDS = {
     "provenance",
     "status",
     "stub",
-    "needsPracticeReview",
+    "needsPracticeReview",  # live dump only; maps to cooks_before_log, never a column
     "searchDescription",
     "method",
     "notes",
@@ -647,7 +647,8 @@ def _replace_recipes(conn: sqlite3.Connection, document) -> None:
                 _text(recipe.get("provenance")),
                 _text(recipe.get("status")),
                 1 if recipe.get("stub") else 0,
-                1 if recipe.get("needsPracticeReview") else 0,
+                # Live flag false means already cooked-or-checked before the log existed.
+                0 if recipe.get("needsPracticeReview") else 1,
                 recipe.get("searchDescription") if isinstance(recipe.get("searchDescription"), str) else "",
                 recipe.get("method") if isinstance(recipe.get("method"), str) else "",
                 recipe.get("notes") if isinstance(recipe.get("notes"), str) else "",
@@ -671,7 +672,7 @@ def _replace_recipes(conn: sqlite3.Connection, document) -> None:
         """
         INSERT INTO recipes (
             id, title, kind, category, voice, source, provenance, status, stub,
-            needs_practice_review, search_description, method, notes, context, ocr_text,
+            cooks_before_log, search_description, method, notes, context, ocr_text,
             ingredients_json, applies_to_json, tattva_json, photos_json, created_at, updated_at, extra_json
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,

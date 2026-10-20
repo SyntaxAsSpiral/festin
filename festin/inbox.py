@@ -156,7 +156,6 @@ def parse_recipe(body: dict, agent: str) -> dict:
         "source": ", ".join(part for part in (voice if voice != "unknown" else "", source) if part),
         "provenance": "documented",
         "status": "confirmed",
-        "needsPracticeReview": True,
         "category": category,
         "searchDescription": " ".join(description.split()),
         "stub": False,
@@ -329,7 +328,7 @@ class InboxHandler(BaseHTTPRequestHandler):
                         "id": recipe["id"],
                         "title": recipe["title"],
                         "provenance": recipe["provenance"],
-                        "needsPracticeReview": recipe["needsPracticeReview"],
+                        "cookCount": recipe.get("cookCount", 0),
                         "status": recipe["status"],
                     },
                 )

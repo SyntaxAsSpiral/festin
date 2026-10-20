@@ -74,18 +74,19 @@ export function dayOf(iso) {
   return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''
 }
 
-/** Open-card meta: "Cooked 3 times · last 12 Oct". Empty when never cooked. */
+/** Open-card meta: "Cooked 3 times · last 12 Oct", or "Cooked once" with no date. */
 export function cookedMeta(recipe) {
   const n = Number(recipe?.cookCount) || 0
   if (n < 1) return ''
-  const times = n === 1 ? '1 time' : `${n} times`
   const last = recipe?.lastCooked
   const d = last ? new Date(last.length === 10 ? last + 'T12:00:00' : last) : null
   const when =
     d && !Number.isNaN(d.getTime())
       ? d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
       : ''
-  return when ? `Cooked ${times} · last ${when}` : `Cooked ${times}`
+  if (!when) return n === 1 ? 'Cooked once' : `Cooked ${n} times`
+  const times = n === 1 ? '1 time' : `${n} times`
+  return `Cooked ${times} · last ${when}`
 }
 
 // A chat's date. A real createdAt is the day. Imported chats are an approximation
@@ -296,7 +297,7 @@ export function setRecipeQueued(recipe, queued) {
   })
 }
 
-/** Record a cook: clears queue and practice review; does not rewrite tonight's slip. */
+/** Record a cook: clears the queue; does not rewrite tonight's slip. */
 export function markRecipeCooked(recipe) {
   return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id) + '/cooked', {
     expected_updated_at: recipe.updatedAt,
@@ -305,10 +306,7 @@ export function markRecipeCooked(recipe) {
 
 export function cookedNote(before, after) {
   const offQueue = Boolean(before?.queuedAt) && !after?.queuedAt
-  const offReview = Boolean(before?.needsPracticeReview) && !after?.needsPracticeReview
-  if (offQueue && offReview) return 'Cooked, and off the queue, and no longer waiting for review.'
   if (offQueue) return 'Cooked, and off the queue.'
-  if (offReview) return 'Cooked, and no longer waiting for review.'
   return 'Cooked.'
 }
 

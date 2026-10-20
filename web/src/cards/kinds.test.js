@@ -39,6 +39,11 @@ describe('cookedMeta', () => {
     expect(cookedMeta({ cookCount: 1, lastCooked: '2026-10-12' })).toMatch(/^Cooked 1 time · last /)
     expect(cookedMeta({ cookCount: 3, lastCooked: '2026-10-12' })).toMatch(/^Cooked 3 times · last /)
   })
+
+  it('says Cooked once for a carried cook with no date', () => {
+    expect(cookedMeta({ cookCount: 1 })).toBe('Cooked once')
+    expect(cookedMeta({ cookCount: 2 })).toBe('Cooked 2 times')
+  })
 })
 
 describe('plates', () => {

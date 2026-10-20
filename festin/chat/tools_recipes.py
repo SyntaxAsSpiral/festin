@@ -62,7 +62,6 @@ def recipe_public(row) -> dict:
         "provenance": row["provenance"],
         "status": row["status"],
         "stub": bool(row["stub"]),
-        "needsPracticeReview": bool(row["needs_practice_review"]),
         "favourite": bool(row["favourite"]),
         "queuedAt": row["queued_at"] if "queued_at" in row.keys() else None,
         "searchDescription": row["search_description"],
@@ -565,7 +564,7 @@ def _apply_changes_to_public(row: dict, changes: dict) -> dict:
 def _tool_edit_log_kind(original: dict, changes: dict) -> str | None:
     """One log line per Babette edit: planned, then favourite, else edit.
 
-    Clearing practice review is quiet — cooks are /cooked or the slip toggle.
+    Cooks are /cooked or the slip toggle.
     """
     was_queued = bool(original.get("queuedAt"))
     if "queued" in changes and not was_queued and changes.get("queued") is True:
@@ -573,13 +572,12 @@ def _tool_edit_log_kind(original: dict, changes: dict) -> str | None:
     was_favourite = bool(original.get("favourite"))
     if "favourite" in changes and not was_favourite and changes.get("favourite") is True:
         return "recipe_favourited"
-    material = {key: value for key, value in changes.items() if key != "needsPracticeReview"}
-    if set(material) <= {"favourite", "queued"}:
-        favourite_noop = "favourite" not in material or bool(material.get("favourite")) == was_favourite or (
-            was_favourite and material.get("favourite") is False
+    if set(changes) <= {"favourite", "queued"}:
+        favourite_noop = "favourite" not in changes or bool(changes.get("favourite")) == was_favourite or (
+            was_favourite and changes.get("favourite") is False
         )
-        queue_noop = "queued" not in material or bool(material.get("queued")) == was_queued or (
-            was_queued and material.get("queued") is False
+        queue_noop = "queued" not in changes or bool(changes.get("queued")) == was_queued or (
+            was_queued and changes.get("queued") is False
         )
         if favourite_noop and queue_noop:
             return None
@@ -588,74 +586,71 @@ def _tool_edit_log_kind(original: dict, changes: dict) -> str | None:
 
 def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
     queued_at = public.get("queuedAt")
-    columns = (
-        public["id"],
-        public["title"],
-        entry_kind(public),
-        public.get("category"),
-        public.get("voice") or "",
-        public.get("source") or "",
-        public.get("provenance"),
-        public.get("status"),
-        1 if public.get("stub") else 0,
-        1 if public.get("needsPracticeReview") else 0,
-        1 if public.get("favourite") else 0,
-        queued_at,
-        public.get("searchDescription") or "",
-        public.get("method") or "",
-        public.get("notes") or "",
-        public.get("context") or "",
-        public.get("ocrText") or "",
-        json.dumps(public.get("ingredients") or [], ensure_ascii=False),
-        json.dumps(public.get("appliesTo") or [], ensure_ascii=False),
-        json.dumps(public.get("tattva") or [], ensure_ascii=False),
-        json.dumps(public.get("photos") or [], ensure_ascii=False),
-        public.get("createdAt"),
-        stamp,
-        "{}",
-    )
     if creating:
         conn.execute(
             """
             INSERT INTO recipes (
                 id, title, kind, category, voice, source, provenance, status, stub,
-                needs_practice_review, favourite, queued_at, search_description, method, notes, context, ocr_text,
+                cooks_before_log, favourite, queued_at, search_description, method, notes, context, ocr_text,
                 ingredients_json, applies_to_json, tattva_json, photos_json, created_at, updated_at, extra_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            columns,
+            (
+                public["id"],
+                public["title"],
+                entry_kind(public),
+                public.get("category"),
+                public.get("voice") or "",
+                public.get("source") or "",
+                public.get("provenance"),
+                public.get("status"),
+                1 if public.get("stub") else 0,
+                1 if public.get("favourite") else 0,
+                queued_at,
+                public.get("searchDescription") or "",
+                public.get("method") or "",
+                public.get("notes") or "",
+                public.get("context") or "",
+                public.get("ocrText") or "",
+                json.dumps(public.get("ingredients") or [], ensure_ascii=False),
+                json.dumps(public.get("appliesTo") or [], ensure_ascii=False),
+                json.dumps(public.get("tattva") or [], ensure_ascii=False),
+                json.dumps(public.get("photos") or [], ensure_ascii=False),
+                public.get("createdAt"),
+                stamp,
+                "{}",
+            ),
         )
     else:
         conn.execute(
             """
             UPDATE recipes SET
                 title = ?, kind = ?, category = ?, voice = ?, source = ?, provenance = ?,
-                status = ?, stub = ?, needs_practice_review = ?, favourite = ?, queued_at = ?,
+                status = ?, stub = ?, favourite = ?, queued_at = ?,
                 search_description = ?, method = ?, notes = ?, context = ?, ocr_text = ?,
                 ingredients_json = ?, applies_to_json = ?, tattva_json = ?, photos_json = ?, updated_at = ?
             WHERE id = ?
             """,
             (
-                columns[1],
-                columns[2],
-                columns[3],
-                columns[4],
-                columns[5],
-                columns[6],
-                columns[7],
-                columns[8],
-                columns[9],
-                columns[10],
-                columns[11],
-                columns[12],
-                columns[13],
-                columns[14],
-                columns[15],
-                columns[16],
-                columns[17],
-                columns[18],
-                columns[19],
-                columns[20],
+                public["title"],
+                entry_kind(public),
+                public.get("category"),
+                public.get("voice") or "",
+                public.get("source") or "",
+                public.get("provenance"),
+                public.get("status"),
+                1 if public.get("stub") else 0,
+                1 if public.get("favourite") else 0,
+                queued_at,
+                public.get("searchDescription") or "",
+                public.get("method") or "",
+                public.get("notes") or "",
+                public.get("context") or "",
+                public.get("ocrText") or "",
+                json.dumps(public.get("ingredients") or [], ensure_ascii=False),
+                json.dumps(public.get("appliesTo") or [], ensure_ascii=False),
+                json.dumps(public.get("tattva") or [], ensure_ascii=False),
+                json.dumps(public.get("photos") or [], ensure_ascii=False),
                 stamp,
                 public["id"],
             ),
@@ -689,7 +684,6 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
             "appliesTo": [],
             "tattva": [],
             "stub": False,
-            "needsPracticeReview": False,
             "favourite": False,
             "queuedAt": None,
         }
@@ -777,7 +771,7 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
     if not creating:
         original = recipe_public(_recipe_row(conn, row["id"]))
         if original.get("provenance") == "ocr-draft" and row.get("provenance") != "ocr-draft":
-            raise ValueError("Keep OCR provenance; record a first cook with needsPracticeReview instead.")
+            raise ValueError("Keep OCR provenance; record a cook with cooked true instead.")
     stamp = stamp_now(ctx)
     if "queued" in changes:
         row["queuedAt"] = stamp if changes["queued"] else None
@@ -875,11 +869,13 @@ def _shared_chat_photos(conn) -> set[str]:
 
 
 def attach_recipe_photos(args: dict, ctx: Any) -> dict:
+    from festin import recipes as recipes_mod
+
     conn = ctx_get(ctx, "conn")
     data_dir = Path(ctx_get(ctx, "data_dir") or ".")
     photos_root = (data_dir / "photos").resolve()
     db_row = _recipe_row(conn, args.get("recipe_id"))
-    row = recipe_public(db_row)
+    row = recipes_mod.attach_cook_stats(conn, recipe_public(db_row))
     if args.get("expected_updated_at") != row.get("updatedAt"):
         raise ValueError("Recipe changed. Refresh before changing its photos.")
     paths = args.get("photo_paths")
@@ -920,7 +916,7 @@ def attach_recipe_photos(args: dict, ctx: Any) -> dict:
         )
     conn.commit()
     result = {"ok": True, "status": "saved", "recipe_id": row["id"], "photos": photos}
-    if row.get("needsPracticeReview"):
+    if int(row.get("cookCount") or 0) < 1:
         result["message"] = (
             "Cooking photos are on this card. If the household cooked this dish, "
             "call edit_recipe with only cooked true. "

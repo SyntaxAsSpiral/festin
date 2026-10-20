@@ -241,6 +241,10 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
     setChoice((c) => ({ ...c, toCookOnly }))
   }
 
+  function setNeverCookedOnly(neverCookedOnly) {
+    setChoice((c) => ({ ...c, neverCookedOnly }))
+  }
+
   function setForm(form) {
     setChoice((c) => ({ ...c, form }))
   }
@@ -371,6 +375,10 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                       <label className="lsort-opt">
                         <input type="checkbox" checked={Boolean(choice.toCookOnly)} onChange={(event) => setToCookOnly(event.target.checked)} />
                         To cook
+                      </label>
+                      <label className="lsort-opt">
+                        <input type="checkbox" checked={Boolean(choice.neverCookedOnly)} onChange={(event) => setNeverCookedOnly(event.target.checked)} />
+                        Never cooked
                       </label>
                     </>
                   )}

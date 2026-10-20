@@ -14,8 +14,8 @@ import {
   writeStoredChoice,
 } from './sortfilter.js'
 
-function item(id, title, category, favourite = false, kind = 'formule', queuedAt = null) {
-  return { id, title, raw: { id, title, category, favourite, kind, queuedAt }, search: title.toLowerCase() }
+function item(id, title, category, favourite = false, kind = 'formule', queuedAt = null, cookCount = 0) {
+  return { id, title, raw: { id, title, category, favourite, kind, queuedAt, cookCount }, search: title.toLowerCase() }
 }
 
 function note(id, title, open) {
@@ -23,11 +23,11 @@ function note(id, title, open) {
 }
 
 const SAMPLE = [
-  item('CBK-0003', 'Zebra Cake', 'cakes'),
-  item('CBK-0010', 'Apple Pie', 'pies-tarts', true, 'formule', '2026-10-18T12:00:00.000000Z'),
-  item('CBK-0001', 'Banana Bread', 'breads', false, 'formule', '2026-10-17T12:00:00.000000Z'),
-  item('CBK-0007', 'Carrot Cake', 'cakes', true),
-  item('CBK-0049', 'Stir-Fry', 'misc', false, 'praxis'),
+  item('CBK-0003', 'Zebra Cake', 'cakes', false, 'formule', null, 0),
+  item('CBK-0010', 'Apple Pie', 'pies-tarts', true, 'formule', '2026-10-18T12:00:00.000000Z', 2),
+  item('CBK-0001', 'Banana Bread', 'breads', false, 'formule', '2026-10-17T12:00:00.000000Z', 0),
+  item('CBK-0007', 'Carrot Cake', 'cakes', true, 'formule', null, 1),
+  item('CBK-0049', 'Stir-Fry', 'misc', false, 'praxis', null, 0),
 ]
 
 const NOTES = [
@@ -88,6 +88,11 @@ describe('applySortFilter', () => {
     const titles = applySortFilter(SAMPLE, { sort: 'name', toCookOnly: true }).map((r) => r.title)
     expect(titles).toEqual(['Banana Bread', 'Apple Pie'])
   })
+
+  it('filters to never cooked', () => {
+    const titles = applySortFilter(SAMPLE, { sort: 'name', neverCookedOnly: true }).map((r) => r.title)
+    expect(titles).toEqual(['Banana Bread', 'Stir-Fry', 'Zebra Cake'])
+  })
 })
 
 describe('notes pin and archive', () => {
@@ -123,6 +128,10 @@ describe('summarizeChoice', () => {
 
   it('names the to-cook filter', () => {
     expect(summarizeChoice({ sort: 'name', category: '', toCookOnly: true })).toBe('To cook')
+  })
+
+  it('names the never-cooked filter', () => {
+    expect(summarizeChoice({ sort: 'name', category: '', neverCookedOnly: true })).toBe('Never cooked')
   })
 
   it('names a form filter', () => {
@@ -169,6 +178,7 @@ describe('stored choice', () => {
       showArchived: false,
       favouritesOnly: true,
       toCookOnly: false,
+      neverCookedOnly: false,
     })
     expect(readStoredChoice('notes')).toEqual(DEFAULT_CHOICE)
   })
@@ -182,6 +192,7 @@ describe('stored choice', () => {
       showArchived: true,
       favouritesOnly: false,
       toCookOnly: false,
+      neverCookedOnly: false,
     })
   })
 
@@ -194,6 +205,7 @@ describe('stored choice', () => {
       showArchived: false,
       favouritesOnly: false,
       toCookOnly: false,
+      neverCookedOnly: false,
     })
   })
 
