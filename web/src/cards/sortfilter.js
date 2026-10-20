@@ -5,7 +5,14 @@ export const STORAGE_KEY = 'festin.sortfilter.'
 
 export const SORT_IDS = ['name', 'id-newest', 'id-oldest', 'date-newest', 'date-oldest']
 
-export const DEFAULT_CHOICE = Object.freeze({ sort: 'name', category: '', form: '', showArchived: false, favouritesOnly: false })
+export const DEFAULT_CHOICE = Object.freeze({
+  sort: 'name',
+  category: '',
+  form: '',
+  showArchived: false,
+  favouritesOnly: false,
+  toCookOnly: false,
+})
 
 export const FORM_IDS = ['formule', 'praxis']
 
@@ -23,7 +30,8 @@ export function isDefaultChoice(choice, kind = 'recipes') {
   const formOk = !choice.form
   const archOk = !choice.showArchived
   const favOk = !choice.favouritesOnly
-  return sortOk && catOk && formOk && archOk && favOk
+  const cookOk = !choice.toCookOnly
+  return sortOk && catOk && formOk && archOk && favOk && cookOk
 }
 
 export function cbkNumber(id) {
@@ -71,6 +79,17 @@ export function filterFavourites(items, favouritesOnly) {
   return items.filter((it) => it.raw && it.raw.favourite)
 }
 
+export function filterToCook(items, toCookOnly) {
+  if (!toCookOnly) return items
+  return items.filter((it) => it.raw && it.raw.queuedAt)
+}
+
+function byQueuedAt(a, b) {
+  const x = String(a?.raw?.queuedAt || '')
+  const y = String(b?.raw?.queuedAt || '')
+  return x.localeCompare(y) || byTitle(a, b)
+}
+
 export function filterByForm(items, form) {
   if (!form || !FORM_IDS.includes(form)) return items
   return items.filter((it) => {
@@ -116,8 +135,17 @@ export function applySortFilter(items, choice, kind = 'recipes') {
   }
 
   const favouritesOnly = Boolean(choice && choice.favouritesOnly)
+  const toCookOnly = Boolean(choice && choice.toCookOnly)
   const form = choice && FORM_IDS.includes(choice.form) ? choice.form : ''
-  return sortItems(filterFavourites(filterByForm(filterByCategory(list, category), form), favouritesOnly), sort)
+  let out = filterToCook(
+    filterFavourites(filterByForm(filterByCategory(list, category), form), favouritesOnly),
+    toCookOnly,
+  )
+  if (toCookOnly) {
+    out = out.slice().sort(byQueuedAt)
+    return out
+  }
+  return sortItems(out, sort)
 }
 
 export function summarizeChoice(choice, kind = 'recipes') {
@@ -135,10 +163,13 @@ export function summarizeChoice(choice, kind = 'recipes') {
     return parts.join(', ')
   }
   if (choice.favouritesOnly) parts.push('Favourites only')
+  if (choice.toCookOnly) parts.push('To cook')
   if (choice.form === 'formule') parts.push('Formule')
   else if (choice.form === 'praxis') parts.push('Praxis')
   if (choice.category && CATEGORY_LABELS[choice.category]) parts.push(CATEGORY_LABELS[choice.category])
-  if (choice.sort === 'id-newest') parts.push('by ID, newest first')
+  if (choice.toCookOnly) {
+    /* queue order is fixed oldest-first */
+  } else if (choice.sort === 'id-newest') parts.push('by ID, newest first')
   else if (choice.sort === 'id-oldest') parts.push('by ID, oldest first')
   return parts.join(', ')
 }
@@ -152,6 +183,7 @@ function normalizeChoice(raw, kind) {
     form: FORM_IDS.includes(raw.form) ? raw.form : '',
     showArchived: Boolean(raw.showArchived),
     favouritesOnly: Boolean(raw.favouritesOnly),
+    toCookOnly: Boolean(raw.toCookOnly),
   }
 }
 

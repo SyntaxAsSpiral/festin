@@ -118,6 +118,14 @@ RECIPE_FIELDS = {
             "(for example Mom loved the venison stroganoff). Clear only when asked."
         ),
     },
+    "queued": {
+        "type": "boolean",
+        "description": (
+            "To-cook queue mark. Set true only when the cook asks to plan or remember a "
+            "dish to cook. Clear when asked or when it has been cooked. Needing practice "
+            "review is not a reason to queue."
+        ),
+    },
     "tattva": {"type": "array", "items": {"type": "string"}},
     "searchDescription": {
         "type": "string",
@@ -185,6 +193,10 @@ CATALOG_FILTER_PROPERTIES = {
     "favourite": {
         "type": "boolean",
         "description": "When true, only favourited recipes. When false, only unmarked ones.",
+    },
+    "queued": {
+        "type": "boolean",
+        "description": "When true, only recipes on the to-cook queue. When false, only those not queued.",
     },
 }
 
@@ -285,7 +297,9 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
             "needsPracticeReview false in the same turn the household says the dish "
             "was made, or just after attach_recipe_photos of the cooked dish, without "
             "waiting to be asked again. Set favourite true when someone loved the dish "
-            "(a shared household heart). Clear favourite only when asked. If more than "
+            "(a shared household heart). Clear favourite only when asked. Set queued true "
+            "only when the cook asks to put a dish on the to-cook queue; needing practice "
+            "review is not a reason to queue. Clear queued when asked. If more than "
             "one card could be meant, ask which one. Never change provenance away from "
             "ocr-draft, and never change status. A cook is only needsPracticeReview false."
         ),
@@ -342,7 +356,7 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
         (
             "Search the household's past: saved chats (including older messages in "
             "this chat) and the Kitchen Log of recipe and note events (added, updated, "
-            "first cooked, favourited, photo added, note created, note archived). All "
+            "first cooked, favourited, planned, photo added, note created, note archived). All "
             "words must match. Pass days alone to list recent Log events. Returns chat "
             "IDs and message positions (read_chat_history for context) and dated Log "
             "events with their recipe or note IDs. Past dinners come from analyze_cookbook."
@@ -386,8 +400,9 @@ TOOL_SPECS: list[tuple[str, str, dict]] = [
             "and status match the whole field. tattva matches one name on the card. "
             "The query may be empty when a filter is set. Returns total, limit, and "
             "offset. The page defaults to 40 compact cards: id, title, category, kind, "
-            "voice, tattva, searchDescription, favourite. Set full true only to read a "
-            "whole card. favourite=true limits to hearts. When you name a card, write "
+            "voice, tattva, searchDescription, favourite, queuedAt. Set full true only to read a "
+            "whole card. favourite=true limits to hearts; queued=true limits to the to-cook "
+            "queue. When you name a card, write "
             "its id beside the title as CBK-####."
         ),
         SEARCH_COOKBOOK_SCHEMA,

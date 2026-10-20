@@ -7,6 +7,7 @@ import sqlite3
 from datetime import date, datetime, timedelta, timezone
 
 from festin import log as kitchen_log
+from festin import recipes as recipes_mod
 from festin import settings as core_settings
 from festin.errors import StaleState
 from festin.schema import WEEKDAYS
@@ -145,6 +146,11 @@ def save_plan(conn: sqlite3.Connection, week_start: str, body: dict, *, now: dat
             conn.execute(
                 "INSERT INTO night_ingredients (date, position, text) VALUES (?, ?, ?)",
                 (slot["date"], position, item),
+            )
+        # One rule with /cooked: a cooked night with a recipe clears its queue and review.
+        if slot["cooked"] and slot["recipe"]:
+            recipes_mod.clear_queue_and_review(
+                conn, slot["recipe"], stamp=stamp, cook_date=slot["date"]
             )
     conn.commit()
     return get_plan(conn, start.isoformat())

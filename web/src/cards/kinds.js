@@ -275,6 +275,29 @@ export function setRecipeFavourite(recipe, favourite) {
   })
 }
 
+export function setRecipeQueued(recipe, queued) {
+  return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id), {
+    expected_updated_at: recipe.updatedAt,
+    queued: Boolean(queued),
+  })
+}
+
+/** Record a cook: clears queue and practice review; does not rewrite tonight's slip. */
+export function markRecipeCooked(recipe) {
+  return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id) + '/cooked', {
+    expected_updated_at: recipe.updatedAt,
+  })
+}
+
+export function cookedNote(before, after) {
+  const offQueue = Boolean(before?.queuedAt) && !after?.queuedAt
+  const offReview = Boolean(before?.needsPracticeReview) && !after?.needsPracticeReview
+  if (offQueue && offReview) return 'Cooked, and off the queue, and no longer waiting for review.'
+  if (offQueue) return 'Cooked, and off the queue.'
+  if (offReview) return 'Cooked, and no longer waiting for review.'
+  return 'Cooked.'
+}
+
 // Cooked photos only. OCR box scans stay on the card and are not edited here.
 export function updateRecipePhotos(recipe, photos) {
   return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id) + '/photos', {
@@ -338,35 +361,7 @@ export function weekStartOn(iso, startDay) {
   return date.toISOString().slice(0, 10)
 }
 
-// Marks tonight's plan night cooked, and names this recipe on it.
-export async function cookTonight(recipe) {
-  const settings = await send('GET', '/api/settings')
-  const today = householdDate(settings.weather && settings.weather.timezone)
-  const start = weekStartOn(today, settings.weekStart)
-  const plan = await send('GET', '/api/plans/' + start)
-  let found = false
-  const days = (plan.days || []).map((day) => {
-    if (day.date !== today) return day
-    found = true
-    return { ...day, recipe: recipe.id, title: day.title || recipe.title || '', cooked: true }
-  })
-  if (!found) throw new Error("Tonight is not on this week's plan.")
-  await send('POST', '/api/plans/' + encodeURIComponent(start), {
-    weekStart: start,
-    slipTitle: plan.slipTitle || '',
-    notes: plan.notes || '',
-    ...(plan.plates ? { plates: plan.plates } : {}),
-    expected_updated_at: plan.updatedAt,
-    days,
-  })
-  // Cooking it is the practice review: a card waiting on one is cleared (and the
-  // Log records its first cook). Returns the saved card when it changed.
-  if (!recipe.needsPracticeReview) return null
-  return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id), {
-    expected_updated_at: recipe.updatedAt,
-    needsPracticeReview: false,
-  })
-}
+
 
 // Points this device's session at the chat. A mid-turn 409 stays the server's words.
 export function pointSessionAt(chatId) {

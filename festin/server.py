@@ -201,6 +201,7 @@ class Handler(BaseHTTPRequestHandler):
                             limit=_limit(query),
                             sample=_q(query, "sample") in ("1", "true"),
                             categories=[c for c in _q(query, "category").split(",") if c] or None,
+                            queued=_q(query, "queued") in ("1", "true"),
                         ),
                     )
             if path.startswith("/api/recipes/"):

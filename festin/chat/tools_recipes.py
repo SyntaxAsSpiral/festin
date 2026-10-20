@@ -64,6 +64,7 @@ def recipe_public(row) -> dict:
         "stub": bool(row["stub"]),
         "needsPracticeReview": bool(row["needs_practice_review"]),
         "favourite": bool(row["favourite"]),
+        "queuedAt": row["queued_at"] if "queued_at" in row.keys() else None,
         "searchDescription": row["search_description"],
         "method": row["method"],
         "notes": row["notes"],
@@ -154,6 +155,8 @@ def catalog_filters(args: dict) -> dict:
             filters[key] = folded
     if "favourite" in args and args.get("favourite") is not None:
         filters["favourite"] = flag(args.get("favourite"), "favourite")
+    if "queued" in args and args.get("queued") is not None:
+        filters["queued"] = flag(args.get("queued"), "queued")
     return filters
 
 
@@ -178,6 +181,10 @@ def row_in_scope(recipe: dict, filters: dict) -> bool:
             return False
     if "favourite" in filters and bool(recipe.get("favourite")) != filters["favourite"]:
         return False
+    if "queued" in filters:
+        is_queued = bool(recipe.get("queuedAt"))
+        if is_queued != filters["queued"]:
+            return False
     return True
 
 
@@ -218,6 +225,7 @@ def compact_card(recipe: dict) -> dict:
         "tattva": stored_tattva(recipe),
         "searchDescription": description if isinstance(description, str) else "",
         "favourite": bool(recipe.get("favourite")),
+        "queuedAt": recipe.get("queuedAt"),
     }
 
 
@@ -546,7 +554,7 @@ def _apply_changes_to_public(row: dict, changes: dict) -> dict:
 
 
 def _tool_edit_log_kind(original: dict, changes: dict) -> str | None:
-    """One log line per Babette edit: first cook wins, then favourite, else edit."""
+    """One log line per Babette edit: first cook, then planned, then favourite, else edit."""
     was_review = bool(original.get("needsPracticeReview"))
     if (
         "needsPracticeReview" in changes
@@ -554,22 +562,29 @@ def _tool_edit_log_kind(original: dict, changes: dict) -> str | None:
         and changes.get("needsPracticeReview") is False
     ):
         return "recipe_cooked"
+    was_queued = bool(original.get("queuedAt"))
+    if "queued" in changes and not was_queued and changes.get("queued") is True:
+        return "recipe_planned"
     was_favourite = bool(original.get("favourite"))
     if "favourite" in changes and not was_favourite and changes.get("favourite") is True:
         return "recipe_favourited"
-    if set(changes) <= {"favourite", "needsPracticeReview"}:
+    if set(changes) <= {"favourite", "needsPracticeReview", "queued"}:
         favourite_noop = "favourite" not in changes or bool(changes.get("favourite")) == was_favourite or (
             was_favourite and changes.get("favourite") is False
         )
         review_noop = "needsPracticeReview" not in changes or bool(
             changes.get("needsPracticeReview")
         ) == was_review
-        if favourite_noop and review_noop:
+        queue_noop = "queued" not in changes or bool(changes.get("queued")) == was_queued or (
+            was_queued and changes.get("queued") is False
+        )
+        if favourite_noop and review_noop and queue_noop:
             return None
     return "recipe_edited"
 
 
 def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
+    queued_at = public.get("queuedAt")
     columns = (
         public["id"],
         public["title"],
@@ -582,6 +597,7 @@ def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
         1 if public.get("stub") else 0,
         1 if public.get("needsPracticeReview") else 0,
         1 if public.get("favourite") else 0,
+        queued_at,
         public.get("searchDescription") or "",
         public.get("method") or "",
         public.get("notes") or "",
@@ -600,9 +616,9 @@ def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
             """
             INSERT INTO recipes (
                 id, title, kind, category, voice, source, provenance, status, stub,
-                needs_practice_review, favourite, search_description, method, notes, context, ocr_text,
+                needs_practice_review, favourite, queued_at, search_description, method, notes, context, ocr_text,
                 ingredients_json, applies_to_json, tattva_json, photos_json, created_at, updated_at, extra_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             columns,
         )
@@ -611,7 +627,7 @@ def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
             """
             UPDATE recipes SET
                 title = ?, kind = ?, category = ?, voice = ?, source = ?, provenance = ?,
-                status = ?, stub = ?, needs_practice_review = ?, favourite = ?,
+                status = ?, stub = ?, needs_practice_review = ?, favourite = ?, queued_at = ?,
                 search_description = ?, method = ?, notes = ?, context = ?, ocr_text = ?,
                 ingredients_json = ?, applies_to_json = ?, tattva_json = ?, photos_json = ?, updated_at = ?
             WHERE id = ?
@@ -636,6 +652,7 @@ def _write_public(conn, public: dict, *, creating: bool, stamp: str) -> None:
                 columns[17],
                 columns[18],
                 columns[19],
+                columns[20],
                 stamp,
                 public["id"],
             ),
@@ -671,6 +688,7 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
             "stub": False,
             "needsPracticeReview": False,
             "favourite": False,
+            "queuedAt": None,
         }
     else:
         db_row = _recipe_row(conn, args.get("recipe_id"))
@@ -703,6 +721,7 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
     for field, value in changes.items():
         _validate_field(field, value)
     row = _apply_changes_to_public(row, changes)
+    row.pop("queued", None)
     if "kind" in changes or creating:
         raw_kind = changes.get("kind", row.get("kind"))
         if raw_kind == "recipe":
@@ -735,10 +754,13 @@ def manage_recipe(name: str, args: dict, ctx: Any) -> dict:
         if original.get("provenance") == "ocr-draft" and row.get("provenance") != "ocr-draft":
             raise ValueError("Keep OCR provenance; record a first cook with needsPracticeReview instead.")
     stamp = stamp_now(ctx)
+    if "queued" in changes:
+        row["queuedAt"] = stamp if changes["queued"] else None
     if creating:
         row["id"] = _mint_id(conn)
         row["createdAt"] = stamp
         row["updatedAt"] = stamp
+        row.setdefault("queuedAt", None)
         _write_public(conn, row, creating=True, stamp=stamp)
         kitchen_log.record_event(
             conn,

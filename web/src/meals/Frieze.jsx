@@ -69,8 +69,21 @@ export function Frieze() {
 
   useEffect(() => {
     let gone = false
-    Promise.all(COURSES.map((cats) => fetchRecipeSample(MEALS, cats)))
-      .then((draws) => !gone && setRecipes(courseOrder(draws)))
+    // Queued dishes lead the frieze (oldest first); course draws fill the rest.
+    Promise.all([
+      fetch('/api/recipes?queued=1&limit=40', { headers: { Accept: 'application/json' } })
+        .then((res) => (res.ok ? res.json() : { recipes: [] }))
+        .then((body) => body.recipes || [])
+        .catch(() => []),
+      ...COURSES.map((cats) => fetchRecipeSample(MEALS, cats)),
+    ])
+      .then(([queued, ...draws]) => {
+        if (gone) return
+        const lead = queued || []
+        const seen = new Set(lead.map((r) => r.id))
+        const rest = courseOrder(draws).filter((r) => !seen.has(r.id))
+        setRecipes([...lead, ...rest])
+      })
       .catch(() => !gone && setRecipes([]))
     return () => {
       gone = true

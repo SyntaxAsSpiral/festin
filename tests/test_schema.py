@@ -12,7 +12,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert SCHEMA_VERSION == 14
+    assert SCHEMA_VERSION == 15
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "sessions" in tables
@@ -22,6 +22,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     assert "household_context" in tables
     recipe_columns = {row["name"] for row in conn.execute("PRAGMA table_info(recipes)")}
     assert "favourite" in recipe_columns
+    assert "queued_at" in recipe_columns
     assert "applies_to_json" in recipe_columns
     week_columns = {row["name"] for row in conn.execute("PRAGMA table_info(weeks)")}
     assert "weather_json" in week_columns
@@ -162,6 +163,8 @@ def test_v6_adds_log_events_and_week_weather(tmp_path):
     assert "note_archived" in kinds
     assert "recipe_favourited" in kinds
     assert "photo_added" in kinds
+    assert "recipe_planned" in kinds
+    assert "queued_at" in {row["name"] for row in conn.execute("PRAGMA table_info(recipes)")}
     conn.close()
 
 
@@ -326,7 +329,7 @@ def test_v14_renames_recipe_to_formule_and_moves_praxis_applies_to(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 14
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     soup = conn.execute("SELECT kind, ingredients_json, applies_to_json FROM recipes WHERE id = 'CBK-0001'").fetchone()
     mint = conn.execute("SELECT kind, ingredients_json, applies_to_json FROM recipes WHERE id = 'CBK-0002'").fetchone()
     assert soup["kind"] == "formule"
@@ -335,6 +338,7 @@ def test_v14_renames_recipe_to_formule_and_moves_praxis_applies_to(tmp_path):
     assert mint["kind"] == "praxis"
     assert mint["ingredients_json"] == "[]"
     assert mint["applies_to_json"] == '["mint","egg white","sugar"]'
+    assert "queued_at" in {row["name"] for row in conn.execute("PRAGMA table_info(recipes)")}
     # CHECK rejects the old kind name.
     try:
         conn.execute(

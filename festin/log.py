@@ -28,6 +28,7 @@ EVENT_KINDS = frozenset(
         "note_archived",
         "recipe_favourited",
         "photo_added",
+        "recipe_planned",
     }
 )
 
@@ -114,6 +115,7 @@ EVENT_WORDS = {
     "recipe_cooked": "recipe first cooked made",
     "recipe_favourited": "recipe favourited favourite favorite loved",
     "photo_added": "recipe photo added picture",
+    "recipe_planned": "recipe planned queued to-cook to cook",
     "note_created": "note created written",
     "note_archived": "note archived closed",
 }
@@ -291,7 +293,8 @@ def _derived_recipe_entries(conn: sqlite3.Connection) -> list[dict]:
             """
             SELECT ref_id, at FROM kitchen_log_events
             WHERE kind IN (
-                'recipe_edited', 'recipe_cooked', 'recipe_favourited', 'photo_added'
+                'recipe_edited', 'recipe_cooked', 'recipe_favourited', 'photo_added',
+                'recipe_planned'
             )
             """
         ).fetchall()
@@ -457,6 +460,8 @@ def _public(item: dict) -> dict:
         out["category"] = extra["category"]
     if kind in ("note_created", "note_archived") and extra.get("type"):
         out["type"] = extra["type"]
+    if kind == "recipe_cooked" and extra.get("date"):
+        out["date"] = extra["date"]
     return out
 
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { CATEGORY_LABELS, KINDS, loadItems, matches, setRecipeFavourite } from './kinds.js'
+import { CATEGORY_LABELS, KINDS, loadItems, matches, setRecipeFavourite, setRecipeQueued } from './kinds.js'
 import { rememberOrigin } from './origin.js'
 import {
   defaultChoice,
@@ -91,6 +91,20 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
       (saved) =>
         setItems((cur) =>
           cur.map((it) => (it.id === item.id ? { ...it, raw: { ...it.raw, favourite: saved.favourite, updatedAt: saved.updatedAt } } : it)),
+        ),
+      () => setReload((n) => n + 1),
+    )
+  }
+
+  function toggleQueued(item) {
+    setRecipeQueued(item.raw, !item.raw.queuedAt).then(
+      (saved) =>
+        setItems((cur) =>
+          cur.map((it) =>
+            it.id === item.id
+              ? { ...it, raw: { ...it.raw, queuedAt: saved.queuedAt, updatedAt: saved.updatedAt } }
+              : it,
+          ),
         ),
       () => setReload((n) => n + 1),
     )
@@ -223,6 +237,10 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
     setChoice((c) => ({ ...c, favouritesOnly }))
   }
 
+  function setToCookOnly(toCookOnly) {
+    setChoice((c) => ({ ...c, toCookOnly }))
+  }
+
   function setForm(form) {
     setChoice((c) => ({ ...c, form }))
   }
@@ -345,10 +363,16 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                     </fieldset>
                   )}
                   {kind === 'recipes' && (
-                    <label className="lsort-opt">
-                      <input type="checkbox" checked={Boolean(choice.favouritesOnly)} onChange={(event) => setFavouritesOnly(event.target.checked)} />
-                      Favourites only
-                    </label>
+                    <>
+                      <label className="lsort-opt">
+                        <input type="checkbox" checked={Boolean(choice.favouritesOnly)} onChange={(event) => setFavouritesOnly(event.target.checked)} />
+                        Favourites only
+                      </label>
+                      <label className="lsort-opt">
+                        <input type="checkbox" checked={Boolean(choice.toCookOnly)} onChange={(event) => setToCookOnly(event.target.checked)} />
+                        To cook
+                      </label>
+                    </>
                   )}
                   {kind === 'notes' && (
                     <label className="lsort-opt">
@@ -436,15 +460,26 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                     {face.tip && <span className="ntip">{face.tip}</span>}
                   </button>
                   {kind === 'recipes' && (
-                    <button
-                      type="button"
-                      className={'nfav' + (item.raw?.favourite ? ' on' : '')}
-                      aria-pressed={Boolean(item.raw?.favourite)}
-                      aria-label={(item.raw?.favourite ? 'Unfavourite ' : 'Favourite ') + item.title}
-                      onClick={() => toggleFavourite(item)}
-                    >
-                      {item.raw?.favourite ? '♥' : '♡'}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className={'nfav' + (item.raw?.favourite ? ' on' : '')}
+                        aria-pressed={Boolean(item.raw?.favourite)}
+                        aria-label={(item.raw?.favourite ? 'Unfavourite ' : 'Favourite ') + item.title}
+                        onClick={() => toggleFavourite(item)}
+                      >
+                        {item.raw?.favourite ? '♥' : '♡'}
+                      </button>
+                      <button
+                        type="button"
+                        className={'nqueue' + (item.raw?.queuedAt ? ' on' : '')}
+                        aria-pressed={Boolean(item.raw?.queuedAt)}
+                        aria-label={(item.raw?.queuedAt ? 'Remove from to-cook: ' : 'To cook: ') + item.title}
+                        onClick={() => toggleQueued(item)}
+                      >
+                        {item.raw?.queuedAt ? '⚑' : '⚐'}
+                      </button>
+                    </>
                   )}
                 </li>
               )

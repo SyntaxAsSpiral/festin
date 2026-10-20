@@ -7,8 +7,9 @@ import { useSurface } from '../chat/Surface.jsx'
 import {
   ConflictError,
   KINDS,
-  cookTonight,
+  cookedNote,
   loadItem,
+  markRecipeCooked,
   pointSessionAt,
   removeItem,
   removeRecipePhoto,
@@ -16,6 +17,7 @@ import {
   saveRecipe,
   toggleNote,
   setRecipeFavourite,
+  setRecipeQueued,
   toItem,
   updateRecipePhotos,
 } from './kinds.js'
@@ -341,6 +343,22 @@ export function CardOverlay({ kind, id, onChanged }) {
                   >
                     {raw.favourite ? '♥' : '♡'} Favourite
                   </button>
+                  <button
+                    type="button"
+                    className={'card-queue' + (raw.queuedAt ? ' on' : '')}
+                    aria-pressed={Boolean(raw.queuedAt)}
+                    title={raw.queuedAt ? 'On the to-cook queue' : 'To cook'}
+                    onClick={() =>
+                      act(() =>
+                        setRecipeQueued(raw, !raw.queuedAt).then((saved) => {
+                          applySaved(saved)
+                          setNote(saved.queuedAt ? 'On the to-cook queue.' : 'Off the to-cook queue.')
+                        }),
+                      )
+                    }
+                  >
+                    {raw.queuedAt ? '⚑' : '⚐'} To cook
+                  </button>
                   <button type="button" onClick={() => (setRecipeDraft(draftFrom(raw)), setPhase('editing'))}>
                     Edit
                   </button>
@@ -348,14 +366,14 @@ export function CardOverlay({ kind, id, onChanged }) {
                     type="button"
                     onClick={() =>
                       act(() =>
-                        cookTonight(raw).then((saved) => {
-                          if (saved) applySaved(saved)
-                          setNote(saved ? 'Cooked tonight, and no longer waiting for review.' : 'Cooked tonight.')
+                        markRecipeCooked(raw).then((saved) => {
+                          setNote(cookedNote(raw, saved))
+                          applySaved(saved)
                         }),
                       )
                     }
                   >
-                    Cooked tonight
+                    Cooked
                   </button>
                   <button type="button" disabled={photoBusy} onClick={() => photoPicker.current?.click()}>
                     Add photo

@@ -12,6 +12,7 @@ from pathlib import Path
 
 from festin import log as kitchen_log
 from festin.errors import NotFound, StaleState
+from festin.settings import get_settings, today as household_today, week_start_for
 
 PAGE_SIZE = 20
 RECIPE_ID = re.compile(r"^CBK-(\d+)$")
@@ -41,6 +42,7 @@ _LIST_FIELDS = {
     "appliesTo": "applies_to_json",
     "tattva": "tattva_json",
 }
+# `queued` is a bool toggle; storage is recipes.queued_at (ISO stamp or NULL).
 
 # Stored forms. Input may still say "recipe" for one release; that means formule.
 _FORM_KINDS = frozenset(("formule", "praxis"))
@@ -67,22 +69,20 @@ def list_recipes(
     limit: int = PAGE_SIZE,
     sample: bool = False,
     categories: list[str] | None = None,
+    queued: bool = False,
 ) -> dict:
     limit = _page_limit(limit)
     if sample:
-        # A random handful (the Meals frieze): one page, no cursor, optionally from
-        # some categories only ('misc' also takes recipes with no category).
-        sql, args = "SELECT * FROM recipes", []
-        if categories:
-            marks = ",".join("?" * len(categories))
-            sql += f" WHERE category IN ({marks})"
-            if "misc" in categories:
-                sql += " OR category IS NULL OR category = ''"
-            args.extend(categories)
-        rows = conn.execute(sql + " ORDER BY random() LIMIT ?", (*args, limit)).fetchall()
-        return {"recipes": [_card(_public(row)) for row in rows], "nextCursor": None}
+        # Queued first (oldest first), then a random handful for the Meals frieze.
+        # Optional categories: 'misc' also takes recipes with no category.
+        return {
+            "recipes": [_card(item) for item in _sample_with_queue(conn, limit, categories)],
+            "nextCursor": None,
+        }
     params: list = []
     where = []
+    if queued:
+        where.append("queued_at IS NOT NULL")
     if q:
         needle = f"%{' '.join(q.split()).casefold()}%"
         where.append(
@@ -93,21 +93,46 @@ def list_recipes(
         )
         params.extend([needle, needle, needle, needle, needle])
     if cursor:
-        title, recipe_id = _decode_cursor(cursor)
-        where.append("((title > ?) OR (title = ? AND id > ?))")
-        params.extend([title, title, recipe_id])
+        if queued:
+            stamp, recipe_id = _decode_queue_cursor(cursor)
+            where.append("((queued_at > ?) OR (queued_at = ? AND id > ?))")
+            params.extend([stamp, stamp, recipe_id])
+        else:
+            title, recipe_id = _decode_cursor(cursor)
+            where.append("((title > ?) OR (title = ? AND id > ?))")
+            params.extend([title, title, recipe_id])
     sql = "SELECT * FROM recipes"
     if where:
         sql += " WHERE " + " AND ".join(where)
-    sql += " ORDER BY title COLLATE NOCASE, id LIMIT ?"
+    if queued:
+        sql += " ORDER BY queued_at ASC, id ASC LIMIT ?"
+    else:
+        sql += " ORDER BY title COLLATE NOCASE, id LIMIT ?"
     params.append(limit + 1)
     rows = conn.execute(sql, params).fetchall()
     items = [_public(row) for row in rows[:limit]]
     next_cursor = None
     if len(rows) > limit:
         last = rows[limit - 1]
-        next_cursor = _encode_cursor(last["title"], last["id"])
+        if queued:
+            next_cursor = _encode_queue_cursor(last["queued_at"], last["id"])
+        else:
+            next_cursor = _encode_cursor(last["title"], last["id"])
     return {"recipes": [_card(item) for item in items], "nextCursor": next_cursor}
+
+
+def queued_titles(conn: sqlite3.Connection, *, limit: int = 12) -> list[dict]:
+    """Short queue for Babette's planning context: oldest first."""
+    rows = conn.execute(
+        """
+        SELECT id, title FROM recipes
+        WHERE queued_at IS NOT NULL
+        ORDER BY queued_at ASC, id ASC
+        LIMIT ?
+        """,
+        (max(1, min(limit, 40)),),
+    ).fetchall()
+    return [{"id": row["id"], "title": row["title"]} for row in rows]
 
 
 def get_recipe(conn: sqlite3.Connection, recipe_id: str) -> dict:
@@ -125,7 +150,7 @@ def create_recipe(
     if not isinstance(body, dict):
         raise ValueError("JSON object required")
     stamp = _stamp(now)
-    fields = _parse_fields(body, creating=True)
+    fields = _parse_fields(body, creating=True, stamp=stamp)
     if not fields.get("title"):
         raise ValueError("Cookbook cards require a title.")
     kind = fields.get("kind") or "formule"
@@ -159,6 +184,7 @@ def create_recipe(
         "stub": int(fields.get("stub") or 0),
         "needs_practice_review": int(fields.get("needs_practice_review") or 0),
         "favourite": int(fields.get("favourite") or 0),
+        "queued_at": fields.get("queued_at"),
         "search_description": fields.get("search_description") or "",
         "method": fields.get("method") or "",
         "notes": fields.get("notes") or "",
@@ -188,6 +214,15 @@ def create_recipe(
         detail=log_detail or "",
         extra={"category": columns.get("category")},
     )
+    if columns.get("queued_at"):
+        kitchen_log.record_event(
+            conn,
+            "recipe_planned",
+            ref_id=recipe_id,
+            at=stamp,
+            title=columns["title"],
+            extra={"category": columns.get("category")},
+        )
     conn.commit()
     return get_recipe(conn, recipe_id)
 
@@ -210,7 +245,8 @@ def edit_recipe(
         changes = {key: value for key, value in body.items() if key not in ("expected_updated_at", "expectedUpdatedAt", "id")}
     if not isinstance(changes, dict) or not changes:
         raise ValueError("Supply recipe fields to change.")
-    fields = _parse_fields(changes, creating=False)
+    stamp = _stamp(now)
+    fields = _parse_fields(changes, creating=False, stamp=stamp)
     if not fields:
         raise ValueError("Supply recipe fields to change.")
     if row["provenance"] == "ocr-draft" and fields.get("provenance") not in (None, "ocr-draft"):
@@ -220,7 +256,6 @@ def edit_recipe(
     for column, value in fields.items():
         assignments.append(f"{column} = ?")
         values.append(value)
-    stamp = _stamp(now)
     assignments.append("updated_at = ?")
     values.append(stamp)
     values.append(recipe_id)
@@ -276,19 +311,95 @@ def delete_recipe(conn: sqlite3.Connection, recipe_id: str, body: dict) -> dict:
 
 
 def mark_cooked(conn: sqlite3.Connection, recipe_id: str, body: dict, *, now: datetime | None = None) -> dict:
+    """Record a cook: clear queue + practice review; maybe mark a slip night.
+
+    Does not place the recipe onto tonight's slip. If the recipe already sits on
+    an uncooked night of the current week on or before today, that night is
+    marked cooked and its date is the cook date; otherwise the cook date is today.
+    """
     if not isinstance(body, dict):
         raise ValueError("JSON object required")
     if "needsPracticeReview" in body and body.get("needsPracticeReview") is not False:
         raise ValueError("Mark cooked only clears practice review.")
-    return edit_recipe(
-        conn,
-        recipe_id,
-        {
-            "expected_updated_at": body.get("expected_updated_at", body.get("expectedUpdatedAt")),
-            "changes": {"needsPracticeReview": False},
-        },
-        now=now,
+    row = _row(conn, recipe_id)
+    expected = body.get("expected_updated_at", body.get("expectedUpdatedAt"))
+    if expected != row["updated_at"]:
+        raise StaleState("Recipe changed. Refresh before editing.")
+    stamp = _stamp(now)
+    today = household_today(conn)
+    settings = get_settings(conn)
+    week_start = week_start_for(today, settings["week_start_day"]).isoformat()
+    night = conn.execute(
+        """
+        SELECT date FROM nights
+        WHERE week_start = ? AND recipe_id = ? AND cooked = 0 AND date <= ?
+        ORDER BY date DESC
+        LIMIT 1
+        """,
+        (week_start, recipe_id, today.isoformat()),
+    ).fetchone()
+    cook_date = night["date"] if night is not None else today.isoformat()
+    if night is not None:
+        conn.execute(
+            "UPDATE nights SET cooked = 1, updated_at = ? WHERE date = ?",
+            (stamp, night["date"]),
+        )
+    conn.execute(
+        """
+        UPDATE recipes
+        SET needs_practice_review = 0, queued_at = NULL, updated_at = ?
+        WHERE id = ?
+        """,
+        (stamp, recipe_id),
     )
+    kitchen_log.record_event(
+        conn,
+        "recipe_cooked",
+        ref_id=recipe_id,
+        at=stamp,
+        title=row["title"] or "",
+        detail=cook_date,
+        extra={"category": row["category"], "date": cook_date},
+    )
+    conn.commit()
+    return get_recipe(conn, recipe_id)
+
+
+def clear_queue_and_review(
+    conn: sqlite3.Connection,
+    recipe_id: str,
+    *,
+    stamp: str,
+    cook_date: str | None = None,
+) -> None:
+    """Slip cooked-toggle rule: clear queue mark and practice review. Caller commits."""
+    row = conn.execute(
+        "SELECT title, category, needs_practice_review, queued_at FROM recipes WHERE id = ?",
+        (recipe_id,),
+    ).fetchone()
+    if row is None:
+        return
+    was_review = bool(row["needs_practice_review"])
+    if not was_review and row["queued_at"] is None:
+        return
+    conn.execute(
+        """
+        UPDATE recipes
+        SET needs_practice_review = 0, queued_at = NULL, updated_at = ?
+        WHERE id = ?
+        """,
+        (stamp, recipe_id),
+    )
+    if was_review:
+        kitchen_log.record_event(
+            conn,
+            "recipe_cooked",
+            ref_id=recipe_id,
+            at=stamp,
+            title=row["title"] or "",
+            detail=cook_date or "",
+            extra={"category": row["category"], **({"date": cook_date} if cook_date else {})},
+        )
 
 
 def update_photos(
@@ -392,7 +503,7 @@ def _row(conn: sqlite3.Connection, recipe_id: str):
     return row
 
 
-def _parse_fields(body: dict, *, creating: bool) -> dict:
+def _parse_fields(body: dict, *, creating: bool, stamp: str | None = None) -> dict:
     fields = {}
     for key, column in _STRING_FIELDS.items():
         if key not in body:
@@ -425,7 +536,20 @@ def _parse_fields(body: dict, *, creating: bool) -> dict:
         if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
             raise ValueError("Invalid recipe field: " + key)
         fields[column] = json.dumps(value, ensure_ascii=False)
-    unknown = set(body) - set(_STRING_FIELDS) - set(_BOOL_FIELDS) - set(_LIST_FIELDS) - {"photos"}
+    if "queued" in body:
+        value = body["queued"]
+        if type(value) is not bool:
+            raise ValueError("Invalid recipe field: queued")
+        if stamp is None:
+            stamp = _stamp(None)
+        fields["queued_at"] = stamp if value else None
+    unknown = (
+        set(body)
+        - set(_STRING_FIELDS)
+        - set(_BOOL_FIELDS)
+        - set(_LIST_FIELDS)
+        - {"photos", "queued"}
+    )
     if creating:
         unknown -= set()
     if unknown and not creating:
@@ -440,6 +564,8 @@ def _public(row) -> dict:
     applies_to = json.loads(row["applies_to_json"] or "[]")
     tattva = json.loads(row["tattva_json"] or "[]")
     photos = json.loads(row["photos_json"] or "[]")
+    keys = row.keys() if hasattr(row, "keys") else []
+    queued_at = row["queued_at"] if "queued_at" in keys else None
     out = {
         "id": row["id"],
         "title": row["title"],
@@ -452,6 +578,7 @@ def _public(row) -> dict:
         "stub": bool(row["stub"]),
         "needsPracticeReview": bool(row["needs_practice_review"]),
         "favourite": bool(row["favourite"]),
+        "queuedAt": queued_at,
         "searchDescription": row["search_description"],
         "method": row["method"],
         "notes": row["notes"],
@@ -498,6 +625,7 @@ def _card(item: dict) -> dict:
         "stub": item["stub"],
         "needsPracticeReview": item["needsPracticeReview"],
         "favourite": item["favourite"],
+        "queuedAt": item.get("queuedAt"),
         "updatedAt": item["updatedAt"],
     }
 
@@ -524,26 +652,96 @@ def _decode_cursor(cursor: str) -> tuple[str, str]:
 
 
 def _edit_log_kind(row, fields: dict) -> str | None:
-    """One log line per save: first cook wins, then favourite, else a plain edit.
+    """One log line per save: first cook, then planned, then favourite, else edit.
 
-    Repeat saves of the same cook/favourite state, and unfavouriting alone, stay quiet.
+    Unqueueing, unfavouriting, and repeat same-state saves stay quiet.
     """
     was_review = bool(row["needs_practice_review"])
     if "needs_practice_review" in fields and was_review and not fields["needs_practice_review"]:
         return "recipe_cooked"
+    was_queued = row["queued_at"] is not None
+    if "queued_at" in fields and not was_queued and fields["queued_at"]:
+        return "recipe_planned"
     was_favourite = bool(row["favourite"])
     if "favourite" in fields and not was_favourite and fields["favourite"]:
         return "recipe_favourited"
-    if set(fields) <= {"favourite", "needs_practice_review"}:
+    quiet = {"favourite", "needs_practice_review", "queued_at"}
+    if set(fields) <= quiet:
         favourite_noop = "favourite" not in fields or bool(fields["favourite"]) == was_favourite or (
             was_favourite and not fields["favourite"]
         )
         review_noop = "needs_practice_review" not in fields or bool(
             fields["needs_practice_review"]
         ) == was_review
-        if favourite_noop and review_noop:
+        queue_noop = "queued_at" not in fields or (
+            (fields["queued_at"] is not None) == was_queued
+            or (was_queued and fields["queued_at"] is None)
+        )
+        if favourite_noop and review_noop and queue_noop:
             return None
     return "recipe_edited"
+
+
+def _sample_with_queue(
+    conn: sqlite3.Connection,
+    limit: int,
+    categories: list[str] | None,
+) -> list[dict]:
+    """Queued recipes first (oldest), then random fill for the frieze."""
+    cat_sql = ""
+    cat_args: list = []
+    if categories:
+        marks = ",".join("?" * len(categories))
+        cat_sql = f" AND (category IN ({marks})"
+        cat_args.extend(categories)
+        if "misc" in categories:
+            cat_sql += " OR category IS NULL OR category = ''"
+        cat_sql += ")"
+    queued_rows = conn.execute(
+        f"""
+        SELECT * FROM recipes
+        WHERE queued_at IS NOT NULL{cat_sql}
+        ORDER BY queued_at ASC, id ASC
+        LIMIT ?
+        """,
+        (*cat_args, limit),
+    ).fetchall()
+    items = [_public(row) for row in queued_rows]
+    if len(items) >= limit:
+        return items[:limit]
+    seen = {item["id"] for item in items}
+    need = limit - len(items)
+    sql = "SELECT * FROM recipes WHERE 1=1"
+    args: list = []
+    if categories:
+        marks = ",".join("?" * len(categories))
+        sql += f" AND (category IN ({marks})"
+        args.extend(categories)
+        if "misc" in categories:
+            sql += " OR category IS NULL OR category = ''"
+        sql += ")"
+    if seen:
+        marks = ",".join("?" * len(seen))
+        sql += f" AND id NOT IN ({marks})"
+        args.extend(sorted(seen))
+    rows = conn.execute(sql + " ORDER BY random() LIMIT ?", (*args, need)).fetchall()
+    items.extend(_public(row) for row in rows)
+    return items
+
+
+def _encode_queue_cursor(stamp: str, recipe_id: str) -> str:
+    return base64.urlsafe_b64encode(json.dumps([stamp, recipe_id]).encode()).decode().rstrip("=")
+
+
+def _decode_queue_cursor(cursor: str) -> tuple[str, str]:
+    pad = "=" * (-len(cursor) % 4)
+    try:
+        stamp, recipe_id = json.loads(base64.urlsafe_b64decode(cursor + pad))
+    except (ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise ValueError("Bad cursor") from exc
+    if not isinstance(stamp, str) or not isinstance(recipe_id, str):
+        raise ValueError("Bad cursor")
+    return stamp, recipe_id
 
 
 def _stamp(now: datetime | None) -> str:

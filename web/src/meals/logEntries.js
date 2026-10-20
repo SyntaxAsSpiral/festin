@@ -5,6 +5,7 @@ export const RECIPE_EVENT_KINDS = new Set([
   'recipe_edited',
   'recipe_cooked',
   'recipe_favourited',
+  'recipe_planned',
   'photo_added',
 ])
 
@@ -13,6 +14,7 @@ const META = {
   recipe_edited: { label: 'Recipe updated', rowClass: 'tl-r', modClass: 'tl-u' },
   recipe_cooked: { label: 'Recipe first cooked', rowClass: 'tl-cooked' },
   recipe_favourited: { label: 'Recipe favourited', rowClass: 'tl-fav' },
+  recipe_planned: { label: 'Recipe planned', rowClass: 'tl-planned' },
   photo_added: { label: 'Recipe photo added', rowClass: 'tl-photo' },
   note_created: { label: 'Note created', rowClass: 'tl-c' },
   note_archived: { label: 'Note archived', rowClass: 'tl-archived' },

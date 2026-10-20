@@ -14,8 +14,8 @@ import {
   writeStoredChoice,
 } from './sortfilter.js'
 
-function item(id, title, category, favourite = false, kind = 'formule') {
-  return { id, title, raw: { id, title, category, favourite, kind }, search: title.toLowerCase() }
+function item(id, title, category, favourite = false, kind = 'formule', queuedAt = null) {
+  return { id, title, raw: { id, title, category, favourite, kind, queuedAt }, search: title.toLowerCase() }
 }
 
 function note(id, title, open) {
@@ -24,8 +24,8 @@ function note(id, title, open) {
 
 const SAMPLE = [
   item('CBK-0003', 'Zebra Cake', 'cakes'),
-  item('CBK-0010', 'Apple Pie', 'pies-tarts', true),
-  item('CBK-0001', 'Banana Bread', 'breads'),
+  item('CBK-0010', 'Apple Pie', 'pies-tarts', true, 'formule', '2026-10-18T12:00:00.000000Z'),
+  item('CBK-0001', 'Banana Bread', 'breads', false, 'formule', '2026-10-17T12:00:00.000000Z'),
   item('CBK-0007', 'Carrot Cake', 'cakes', true),
   item('CBK-0049', 'Stir-Fry', 'misc', false, 'praxis'),
 ]
@@ -83,6 +83,11 @@ describe('applySortFilter', () => {
     const titles = applySortFilter(SAMPLE, { sort: 'name', category: 'cakes', favouritesOnly: true }).map((r) => r.title)
     expect(titles).toEqual(['Carrot Cake'])
   })
+
+  it('filters to the to-cook queue, oldest first', () => {
+    const titles = applySortFilter(SAMPLE, { sort: 'name', toCookOnly: true }).map((r) => r.title)
+    expect(titles).toEqual(['Banana Bread', 'Apple Pie'])
+  })
 })
 
 describe('notes pin and archive', () => {
@@ -114,6 +119,10 @@ describe('summarizeChoice', () => {
 
   it('names favourites only', () => {
     expect(summarizeChoice({ sort: 'name', category: '', favouritesOnly: true })).toBe('Favourites only')
+  })
+
+  it('names the to-cook filter', () => {
+    expect(summarizeChoice({ sort: 'name', category: '', toCookOnly: true })).toBe('To cook')
   })
 
   it('names a form filter', () => {
@@ -159,13 +168,21 @@ describe('stored choice', () => {
       form: 'praxis',
       showArchived: false,
       favouritesOnly: true,
+      toCookOnly: false,
     })
     expect(readStoredChoice('notes')).toEqual(DEFAULT_CHOICE)
   })
 
   it('remembers Show archived for notes', () => {
     writeStoredChoice('notes', { sort: 'name', showArchived: true })
-    expect(readStoredChoice('notes')).toEqual({ sort: 'name', category: '', form: '', showArchived: true, favouritesOnly: false })
+    expect(readStoredChoice('notes')).toEqual({
+      sort: 'name',
+      category: '',
+      form: '',
+      showArchived: true,
+      favouritesOnly: false,
+      toCookOnly: false,
+    })
   })
 
   it('fills favouritesOnly false for older stored choices', () => {
@@ -176,6 +193,7 @@ describe('stored choice', () => {
       form: '',
       showArchived: false,
       favouritesOnly: false,
+      toCookOnly: false,
     })
   })
 
