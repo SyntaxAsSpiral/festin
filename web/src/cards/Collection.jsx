@@ -42,11 +42,26 @@ function fleuronFor(id) {
   return FLEURONS[h % FLEURONS.length]
 }
 
+// Only a view the cook picked is remembered (per device). Otherwise phones start
+// in list, where cards would be one column anyway, and larger screens in cards.
+const LAYOUT_KEY = 'festin.layout.'
+const PHONE = '(max-width: 560px)'
+
 function storedLayout(kind) {
   try {
-    return localStorage.getItem('festin.view.' + kind) === 'list' ? 'list' : 'cards'
+    const picked = localStorage.getItem(LAYOUT_KEY + kind)
+    if (picked === 'list' || picked === 'cards') return picked
   } catch {
-    return 'cards'
+    /* per-device nicety only */
+  }
+  return window.matchMedia?.(PHONE).matches ? 'list' : 'cards'
+}
+
+function rememberLayout(kind, layout) {
+  try {
+    localStorage.setItem(LAYOUT_KEY + kind, layout)
+  } catch {
+    /* per-device nicety only */
   }
 }
 
@@ -132,13 +147,6 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
     }
   }, [kind, serverQuery, revision, reload])
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('festin.view.' + kind, layout)
-    } catch {
-      /* per-device nicety only */
-    }
-  }, [kind, layout])
 
   useEffect(() => {
     if (!canSort) return
@@ -393,10 +401,10 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
             </div>
           )}
           <div className="llayout" role="group" aria-label="Layout">
-            <button type="button" aria-pressed={layout === 'list'} onClick={() => setLayout('list')} title="List">
+            <button type="button" aria-pressed={layout === 'list'} onClick={() => (rememberLayout(kind, 'list'), setLayout('list'))} title="List">
               ☰
             </button>
-            <button type="button" aria-pressed={layout === 'cards'} onClick={() => setLayout('cards')} title="Cards">
+            <button type="button" aria-pressed={layout === 'cards'} onClick={() => (rememberLayout(kind, 'cards'), setLayout('cards'))} title="Cards">
               ▦
             </button>
           </div>
