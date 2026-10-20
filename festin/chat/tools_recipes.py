@@ -442,6 +442,49 @@ def recent_plans(conn, limit: int = 8) -> list[dict]:
     return [present_week(conn, week) for week in weeks]
 
 
+def planning_lists(scoped: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Compact favourites and the to-cook queue inside the report's scope.
+
+    Favourites: never cooked first, then oldest lastCooked. Queue: oldest queued first.
+    """
+    favourites = []
+    to_cook = []
+    for row in scoped:
+        category = stored_category(row)
+        title = row.get("title") or ""
+        cook_count = int(row.get("cookCount") or 0)
+        if row.get("favourite"):
+            favourites.append(
+                {
+                    "id": row.get("id"),
+                    "title": title,
+                    "category": category,
+                    "cookCount": cook_count,
+                    "lastCooked": row.get("lastCooked"),
+                }
+            )
+        queued_at = row.get("queuedAt")
+        if queued_at:
+            to_cook.append(
+                {
+                    "id": row.get("id"),
+                    "title": title,
+                    "category": category,
+                    "queuedAt": queued_at,
+                    "cookCount": cook_count,
+                }
+            )
+    favourites.sort(
+        key=lambda item: (
+            item["lastCooked"] is not None,
+            item["lastCooked"] or "",
+            item["id"] or "",
+        )
+    )
+    to_cook.sort(key=lambda item: (item["queuedAt"] or "", item["id"] or ""))
+    return favourites, to_cook
+
+
 def analyze_cookbook(args: dict, ctx: Any) -> dict:
     if args is None:
         args = {}
@@ -501,6 +544,7 @@ def analyze_cookbook(args: dict, ctx: Any) -> dict:
         ),
         "recent_plans": recent_plans(conn),
     }
+    report["favourites"], report["to_cook"] = planning_lists(scoped)
     if filters or flag(args.get("list"), "list"):
         report["recipes"] = briefs
     return report

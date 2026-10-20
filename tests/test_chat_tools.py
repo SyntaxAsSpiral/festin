@@ -350,6 +350,96 @@ def test_kept_note_starts_pinned_unless_asked_closed(kit):
     assert closed["saved"]["open"] is False
 
 
+def test_analyze_cookbook_favourites_and_queue_follow_scope(kit):
+    conn, registry, ctx = kit
+    from festin import log as kitchen_log
+
+    def plant(recipe_id, title, category, *, favourite=0, queued_at=None, cooks_before_log=0):
+        conn.execute(
+            """
+            INSERT INTO recipes (
+                id, title, category, favourite, queued_at, cooks_before_log
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (recipe_id, title, category, favourite, queued_at, cooks_before_log),
+        )
+
+    plant("CBK-0101", "Never Stew", "soups-stews", favourite=1, cooks_before_log=2)
+    plant("CBK-0102", "Older Stew", "soups-stews", favourite=1)
+    plant("CBK-0103", "Recent Stew", "soups-stews", favourite=1)
+    plant("CBK-0104", "Early Queue", "soups-stews", queued_at="2026-01-02T12:00:00.000Z")
+    plant("CBK-0105", "Late Queue", "soups-stews", queued_at="2026-08-01T12:00:00.000Z")
+    plant("CBK-0106", "Bread Heart", "breads", favourite=1)
+    plant("CBK-0107", "Bread Queue", "breads", queued_at="2026-03-01T12:00:00.000Z")
+    kitchen_log.record_event(
+        conn, "recipe_cooked", ref_id="CBK-0102", at="2020-01-01T18:00:00.000Z",
+        title="Older Stew", extra={"date": "2020-01-01"},
+    )
+    kitchen_log.record_event(
+        conn, "recipe_cooked", ref_id="CBK-0103", at="2026-06-01T18:00:00.000Z",
+        title="Recent Stew", extra={"date": "2026-06-01"},
+    )
+    conn.commit()
+
+    report = registry.dispatch("analyze_cookbook", {}, ctx)
+    hearts = report["favourites"]
+    queue = report["to_cook"]
+    assert [row["id"] for row in hearts] == ["CBK-0101", "CBK-0106", "CBK-0102", "CBK-0103"]
+    assert hearts[0]["lastCooked"] is None
+    assert hearts[0]["cookCount"] == 2
+    assert hearts[2]["lastCooked"] == "2020-01-01"
+    assert hearts[2]["cookCount"] == 1
+    assert [row["id"] for row in queue] == ["CBK-0104", "CBK-0107", "CBK-0105"]
+    assert set(hearts[0]) == {"id", "title", "category", "cookCount", "lastCooked"}
+    assert set(queue[0]) == {"id", "title", "category", "queuedAt", "cookCount"}
+    assert hearts[0]["title"] == "Never Stew"
+    assert queue[0]["queuedAt"] == "2026-01-02T12:00:00.000Z"
+
+    scoped = registry.dispatch("analyze_cookbook", {"category": "soups-stews"}, ctx)
+    assert [row["id"] for row in scoped["favourites"]] == ["CBK-0101", "CBK-0102", "CBK-0103"]
+    assert [row["id"] for row in scoped["to_cook"]] == ["CBK-0104", "CBK-0105"]
+    assert all(row["category"] == "soups-stews" for row in scoped["favourites"] + scoped["to_cook"])
+
+
+def test_new_chat_omits_the_queue(blank_db, tmp_path):
+    from festin.chat.messages import build_chat_messages
+    from festin.settings import get_settings
+
+    conn = connect(blank_db)
+    conn.execute(
+        """
+        INSERT INTO recipes (id, title, category, queued_at)
+        VALUES (?, ?, ?, ?)
+        """,
+        ("CBK-0201", "Queued stew", "soups-stews", "2026-10-01T12:00:00.000Z"),
+    )
+    conn.commit()
+    messages, _stored = build_chat_messages(
+        conn,
+        chat_id="chat-new",
+        settings=get_settings(conn),
+        week="2026-10-17",
+        editor_plan=None,
+        image_support=False,
+        data_dir=tmp_path,
+        opening_extras={"plugin_context": ["tattva: earth"]},
+    )
+    opening = next(
+        message["content"]
+        for message in messages
+        if str(message["content"]).startswith("New-chat context:")
+    )
+    payload = json.loads(opening.split("\n", 1)[1])
+    assert "to_cook" not in payload
+    assert set(payload["household_context"]) == {"household", "preferences", "restrictions"}
+    assert payload["current_week_dinners"]["days"]
+    assert payload["selected_dinner_week"] == "2026-10-17"
+    assert payload["five_day_weather"].startswith("Weather:")
+    assert payload["plugin_context"] == ["tattva: earth"]
+    assert payload["model_accepts_images"] is False
+    conn.close()
+
+
 def test_babette_new_recipe_is_generated(kit):
     conn, registry, ctx = kit
     saved = registry.dispatch(
