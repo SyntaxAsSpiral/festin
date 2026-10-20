@@ -839,6 +839,23 @@
     }
   },
   {
+    "description": "Private scratch, not shown to the household. What matters most right now, and what to follow up next chat (for example, 'ask how the Ispahan turned out'), plus pointers to where things live: card ids, note ids, chat ids, and the week in question, so the next chat can go straight to them. References and only the most immediate priorities. Overwrite rather than accumulate. At most 800 characters. Empty string when nothing is immediate. Not a diary, not a summary of the chat, and not household facts; those still go to update_household_context.",
+    "name": "set_scratch",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 800,
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    }
+  },
+  {
     "description": "Save any Saturday–Friday dinner week immediately. Exactly seven nights; blank nights allowed. Pass expected_updated_at from the saved plan, or null when the week has no saved plan. Read the week before replacing nights. When a night is one known recipe card, set recipe to its CBK id. Leave recipe null when unsure. A title that matches one recipe is linked on save; a title that matches several, or only a praxis card, is left unlinked. A missing link is allowed.",
     "name": "propose_dinners",
     "parameters": {

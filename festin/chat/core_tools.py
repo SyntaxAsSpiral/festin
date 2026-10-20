@@ -1,8 +1,9 @@
-"""Wire the seventeen core kitchen tools into a ToolRegistry."""
+"""Wire the eighteen core kitchen tools into a ToolRegistry."""
 
 from __future__ import annotations
 
 from festin import household as household_mod
+from festin import scratch as scratch_mod
 from festin.chat import schemas
 from festin.chat.registry import ToolRegistry
 from festin.chat import tools_history, tools_notes, tools_plans, tools_recipes
@@ -23,6 +24,7 @@ _HANDLERS = {
     "delete_note": tools_notes.delete_note,
     "keep_note": tools_notes.keep_note,
     "update_household_context": household_mod.update_household_context,
+    "set_scratch": scratch_mod.set_scratch,
     "search_history": tools_history.search_history,
     "read_chat_history": tools_history.read_chat_history,
 }
@@ -42,5 +44,5 @@ def register_core_tools(registry: ToolRegistry) -> ToolRegistry:
 
 
 def build_core_registry() -> ToolRegistry:
-    """Fresh registry with the seventeen core tools. Used by the turn engine."""
+    """Fresh registry with the eighteen core tools. Used by the turn engine."""
     return register_core_tools(ToolRegistry())

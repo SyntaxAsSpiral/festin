@@ -106,7 +106,7 @@ def test_outbound_plugin_lists_and_tools_follow_the_switch(blank_db):
         tools = {item["function"]["name"]: item["function"] for item in registry.openai_tools()}
         assert tools["send_list"]["parameters"]["required"] == ["list_name"]
         assert registry.tool_label("send_list") == "Sent a list"
-        assert len(registry.names()) == 18
+        assert len(registry.names()) == 19
 
         status, off = client.request("PUT", "/api/plugins/outbound", {"enabled": False})
         assert status == 200

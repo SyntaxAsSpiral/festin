@@ -10,6 +10,7 @@ from pathlib import Path
 from festin.chat.files import model_file_block
 from festin.chat.persona import persona
 from festin.chat.photos import model_image_parts
+from festin.scratch import opening_scratch
 from festin.settings import get_settings, today as household_today, week_start_for
 from festin.weather import weather_context
 
@@ -211,7 +212,7 @@ def editor_context(conn, week, editor_plan, on=None):
 WRITE_TOOLS = frozenset({
     "add_recipe", "edit_recipe", "delete_recipe", "append_recipe_context",
     "attach_recipe_photos", "keep_note", "edit_note", "delete_note",
-    "propose_dinners", "update_household_context", "prepare_slip", "print_slip",
+    "propose_dinners", "update_household_context", "set_scratch", "prepare_slip", "print_slip",
 })
 _TARGET_KEYS = ("recipe_id", "id", "note_id", "section", "weekStart", "week_start", "slip_id", "kind", "title")
 
@@ -380,6 +381,10 @@ def build_chat_messages(
         }
         if opening_extras:
             opening.update(opening_extras)
+        # Her scratch, this kitchen week only. Empty, and earlier weeks, stay out.
+        scratch = opening_scratch(conn, on)
+        if scratch:
+            opening["your_scratch"] = scratch
         messages.append(
             {"role": "system", "content": "New-chat context:\n" + json.dumps(opening, ensure_ascii=False)}
         )
