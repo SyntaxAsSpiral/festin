@@ -591,6 +591,21 @@ def _version_16(conn: sqlite3.Connection) -> None:
     )
 
 
+def _version_17(conn: sqlite3.Connection) -> None:
+    """Babette's private scratch: at most one row, never a household surface."""
+    conn.executescript(
+        """
+        CREATE TABLE babette_scratch (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            text TEXT NOT NULL DEFAULT '',
+            -- ISO date of the kitchen week the text was written in.
+            week_start TEXT NOT NULL,
+            updated_at TEXT
+        );
+        """
+    )
+
+
 # Version n is MIGRATIONS[n - 1]. user_version 0 runs every step.
 # v6 is the Kitchen Log. Plugin tables are v7. Shared favourites are v8.
 # v9 widens the kitchen log event kinds CHECK.
@@ -601,6 +616,7 @@ def _version_16(conn: sqlite3.Connection) -> None:
 # v14 renames recipe→formule and adds applies_to for praxis cards.
 # v15 adds recipes.queued_at and the recipe_planned log kind.
 # v16 drops needs_practice_review; cooks_before_log carries undated pre-log cooks.
+# v17 is Babette's private scratch (one row; not an API, Log, or settings field).
 MIGRATIONS = (
     _version_1,
     _version_2,
@@ -618,6 +634,7 @@ MIGRATIONS = (
     _version_14,
     _version_15,
     _version_16,
+    _version_17,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

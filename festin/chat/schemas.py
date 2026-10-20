@@ -43,6 +43,7 @@ CONTEXT_LIMITS = {"household": 800, "preferences": 800, "restrictions": 1000}
 OPEN_NOTE_CAP = 25
 CONTEXT_CAP = 1500
 DINNER_HISTORY_DAYS = 60
+SCRATCH_LIMIT = 800
 
 DEFAULT_TOOLS = Path(__file__).resolve().parent.parent / "data" / "tools.yaml"
 
@@ -141,6 +142,7 @@ _CORE_TOOL_NAMES = (
     "delete_note",
     "keep_note",
     "update_household_context",
+    "set_scratch",
     "propose_dinners",
 )
 
@@ -457,6 +459,18 @@ def tool_specs(path: str | Path | None = None) -> list[tuple[str, str, dict]]:
             },
         ),
         (
+            "set_scratch",
+            _require(text, "set_scratch"),
+            {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "maxLength": SCRATCH_LIMIT},
+                },
+                "required": ["text"],
+                "additionalProperties": False,
+            },
+        ),
+        (
             "propose_dinners",
             _require(text, "propose_dinners"),
             {
@@ -535,6 +549,7 @@ TOOL_LABELS = {
     "read_chat_history": "Read an earlier chat",
     "keep_note": "Kept a note",
     "update_household_context": "Updated household context",
+    "set_scratch": "Updated private scratch",
     "read_notes": "Read the notes",
     "analyze_notes": "Checked current notes",
     "search_notes": "Searched the notes",

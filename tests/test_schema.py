@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import sqlite3
+
+import pytest
+
 from festin.schema import MIGRATIONS, SCHEMA_VERSION, apply, connect
 
 
@@ -12,7 +16,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     conn.commit()
 
     apply(conn)
-    assert SCHEMA_VERSION == 16
+    assert SCHEMA_VERSION == 17
     assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "sessions" in tables
@@ -20,6 +24,7 @@ def test_v1_upgrades_to_current_and_apply_twice_is_a_noop(tmp_path):
     assert "plugin_settings" in tables
     assert "slips" in tables
     assert "household_context" in tables
+    assert "babette_scratch" in tables
     recipe_columns = {row["name"] for row in conn.execute("PRAGMA table_info(recipes)")}
     assert "favourite" in recipe_columns
     assert "queued_at" in recipe_columns
@@ -407,4 +412,26 @@ def test_v16_carries_cleared_review_without_event_as_cooks_before_log(tmp_path):
         for row in conn.execute("SELECT id, cooks_before_log FROM recipes")
     }
     assert by_id == {"CBK-0001": 1, "CBK-0002": 0, "CBK-0003": 0, "CBK-0004": 0}
+    conn.close()
+
+
+def test_v17_adds_one_row_babette_scratch(tmp_path):
+    conn = connect(tmp_path / "store.sqlite")
+    for step in MIGRATIONS[:16]:
+        step(conn)
+    conn.execute("PRAGMA user_version = 16")
+    conn.commit()
+
+    apply(conn)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(babette_scratch)")}
+    assert columns == {"id", "text", "week_start", "updated_at"}
+    assert conn.execute("SELECT count(*) FROM babette_scratch").fetchone()[0] == 0
+    conn.execute(
+        "INSERT INTO babette_scratch (id, text, week_start) VALUES (1, 'ask', '2026-10-17')"
+    )
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute(
+            "INSERT INTO babette_scratch (id, text, week_start) VALUES (2, 'more', '2026-10-17')"
+        )
     conn.close()
