@@ -17,6 +17,8 @@ from festin.settings import _local_instant, get_settings, today as household_tod
 
 PAGE_SIZE = 20
 SEE_ALSO_CAP = 3
+# Praxis "See also" links on formules are off until zk wants them (2026-10-21).
+SEE_ALSO_ON = False
 RECIPE_ID = re.compile(r"^CBK-(\d+)$")
 _WORD = re.compile(r"[^\W_]+", re.UNICODE)
 
@@ -128,7 +130,7 @@ def get_recipe(conn: sqlite3.Connection, recipe_id: str) -> dict:
     close_ended_weeks(conn)
     row = _row(conn, recipe_id)
     recipe = attach_cook_stats(conn, _public(row))
-    if recipe["kind"] == "formule":
+    if SEE_ALSO_ON and recipe["kind"] == "formule":
         recipe["seeAlso"] = see_also(conn, recipe)
     return recipe
 

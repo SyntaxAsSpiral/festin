@@ -34,7 +34,8 @@
   --slip-px: 30px;
   padding: var(--slip-px) var(--slip-px) 22px;
   border: 1px solid var(--bb-tone-2);
-  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  /* Linen, like the cards: the slip sits a shade lighter than the ivory page. */
+  background: var(--bb-card) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
   background-blend-mode: multiply;
   color: var(--bb-ink);
   font-family: var(--bb-font);

@@ -5,9 +5,24 @@ from __future__ import annotations
 import json
 from http.client import HTTPConnection
 
+import pytest
+
+from festin import recipes as recipes_mod
 from festin.recipes import create_recipe, get_recipe, see_also
 from festin.schema import connect
 from tests.conftest import start_kitchen, stop_kitchen
+
+
+@pytest.fixture
+def links_on(monkeypatch):
+    monkeypatch.setattr(recipes_mod, "SEE_ALSO_ON", True)
+
+
+def test_see_also_is_off_by_default(blank_db):
+    conn = connect(blank_db)
+    _praxis(conn, "Fats", ["egg"])
+    custard = _formule(conn, "Custard", ["2 eggs"])
+    assert "seeAlso" not in get_recipe(conn, custard["id"])
 
 
 def _formule(conn, title, ingredients, **extra):
@@ -22,7 +37,7 @@ def _praxis(conn, title, applies_to, **extra):
     return create_recipe(conn, body)
 
 
-def test_whole_word_plural_and_accent(blank_db):
+def test_whole_word_plural_and_accent(blank_db, links_on):
     conn = connect(blank_db)
     formule = _formule(conn, "Custard", ["2 eggs, beaten", "200g pâté", "3 egg whites"])
     egg = _praxis(conn, "Fats", ["egg"])
@@ -45,7 +60,7 @@ def test_whole_word_plural_and_accent(blank_db):
     conn.close()
 
 
-def test_cap_title_order_and_empty(blank_db):
+def test_cap_title_order_and_empty(blank_db, links_on):
     conn = connect(blank_db)
     formule = _formule(conn, "Omelette", ["2 eggs, beaten"])
     for title in ("Delta", "Alpha", "Gamma", "Beta"):
@@ -64,7 +79,7 @@ def test_cap_title_order_and_empty(blank_db):
     conn.close()
 
 
-def test_praxis_never_lists_itself_and_api_omits_see_also(blank_db):
+def test_praxis_never_lists_itself_and_api_omits_see_also(blank_db, links_on):
     conn = connect(blank_db)
     self_praxis = _praxis(conn, "Eggs themselves", ["egg"], ingredients=["2 eggs, beaten"])
     other = _praxis(conn, "Fats", ["eggs"])
@@ -75,7 +90,7 @@ def test_praxis_never_lists_itself_and_api_omits_see_also(blank_db):
     conn.close()
 
 
-def test_recipe_api_see_also_shape(blank_db):
+def test_recipe_api_see_also_shape(blank_db, links_on):
     server = start_kitchen(blank_db)
     try:
         port = server.server_address[1]
