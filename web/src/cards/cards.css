@@ -257,12 +257,14 @@
   background: currentColor;
   -webkit-mask: var(--art) center / contain no-repeat;
   mask: var(--art) center / contain no-repeat;
+  /* The artist's files carry a baseline rule at the foot (y 44 of 48); cut it off. */
+  clip-path: inset(0 0 12% 0);
 }
 .card-foot button.card-fav,
 .card-foot button.card-queue { gap: 6px; }
 .card-foot .art-ic { width: 16px; height: 16px; }
-.nfav { top: 6px; }
-.nqueue { top: 27px; }
+.nfav { top: 10px; }
+.nqueue { top: 31px; }
 .nfav:hover { color: var(--acc-mauve-glyph); }
 .nfav.on { color: var(--acc-mauve-glyph); }
 .nqueue:hover { color: var(--acc-green-glyph); }
