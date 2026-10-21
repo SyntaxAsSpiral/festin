@@ -48,7 +48,7 @@ export function Welcome() {
       <div className="welcome" role="dialog" aria-modal="true" aria-labelledby="welcome-title" tabIndex={-1} ref={dialog}>
         <h2 id="welcome-title">Bonjour. I&rsquo;m Babette.</h2>
         <p className="welcome-lede">
-          I keep the kitchen: the cookbook, the week&rsquo;s dinners, your notes and the printer. You talk like a person, and I keep the ledger.
+          I keep the kitchen&rsquo;s records so you don&rsquo;t have to. Talk to me about a recipe and I&rsquo;ll file it, tidy it and fill in the context. You talk like a person; I keep the ledger.
         </p>
         <dl className="welcome-pieces">
           {PIECES.map(([name, text]) => (
