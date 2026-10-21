@@ -31,8 +31,10 @@
   /* Parchment: one step down from ivory, clearly toned (showroom festin-paper). Defined,
      not yet used; a recessed panel or a darker ground would take it. */
   --bb-parchment: #eddfcc; /* L*89.5 */
-  /* Frieze: linen, a shade lighter than the ivory page, the plates drawn plain on it. */
-  --frieze-ground: var(--bb-card);
+  /* Frieze: the ivory page; each plate sits on its own linen square, and its paper (a pale
+     grey-beige) is lifted to white by --plate-lift so it multiplies away into the linen. */
+  --frieze-ground: var(--bb-paper);
+  --plate-lift: 1.1;
   --frieze-tile: transparent;
   /* Depth (zk 2026-10-21; study: showroom festin-paper/depth.html): sepia shadows at 1.3x,
      and the bright edge that catches the light. */
@@ -42,6 +44,10 @@
   --shade-hi: rgb(255 252 244);
   /* Lift and top light: the slip, the cards and the frieze plates. */
   --lift: inset 0 1px 0 var(--shade-hi), 0 1px 1px var(--shade-1), 0 5px 10px -4px var(--shade-2);
+  /* The same lift turned toward the page: Babette's rail faces left, her drawer up (zk's pick
+     from the depth study). */
+  --lift-left: inset 1px 0 0 var(--shade-hi), -1px 0 1px var(--shade-1), -5px 0 10px -4px var(--shade-2);
+  --lift-up: inset 0 1px 0 var(--shade-hi), 0 -1px 1px var(--shade-1), 0 -5px 10px -4px var(--shade-2);
   --bb-sepia: #7a5a3a; /* Babette's dried ink: chat replies settle to it */
   /* Colour genera (zk 2026-10-19; study: showroom festin-colour). A hue names the kind of
      meaning; the mark (filled dot, ring, wash, glyph) names which one. One genus per hue:

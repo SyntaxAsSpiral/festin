@@ -374,6 +374,9 @@
   width: 100%;
   flex: 1;
   min-height: 0;
+  /* The plate's own linen square; the image multiplies into it (isolated, so only here). */
+  background: var(--bb-card);
+  isolation: isolate;
   /* Lift; the bright top edge is drawn over the image below. */
   box-shadow: 0 1px 1px var(--shade-1), 0 5px 10px -4px var(--shade-2);
 }
@@ -384,13 +387,16 @@
   pointer-events: none;
   box-shadow: inset 0 1px 0 var(--shade-hi);
 }
-/* The plates are drawn plain: no filter, no blend. */
+/* The plate's paper is lifted to white and multiplied into the linen; the engraving keeps
+   its lines, only a touch lighter. */
 .frieze .tile img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
   border: 1px solid var(--bb-tone-1);
+  filter: brightness(var(--plate-lift));
+  mix-blend-mode: multiply;
 }
 .frieze .tile b {
   /* Read at a glance: bold, in the full ink, with a lit edge under the lettering. A long
