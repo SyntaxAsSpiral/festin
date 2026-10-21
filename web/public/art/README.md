@@ -8,7 +8,7 @@ zk's illustrations for Festin, the original files. Same licence as the code.
 | `../plates/` | The 20 engraved recipe-category plates (cards and recipe pages) |
 | `chrome/` | Corners, sidebars, icons, loading, offline and empty-state art; `.png` are transparent masters |
 | `chrome/favicon/` | Favicons |
-| `icons/` | 23 engraved icons drawn in currentColor: 21 recipe-category icons (one SVG per category slug) plus `printer` and `settings` UI icons |
+| `icons/` | 25 engraved icons drawn in currentColor: 21 recipe-category icons (one SVG per category slug) plus `printer`, `settings`, `fullscreen` and `unfullscreen` UI icons |
 | `wallpapers/landscape`, `wallpapers/portrait` | 24 seasonal wallpapers (season × weekday work, bead festin-3d6.15) |
 | `watermarks/` | Salon watermarks; `.png` are transparent masters |
 | `weekdays/` | Seven weekday vignettes; `.png` are transparent masters |

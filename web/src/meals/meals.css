@@ -330,28 +330,20 @@
   color: var(--bb-tone-3);
 }
 
-/* On a narrow slip the title takes the whole line, so a linked recipe's id rides the day
-   line instead of hiding: the day and today's clock leave room for it on the right. */
+/* On a narrow slip an unlinked title takes the whole line; a linked recipe keeps its id on the
+   title line at the right, and its title ends in an ellipsis to leave room for it. */
 @container slip (max-width: 340px) {
   .slip .row input.eid {
     display: none;
   }
   .slip .row.linked input.eid {
     display: block;
-    top: 7px;
-    bottom: auto;
-  }
-  .slip .row.linked .d {
-    padding-right: 66px;
-  }
-  .slip .row .d .today {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .slip .row .n {
     max-width: 100%;
+  }
+  .slip .row.linked .n {
+    max-width: calc(100% - 9ch);
   }
 }
 
