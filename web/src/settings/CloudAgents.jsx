@@ -90,6 +90,7 @@ export function CloudAgents({ plugin, enabled, busy, setBusy, onUpdated, note, s
               <div className="cloud-agent-actions">
                 <button
                   type="button"
+                  className="s-save"
                   disabled={busy || !enabled}
                   onClick={async () => {
                     const body = await run({
@@ -151,6 +152,7 @@ export function CloudAgents({ plugin, enabled, busy, setBusy, onUpdated, note, s
                 </button>
                 <button
                   type="button"
+                  className="s-danger"
                   disabled={busy || !enabled}
                   onClick={async () => {
                     await run({ op: 'remove', name: row.name })
@@ -208,7 +210,7 @@ export function CloudAgents({ plugin, enabled, busy, setBusy, onUpdated, note, s
         <div className="cloud-agent-actions">
           <button
             type="button"
-            className="primary"
+            className="s-save"
             disabled={busy || !enabled}
             onClick={async () => {
               const body = await run({

@@ -224,6 +224,7 @@ export function PluginPanel({ plugin, onUpdated }) {
             </p>
             <button
               type="button"
+              className="s-test"
               id={'p-test-' + plugin.id}
               disabled={!enabled || busy || !testAction}
               title={testAction ? 'Print a test slip' : 'No test action on the printer plugin'}

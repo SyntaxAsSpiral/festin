@@ -295,6 +295,40 @@
   color: var(--acc-green-ink);
   background: color-mix(in srgb, var(--acc-green) 18%, var(--bb-paper));
 }
+/* Resting washes: each action carries its colour genus very faintly, as the tabs do
+   (index.css): favourite mauve, to cook green, cooked yellow, photo and + new on
+   recipes peach, notes teal, Babette pink, danger red. Save is Send's green wash. */
+.card-foot button.card-fav,
+.card-foot button.card-queue,
+.card-foot button.card-cooked,
+.card-foot button.card-photo,
+.card-foot button.card-pin,
+.card-foot button.card-reopen,
+.card-foot button.card-save,
+.card-foot button.danger,
+.confirm-actions button.danger,
+.lnew {
+  background: color-mix(in srgb, var(--wash, transparent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--wash, var(--bb-tone-2)) 40%, var(--bb-tone-2));
+}
+.card-foot button.card-fav { --wash: var(--acc-mauve-glyph); }
+.card-foot button.card-queue { --wash: var(--acc-green-glyph); }
+.card-foot button.card-cooked { --wash: var(--acc-yellow-glyph); }
+.card-foot button.card-photo,
+.lnew[data-kind='recipes'] { --wash: var(--acc-peach-glyph); }
+.card-foot button.card-pin,
+.lnew[data-kind='notes'] { --wash: var(--acc-teal-glyph); }
+.card-foot button.card-reopen,
+.lnew[data-kind='chats'] { --wash: var(--acc-pink-glyph); }
+.card-foot button.danger,
+.confirm-actions button.danger { --wash: var(--acc-red-glyph); }
+.card-foot button.card-save {
+  color: var(--bb-ink);
+  background: color-mix(in srgb, var(--bb-green-latte) 24%, transparent);
+  border-color: color-mix(in srgb, var(--bb-green-latte) 60%, transparent);
+}
+.card-foot button.card-fav.on { background: color-mix(in srgb, var(--acc-mauve) 18%, var(--bb-paper)); }
+.card-foot button.card-queue.on { background: color-mix(in srgb, var(--acc-green) 18%, var(--bb-paper)); }
 .nline { font-style: italic; font-size: 13.5px; color: var(--bb-tone-4); }
 .ntip { font-size: 14.5px; color: var(--bb-tone-5); }
 

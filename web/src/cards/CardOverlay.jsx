@@ -330,6 +330,7 @@ export function CardOverlay({ kind, id, onChanged }) {
                   </button>
                   <button
                     type="button"
+                    className="card-save"
                     onClick={() =>
                       act(() =>
                         saveRecipe(creating ? null : raw, recipeDraft).then((saved) => (creating ? openSaved(saved) : applySaved(saved))),
@@ -344,6 +345,7 @@ export function CardOverlay({ kind, id, onChanged }) {
                 (editingNote ? (
                   <button
                     type="button"
+                    className="card-save"
                     onClick={() =>
                       act(() =>
                         saveNote(creating ? null : raw, { text: draft, color: creating ? noteColor : undefined }).then((saved) =>
@@ -359,6 +361,7 @@ export function CardOverlay({ kind, id, onChanged }) {
                     {raw && (
                       <button
                         type="button"
+                        className="card-pin"
                         onClick={() => act(() => toggleNote(raw).then((saved) => applySaved(saved)))}
                       >
                         {raw.open ? 'Archive' : 'Pin'}
@@ -400,7 +403,7 @@ export function CardOverlay({ kind, id, onChanged }) {
                   >
                     {raw.queuedAt ? '⚑' : '⚐'} To cook
                   </button>
-                  <button type="button" disabled={photoBusy} onClick={() => photoPicker.current?.click()}>
+                  <button type="button" className="card-photo" disabled={photoBusy} onClick={() => photoPicker.current?.click()}>
                     Add photo
                   </button>
                   <input
@@ -418,7 +421,7 @@ export function CardOverlay({ kind, id, onChanged }) {
                 </>
               )}
               {kind === 'chats' && raw && (
-                <button type="button" onClick={() => act(() => pointSessionAt(raw.id).then(() => open()))}>
+                <button type="button" className="card-reopen" onClick={() => act(() => pointSessionAt(raw.id).then(() => open()))}>
                   Reopen in Babette
                 </button>
               )}

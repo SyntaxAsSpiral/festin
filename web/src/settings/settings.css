@@ -226,7 +226,17 @@ html[data-motion='off'] #sidebar,
 #sidebar .cx.editing textarea {
   flex: 1 1 100%;
   margin-top: 6px;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--bb-ink);
+  background: var(--bb-card);
+  border: 1px solid var(--bb-tone-2);
+  border-radius: var(--btn-radius);
+  padding: 6px 8px;
+  outline: none;
 }
+#sidebar .cx.editing textarea:focus { border-color: var(--bb-rose); }
 
 #sidebar .sbf {
   display: flex;
@@ -419,8 +429,26 @@ html[data-motion='off'] #sidebar,
   padding-top: 10px;
   border-top: 1px dotted var(--bb-tone-3);
 }
-#sidebar .cloud-agent-actions button.primary {
-  background: color-mix(in srgb, var(--bb-yellow-frappe) 70%, transparent);
+/* Washed buttons, as on the card foot (cards.css): Save and Add take Send's green wash,
+   Clear key and Remove a faint red, Test sapphire and New key lavender (both hues
+   still unassigned in the colour genera). Hover deepens the wash. */
+#sidebar button.s-save:not(:disabled) {
+  color: var(--bb-ink);
+  background: color-mix(in srgb, var(--bb-green-latte) 24%, transparent);
+  border-color: color-mix(in srgb, var(--bb-green-latte) 60%, transparent);
+}
+#sidebar button.s-save:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--bb-green-latte) 36%, transparent);
+}
+#sidebar button.s-danger:not(:disabled) { --wash: var(--acc-red-glyph); color: var(--btn-danger-fg); }
+#sidebar button.s-test:not(:disabled) { --wash: var(--acc-sapphire-glyph); }
+#sidebar button.s-new:not(:disabled) { --wash: var(--acc-lavender-glyph); }
+#sidebar button:is(.s-danger, .s-test, .s-new):not(:disabled) {
+  background: color-mix(in srgb, var(--wash) 8%, transparent);
+  border-color: color-mix(in srgb, var(--wash) 40%, var(--bb-tone-2));
+}
+#sidebar button:is(.s-danger, .s-test, .s-new):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--wash) 16%, transparent);
 }
 
 @media (max-width: 600px) {

@@ -293,7 +293,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
         )}
         <div className="lbar-tools">
           {spec.canCreate && (
-            <button type="button" className="lnew" onClick={(event) => (rememberOrigin(event.currentTarget), navigate('/' + kind + '/new', { state: { fromList: true } }))}>
+            <button type="button" className="lnew" data-kind={kind} onClick={(event) => (rememberOrigin(event.currentTarget), navigate('/' + kind + '/new', { state: { fromList: true } }))}>
               + new
             </button>
           )}

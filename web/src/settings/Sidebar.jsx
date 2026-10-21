@@ -379,11 +379,11 @@ export function SettingsSidebar() {
                 />
                 <p className="fine">{keySourceMessage(draft.keySource, draft.keySet)}</p>
                 <p className="fine">
-                  <button type="button" onClick={() => commitKey(keyText)} disabled={busy || !keyText.trim()}>
+                  <button type="button" className="s-save" onClick={() => commitKey(keyText)} disabled={busy || !keyText.trim()}>
                     Save key
                   </button>
                   {draft.keySource === 'file' || draft.keySet ? (
-                    <button type="button" onClick={() => commitKey('')} disabled={busy}>
+                    <button type="button" className="s-danger" onClick={() => commitKey('')} disabled={busy}>
                       Clear key
                     </button>
                   ) : null}
@@ -391,7 +391,7 @@ export function SettingsSidebar() {
               </div>
               <div className="snc">
                 <p className="fine">Model name and base URL are saved with the other settings.</p>
-                <button type="button" onClick={runTest} disabled={busy}>
+                <button type="button" className="s-test" onClick={runTest} disabled={busy}>
                   Test
                 </button>
               </div>
@@ -460,7 +460,7 @@ export function SettingsSidebar() {
                   </p>
                 </div>
                 <p className="fine">
-                  <button type="button" onClick={mintInboxKey} disabled={busy}>
+                  <button type="button" className="s-new" onClick={mintInboxKey} disabled={busy}>
                     New key
                   </button>
                   {draft.inboxKeySet ? ' A key is set; only its hash is stored.' : ' No key yet — mint one for agents.'}
@@ -564,7 +564,7 @@ export function SettingsSidebar() {
                         <button type="button" onClick={() => setEditing(null)} disabled={busy}>
                           Cancel
                         </button>
-                        <button type="button" onClick={() => commitLane(lane.key)} disabled={busy}>
+                        <button type="button" className="s-save" onClick={() => commitLane(lane.key)} disabled={busy}>
                           Save
                         </button>
                       </>
