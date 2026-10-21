@@ -372,6 +372,7 @@
   border: 1px solid var(--bb-tone-1);
   background: var(--bb-card) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
   background-blend-mode: multiply;
+  box-shadow: var(--lift);
   padding: 0 12px 12px;
 }
 .nlist-cards .ntip { white-space: pre-line; }
@@ -410,7 +411,7 @@
   background: var(--bb-card) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
   background-blend-mode: multiply;
   border: 1px solid var(--bb-tone-2);
-  box-shadow: 0 1px 0 var(--bb-tone-1), 0 18px 40px -24px color-mix(in srgb, var(--bb-ink) 55%, transparent);
+  box-shadow: var(--lift);
   transform-origin: center;
   backface-visibility: hidden;
 }

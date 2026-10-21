@@ -31,8 +31,8 @@
   /* Parchment: one step down from ivory, clearly toned (showroom festin-paper). Defined,
      not yet used; a recessed panel or a darker ground would take it. */
   --bb-parchment: #eddfcc; /* L*89.5 */
-  /* Frieze: the ivory page itself, the plates drawn plain on it with a bevel. */
-  --frieze-ground: var(--bb-paper);
+  /* Frieze: linen, a shade lighter than the ivory page, the plates drawn plain on it. */
+  --frieze-ground: var(--bb-card);
   --frieze-tile: transparent;
   /* Depth (zk 2026-10-21; study: showroom festin-paper/depth.html): sepia shadows at 1.3x,
      and the bright edge that catches the light. */
@@ -40,6 +40,8 @@
   --shade-2: rgb(120 80 44 / 0.39);
   --shade-3: rgb(120 80 44 / 0.52);
   --shade-hi: rgb(255 252 244);
+  /* Lift and top light: the slip, the cards and the frieze plates. */
+  --lift: inset 0 1px 0 var(--shade-hi), 0 1px 1px var(--shade-1), 0 5px 10px -4px var(--shade-2);
   --bb-sepia: #7a5a3a; /* Babette's dried ink: chat replies settle to it */
   /* Colour genera (zk 2026-10-19; study: showroom festin-colour). A hue names the kind of
      meaning; the mark (filled dot, ring, wash, glyph) names which one. One genus per hue:
