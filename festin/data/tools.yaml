@@ -56,7 +56,7 @@ fields.kind: |
   formule answers what goes in (ingredients required, method optional). praxis answers how it is done (method required; list is appliesTo bare nouns, not ingredients). A praxis names what it applies to; if its value is what goes in, it is a formule. Omitted kind is a formule. Input alias recipe means formule for one release.
 
 fields.appliesTo: |
-  Bare nouns naming what a praxis is about. Prefer this over ingredients on a praxis card.
+  Bare nouns naming what a praxis is about. Prefer this over ingredients on a praxis card. Each noun is matched as a whole word against every recipe's ingredient lines to put a "See also" link on that recipe, so a common word ("bread", "flour", "eggs") links the praxis to dozens of unrelated cards. Use a specific noun or phrase ("bread machine recipes", "phyllo dough").
 
 fields.notes: |
   The household's own notes, printed with the card. Never put your inferences, assumptions or commentary here; those go in context.

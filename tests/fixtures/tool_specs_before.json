@@ -39,7 +39,7 @@
       "additionalProperties": false,
       "properties": {
         "appliesTo": {
-          "description": "Bare nouns naming what a praxis is about. Prefer this over ingredients on a praxis card.",
+          "description": "Bare nouns naming what a praxis is about. Prefer this over ingredients on a praxis card. Each noun is matched as a whole word against every recipe's ingredient lines to put a \"See also\" link on that recipe, so a common word (\"bread\", \"flour\", \"eggs\") links the praxis to dozens of unrelated cards. Use a specific noun or phrase (\"bread machine recipes\", \"phyllo dough\").",
           "items": {
             "type": "string"
           },
@@ -168,7 +168,7 @@
           "additionalProperties": false,
           "properties": {
             "appliesTo": {
-              "description": "Bare nouns naming what a praxis is about. Prefer this over ingredients on a praxis card.",
+              "description": "Bare nouns naming what a praxis is about. Prefer this over ingredients on a praxis card. Each noun is matched as a whole word against every recipe's ingredient lines to put a \"See also\" link on that recipe, so a common word (\"bread\", \"flour\", \"eggs\") links the praxis to dozens of unrelated cards. Use a specific noun or phrase (\"bread machine recipes\", \"phyllo dough\").",
               "items": {
                 "type": "string"
               },
