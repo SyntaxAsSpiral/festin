@@ -544,6 +544,27 @@ def test_recipe_photos_and_mark_cooked(kitchen):
     assert "needsPracticeReview" not in cooked
 
 
+def test_clear_cooks_undoes_the_recorded_cooks_and_checks_staleness(kitchen):
+    client = Client(kitchen.server_address[1])
+    _, recipe = client.request("POST", "/api/recipes", {"title": "Pie", "ingredients": ["flour"]})
+    _, cooked = client.request(
+        "POST", f"/api/recipes/{recipe['id']}/cooked", {"expected_updated_at": recipe["updatedAt"]}
+    )
+    assert cooked["cookCount"] == 1
+
+    status, _ = client.request(
+        "POST", f"/api/recipes/{recipe['id']}/clear-cooks", {"expected_updated_at": recipe["updatedAt"]}
+    )
+    assert status == 409
+
+    status, cleared = client.request(
+        "POST", f"/api/recipes/{recipe['id']}/clear-cooks", {"expected_updated_at": cooked["updatedAt"]}
+    )
+    assert status == 200
+    assert cleared["cookCount"] == 0
+    assert cleared["lastCooked"] is None
+
+
 def test_recipe_favourite_toggle_and_stale(kitchen):
     client = Client(kitchen.server_address[1])
     status, recipe = client.request(

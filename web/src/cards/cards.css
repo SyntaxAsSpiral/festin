@@ -204,6 +204,12 @@
   padding: 11px 4px 12px;
   cursor: pointer;
 }
+/* In list mode the rows alternate: ivory (the page) and linen (the cards). A wash, the
+   keyboard cursor or a hover still wins, being more specific than :where(). */
+:where(.nlist-list .ncol > li:nth-child(even)) > .nitem {
+  background: var(--bb-card) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
+}
 .nitem:hover .ntitle { color: var(--bb-rose); }
 .nitem[data-cursor] { background: color-mix(in srgb, var(--bb-yellow-latte) 35%, var(--bb-paper)); }
 .ntitle { font-size: 18px; line-height: 1.25; display: inline-flex; align-items: baseline; gap: 6px; }
@@ -446,6 +452,14 @@
   border-top: 1px solid var(--bb-tone-1);
 }
 .card-actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+/* On a phone a recipe's foot fits one row: the heart and the flag lose their words, and the
+   buttons tighten. */
+@media (max-width: 520px) {
+  .card-foot { gap: 6px; padding-left: 12px; padding-right: 12px; }
+  .card-foot .card-actions { gap: 6px; }
+  .card-foot button { padding: 0 8px; min-width: 0; }
+  .card-foot .lbl { display: none; }
+}
 .card-foot button,
 .confirm-actions button {
   box-sizing: border-box;
@@ -476,7 +490,7 @@
   color: var(--bb-rose);
   border: var(--btn-danger-border);
 }
-.card-cooked { display: inline-flex; align-items: center; gap: 6px; }
+.card-cooked { display: inline-flex; align-items: center; gap: 6px; user-select: none; -webkit-touch-callout: none; }
 /* The Log's cooked mark: the table's yellow, the alchemical fire. */
 .card-cooked-mark {
   width: 10px;

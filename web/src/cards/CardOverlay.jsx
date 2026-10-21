@@ -7,6 +7,7 @@ import { useSurface } from '../chat/Surface.jsx'
 import {
   ConflictError,
   KINDS,
+  clearRecipeCooks,
   cookedNote,
   loadItem,
   markRecipeCooked,
@@ -302,7 +303,11 @@ export function CardOverlay({ kind, id, onChanged }) {
                 <button
                   type="button"
                   className="card-cooked"
-                  title={cookedMeta(raw) || 'Not cooked yet'}
+                  title={(cookedMeta(raw) || 'Not cooked yet') + (raw.cookCount ? ' · right-click or hold to clear' : '')}
+                  onContextMenu={(event) => {
+                    event.preventDefault()
+                    if (raw.cookCount) setConfirming({ type: 'cooks' })
+                  }}
                   onClick={() =>
                     act(() =>
                       markRecipeCooked(raw).then((saved) => {
@@ -376,6 +381,7 @@ export function CardOverlay({ kind, id, onChanged }) {
                     className={'card-fav' + (raw.favourite ? ' on' : '')}
                     aria-pressed={Boolean(raw.favourite)}
                     title={raw.favourite ? 'Favourited' : 'Favourite'}
+                    aria-label={raw.favourite ? 'Favourited' : 'Favourite'}
                     onClick={() =>
                       act(() =>
                         setRecipeFavourite(raw, !raw.favourite).then((saved) => {
@@ -385,13 +391,14 @@ export function CardOverlay({ kind, id, onChanged }) {
                       )
                     }
                   >
-                    {raw.favourite ? '♥' : '♡'} Favourite
+                    {raw.favourite ? '♥' : '♡'} <span className="lbl">Favourite</span>
                   </button>
                   <button
                     type="button"
                     className={'card-queue' + (raw.queuedAt ? ' on' : '')}
                     aria-pressed={Boolean(raw.queuedAt)}
                     title={raw.queuedAt ? 'On the to-cook queue' : 'To cook'}
+                    aria-label={raw.queuedAt ? 'On the to-cook queue' : 'To cook'}
                     onClick={() =>
                       act(() =>
                         setRecipeQueued(raw, !raw.queuedAt).then((saved) => {
@@ -401,16 +408,15 @@ export function CardOverlay({ kind, id, onChanged }) {
                       )
                     }
                   >
-                    {raw.queuedAt ? '⚑' : '⚐'} To cook
+                    {raw.queuedAt ? '⚑' : '⚐'} <span className="lbl">To cook</span>
                   </button>
                   <button type="button" className="card-photo" disabled={photoBusy} onClick={() => photoPicker.current?.click()}>
-                    Add photo
+                    + Photo
                   </button>
                   <input
                     ref={photoPicker}
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
-                    capture="environment"
                     multiple
                     hidden
                     onChange={(event) => {
@@ -436,6 +442,24 @@ export function CardOverlay({ kind, id, onChanged }) {
             onYes={() => {
               setConfirming(null)
               act(() => removeItem(kind, raw).then(() => (onChanged?.(), close())))
+            }}
+          />
+        )}
+        {confirming?.type === 'cooks' && (
+          <Confirm
+            label="Clear the cooks?"
+            message="Clear this recipe's recorded cooks and their Kitchen Log entries? Dinners on past weeks' slips still count. It can't be brought back."
+            keepLabel="Keep them"
+            yesLabel="Clear"
+            onNo={() => setConfirming(null)}
+            onYes={() => {
+              setConfirming(null)
+              act(() =>
+                clearRecipeCooks(raw).then((saved) => {
+                  applySaved(saved)
+                  setNote(saved.cookCount ? 'Cooks cleared; ' + saved.cookCount + ' from past slips remain.' : 'Cooks cleared.')
+                }),
+              )
             }}
           />
         )}

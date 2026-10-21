@@ -578,6 +578,35 @@ def mark_cooked(conn: sqlite3.Connection, recipe_id: str, body: dict, *, now: da
     return get_recipe(conn, recipe_id)
 
 
+def clear_cooks(conn: sqlite3.Connection, recipe_id: str, body: dict, *, now: datetime | None = None) -> dict:
+    """Undo a recipe's recorded cooks: its Log events, its pre-log count, and the cooked
+    mark on its slip nights this week and later. Dinners on ended weeks' slips stay; they
+    are plan history and still count."""
+    if not isinstance(body, dict):
+        raise ValueError("JSON object required")
+    row = _row(conn, recipe_id)
+    expected = body.get("expected_updated_at", body.get("expectedUpdatedAt"))
+    if expected != row["updated_at"]:
+        raise StaleState("Recipe changed. Refresh before editing.")
+    stamp = _stamp(now)
+    settings = get_settings(conn)
+    week_start = week_start_for(household_today(conn), settings["week_start_day"]).isoformat()
+    conn.execute(
+        "DELETE FROM kitchen_log_events WHERE kind = 'recipe_cooked' AND ref_id = ?",
+        (recipe_id,),
+    )
+    conn.execute(
+        "UPDATE nights SET cooked = 0, updated_at = ? WHERE recipe_id = ? AND cooked = 1 AND week_start >= ?",
+        (stamp, recipe_id, week_start),
+    )
+    conn.execute(
+        "UPDATE recipes SET cooks_before_log = 0, updated_at = ? WHERE id = ?",
+        (stamp, recipe_id),
+    )
+    conn.commit()
+    return get_recipe(conn, recipe_id)
+
+
 def _has_cook_event(conn: sqlite3.Connection, recipe_id: str, cook_date: str) -> bool:
     """True when a recipe_cooked event already carries this cook date."""
     row = conn.execute(

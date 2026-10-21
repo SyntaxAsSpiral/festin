@@ -306,6 +306,12 @@ export function markRecipeCooked(recipe) {
   })
 }
 
+export function clearRecipeCooks(recipe) {
+  return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id) + '/clear-cooks', {
+    expected_updated_at: recipe.updatedAt,
+  })
+}
+
 export function cookedNote(before, after) {
   const offQueue = Boolean(before?.queuedAt) && !after?.queuedAt
   if (offQueue) return 'Cooked, and off the queue.'

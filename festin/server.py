@@ -343,6 +343,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(
                         200, recipes_mod.mark_cooked(conn, recipe_id, body, now=self.server.now())
                     )
+                if path.endswith("/clear-cooks") and path.startswith("/api/recipes/"):
+                    recipe_id = _id_after(path[: -len("/clear-cooks")], "/api/recipes/")
+                    return self._send(
+                        200, recipes_mod.clear_cooks(conn, recipe_id, body, now=self.server.now())
+                    )
                 if path.startswith("/api/recipes/"):
                     return self._send(
                         200,
