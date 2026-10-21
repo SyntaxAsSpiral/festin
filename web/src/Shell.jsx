@@ -15,6 +15,7 @@ import { ChatPanel, chatHeader, peekLine } from './chat/ChatPanel.jsx'
 import { useChat } from './chat/useChat.js'
 import { SettingsSidebar, useOpenSettings, useSettingsOpen } from './settings/Sidebar.jsx'
 import { Meals } from './meals/Meals.jsx'
+import { Welcome } from './welcome/Welcome.jsx'
 import { Frieze } from './meals/Frieze.jsx'
 import { getActiveMealsPlan } from './meals/activePlan.js'
 import { fetchPlugins, printerIsOn } from './meals/plan.js'
@@ -287,6 +288,7 @@ function ShellFrame({ boot }) {
       </div>
       <ChatDock tab={tab} card={card} />
       <SettingsSidebar />
+      <Welcome />
     </div>
   )
 }
