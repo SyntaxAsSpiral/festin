@@ -1,8 +1,6 @@
 # Festin
 
-A kitchen app for one household: the family recipe box, the week's dinners, and Babette, a cook who lives in the margin and helps plan, remember and write things down.
-
-Festin is a rebuild of a kitchen app that has been cooking every night for a while now. It is a work in progress, built in public, and not yet released.
+This project started as an homage to my grandmother.  She collected thousands of recipes over her life and had a very cute midcentury style and outlook. 
 
 ## What it does
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { transition } from './motion.js'
@@ -7,6 +7,7 @@ import { Placeholder } from './Placeholder.jsx'
 import { CardTab } from './cards/CardTab.jsx'
 import { LookingContext } from './cards/looking.js'
 import { useReducedMotion } from './useReducedMotion.js'
+import { exitWasUser, setWantsFullscreen, wantsFullscreen } from './fullscreen.js'
 import { PullRefresh } from './PullRefresh.jsx'
 import { defaultReload } from './pullRefresh.js'
 import Surface, { SurfaceProvider } from './chat/Surface.jsx'
@@ -35,19 +36,56 @@ function typingTarget(el) {
 
 function FullscreenButton() {
   const [on, setOn] = useState(false)
+  const hiddenAt = useRef(null)
   useEffect(() => {
-    const sync = () => setOn(Boolean(document.fullscreenElement))
+    const onVisibility = () => {
+      if (document.hidden) hiddenAt.current = Date.now()
+    }
+    const sync = () => {
+      const full = Boolean(document.fullscreenElement)
+      setOn(full)
+      if (full) return
+      // Another app or the screen sleeping ends full screen too; only a person leaving it
+      // forgets the wish. The hide event can trail the exit, so judge a moment later.
+      const exitAt = Date.now()
+      setTimeout(() => {
+        if (document.fullscreenElement) return
+        if (exitWasUser({ hidden: document.hidden, hiddenAt: hiddenAt.current, exitAt })) setWantsFullscreen(false)
+      }, 400)
+    }
+    document.addEventListener('visibilitychange', onVisibility)
     document.addEventListener('fullscreenchange', sync)
-    return () => document.removeEventListener('fullscreenchange', sync)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      document.removeEventListener('fullscreenchange', sync)
+    }
   }, [])
+  // While full screen is wished and lost, the next tap anywhere brings it back.
+  useEffect(() => {
+    if (on) return undefined
+    const rearm = (e) => {
+      if (!wantsFullscreen() || document.fullscreenElement) return
+      if (e.target instanceof Element && e.target.closest('#fs')) return
+      document.documentElement.requestFullscreen().catch(() => {})
+    }
+    document.addEventListener('pointerup', rearm, true)
+    return () => document.removeEventListener('pointerup', rearm, true)
+  }, [on])
   async function toggle() {
     try {
-      if (document.fullscreenElement) await document.exitFullscreen()
-      else await document.documentElement.requestFullscreen()
+      if (document.fullscreenElement) {
+        setWantsFullscreen(false)
+        await document.exitFullscreen()
+      } else {
+        await document.documentElement.requestFullscreen()
+        setWantsFullscreen(true)
+      }
     } catch {
       /* the browser refused; leave the button as it is */
     }
   }
+  // An installed app that launched full screen (the manifest asks for it) has nothing to toggle.
+  if (window.matchMedia('(display-mode: fullscreen)').matches) return null
   const label = on ? 'Exit full screen' : 'Full screen'
   return (
     <button type="button" className="ic" id="fs" aria-label={label} title={label} onClick={toggle}>
