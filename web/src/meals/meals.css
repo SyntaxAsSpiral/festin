@@ -393,11 +393,19 @@
   border: 1px solid var(--bb-tone-1);
 }
 .frieze .tile b {
-  font-weight: 500;
+  /* Read at a glance: bold, in the full ink, with a lit edge under the lettering. A long
+     title stops at three lines, so it never takes the plate's room. */
+  font-weight: 600;
+  color: var(--bb-ink);
+  text-shadow: 0 1px 0 var(--shade-hi);
   font-size: 13px;
   text-align: center;
   margin-top: 7px;
   line-height: 1.15;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 .frieze .tile.orn {
   height: auto !important;
