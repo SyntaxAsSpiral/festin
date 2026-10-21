@@ -130,12 +130,8 @@ a.msg-file:hover { border-color: var(--bb-rose); color: var(--bb-rose); }
 }
 .composer-bar button:disabled { opacity: 0.45; cursor: default; }
 .composer-bar button:focus-visible { outline: 1px dashed var(--bb-rose); outline-offset: 2px; }
-/* Send and Stop carry a wash so the turn's one action stands out from +file and +chat. */
-.composer .send {
-  color: var(--bb-ink);
-  background: color-mix(in srgb, var(--bb-green-latte) 24%, transparent);
-  border-color: color-mix(in srgb, var(--bb-green-latte) 60%, transparent);
-}
+/* Send is the filled sepia primary (index.css); Stop carries a rose wash, so the
+   turn's one action stands out from +file and +chat. */
 .composer .stop {
   color: var(--btn-danger-fg);
   background: color-mix(in srgb, var(--bb-rose) 16%, transparent);
