@@ -436,7 +436,7 @@
   width: 30px;
   height: 30px;
   border: 1px solid var(--bb-tone-2);
-  background: color-mix(in srgb, var(--bb-card) 85%, transparent);
+  background: var(--btn-bg);
   color: var(--bb-tone-4);
   cursor: pointer;
 }
@@ -877,4 +877,20 @@ html[data-motion='off'] .card-layer { transition: none; }
 .card.card-is-fav {
   background-color: var(--wash-fav);
   border-color: var(--wash-fav-edge);
+}
+
+/* Buttons are keycaps: a low edge under a bright top; pressed, they sink. */
+.card-icon,
+.card-foot button,
+.confirm-actions button,
+.lnew {
+  border-radius: var(--btn-radius);
+  box-shadow: var(--btn-key);
+}
+.card-icon:active,
+.card-foot button:active,
+.confirm-actions button:active,
+.lnew:active {
+  box-shadow: var(--btn-key-down);
+  transform: translateY(1px);
 }

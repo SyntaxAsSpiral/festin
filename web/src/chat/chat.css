@@ -247,3 +247,15 @@ a.msg-file:hover { border-color: var(--bb-rose); color: var(--bb-rose); }
     mask-image: none;
   }
 }
+
+/* Buttons are keycaps: a low edge under a bright top; pressed, they sink. */
+.listen,
+.composer-bar button {
+  border-radius: var(--btn-radius);
+  box-shadow: var(--btn-key);
+}
+.listen:active,
+.composer-bar button:active {
+  box-shadow: var(--btn-key-down);
+  transform: translateY(1px);
+}

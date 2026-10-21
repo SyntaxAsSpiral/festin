@@ -31,10 +31,15 @@
   /* Parchment: one step down from ivory, clearly toned (showroom festin-paper). Defined,
      not yet used; a recessed panel or a darker ground would take it. */
   --bb-parchment: #eddfcc; /* L*89.5 */
-  /* Frieze: the ivory page itself; plates multiply onto each tile's wash, so their white
-     grounds vanish into it. Tune the highlight with --frieze-tile. */
+  /* Frieze: the ivory page itself, the plates drawn plain on it with a bevel. */
   --frieze-ground: var(--bb-paper);
   --frieze-tile: transparent;
+  /* Depth (zk 2026-10-21; study: showroom festin-paper/depth.html): sepia shadows at 1.3x,
+     and the bright edge that catches the light. */
+  --shade-1: rgb(120 80 44 / 0.26);
+  --shade-2: rgb(120 80 44 / 0.39);
+  --shade-3: rgb(120 80 44 / 0.52);
+  --shade-hi: rgb(255 252 244);
   --bb-sepia: #7a5a3a; /* Babette's dried ink: chat replies settle to it */
   /* Colour genera (zk 2026-10-19; study: showroom festin-colour). A hue names the kind of
      meaning; the mark (filled dot, ring, wash, glyph) names which one. One genus per hue:
@@ -100,10 +105,13 @@
      weight/tone as the main tabs and list/cards toggle; one height and radius. */
   --btn-h: var(--tab-h);
   --btn-px: 10px;
-  --btn-radius: 4px;
+  --btn-radius: 3px;
   --btn-border: 1px solid var(--bb-tone-2);
   --btn-fg: var(--bb-tone-5);
-  --btn-bg: transparent;
+  --btn-bg: var(--bb-paper);
+  /* Keycap: a firm low edge under a bright top; pressed, it sinks. */
+  --btn-key: inset 0 1px 0 var(--shade-hi), 0 2px 0 var(--shade-3);
+  --btn-key-down: inset 0 1px 2px var(--shade-2), 0 1px 0 var(--shade-3);
   --btn-min-w: 2.25em;
   --btn-danger-fg: var(--bb-rose);
   --btn-danger-border: 1px solid color-mix(in srgb, var(--bb-rose) 40%, transparent);
@@ -223,10 +231,11 @@ kbd {
   position: relative;
   z-index: 31;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   flex: none;
   gap: var(--bar-gap);
-  padding: var(--bar-py) var(--bar-px);
+  /* The tabs are folders: they stand on the bar's rule, so it has no bottom padding. */
+  padding: calc(var(--bar-py) * 2) var(--bar-px) 0;
   border-bottom: 1px solid var(--bb-tone-2);
   background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
   background-blend-mode: multiply;
@@ -234,44 +243,49 @@ kbd {
 .bar-gap { flex: 1; }
 .views {
   display: inline-flex;
-  height: calc(var(--tab-h) + 2px);
-  border: 1px solid var(--bb-tone-2);
-  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
-  background-blend-mode: multiply;
+  align-items: flex-end;
+  gap: 2px;
 }
 .views a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: var(--tab-h);
+  /* Folder tabs: the shut ones sit lower and darker; the open one stands up and joins the page. */
+  height: calc(var(--tab-h) - 2px);
   padding: 0 var(--tab-px);
-  border-right: 1px solid var(--bb-tone-2);
+  border: 1px solid var(--bb-tone-2);
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
   color: var(--bb-tone-5);
   text-decoration: none;
   font-size: 13px;
   white-space: nowrap;
   position: relative;
+  box-shadow: inset 0 -3px 4px -2px var(--shade-2);
 }
-.views a:last-child { border-right: 0; }
 /* Each tab carries its section's accent, very faintly (same accents as the
    Kitchen Log): Meals rosewater, Recipes peach, Notes teal, Chats pink. */
 .views a[data-tab='meals'] { --tab-acc: var(--acc-rosewater); --tab-glyph: var(--acc-rosewater-glyph); }
 .views a[data-tab='recipes'] { --tab-acc: var(--acc-peach); --tab-glyph: var(--acc-peach-glyph); }
 .views a[data-tab='notes'] { --tab-acc: var(--acc-teal); --tab-glyph: var(--acc-teal-glyph); }
 .views a[data-tab='chats'] { --tab-acc: var(--acc-pink); --tab-glyph: var(--acc-pink-glyph); }
-.views a { background: color-mix(in srgb, var(--tab-acc, transparent) 6%, transparent); }
+.views a { background: color-mix(in srgb, var(--tab-acc, transparent) 8%, color-mix(in srgb, var(--bb-parchment) 75%, var(--bb-paper))); }
 .views a:hover { background: color-mix(in srgb, var(--tab-acc, var(--bb-tone-1)) 16%, var(--bb-paper)); }
 .views a.on {
-  background: color-mix(in srgb, var(--tab-acc, var(--bb-rose)) 18%, var(--bb-paper));
+  height: calc(var(--tab-h) + 3px);
+  margin-bottom: -1px;
+  z-index: 1;
+  background: var(--bb-paper);
   color: var(--bb-ink);
+  box-shadow: inset 0 1px 0 var(--shade-hi), 0 -2px 5px -2px var(--shade-2);
 }
 .views a.on::after {
   content: "";
   position: absolute;
   left: 8px;
   right: 8px;
-  bottom: 3px;
+  bottom: 6px;
   height: 1.5px;
   background: var(--tab-glyph, var(--bb-rose));
 }
@@ -285,7 +299,10 @@ kbd {
   align-items: center;
   justify-content: center;
   border: 1px solid var(--bb-tone-2);
-  background: transparent;
+  border-radius: var(--btn-radius);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-key);
+  margin-bottom: 4px;
   color: var(--bb-tone-4);
   font-size: 15px;
 }
@@ -297,6 +314,10 @@ kbd {
   background: currentColor;
   -webkit-mask: var(--art) center / contain no-repeat;
   mask: var(--art) center / contain no-repeat;
+}
+.bar .ic:active {
+  box-shadow: var(--btn-key-down);
+  transform: translateY(1px);
 }
 .bar .ic:hover {
   background: color-mix(in srgb, var(--bb-tone-1) 70%, var(--bb-paper));

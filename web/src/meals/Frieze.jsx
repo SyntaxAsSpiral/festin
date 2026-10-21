@@ -219,7 +219,9 @@ export function Frieze() {
               className="tile"
               onClick={(e) => openRecipe(it, e.currentTarget)}
             >
-              <img src={plateFor(it.p)} alt="" draggable={false} />
+              <span className="plate">
+                <img src={plateFor(it.p)} alt="" draggable={false} />
+              </span>
               <b>{it.n}</b>
             </button>
           ),
