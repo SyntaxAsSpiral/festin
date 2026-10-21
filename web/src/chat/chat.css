@@ -87,7 +87,6 @@ a.msg-file:hover { border-color: var(--bb-rose); color: var(--bb-rose); }
   font-style: italic;
 }
 .composer {
-  border-top: 1px solid var(--bb-tone-2);
   padding: 8px 12px 10px;
   /* The band is ivory like the panel; the writing space and the buttons are linen, like the cards. */
   background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
