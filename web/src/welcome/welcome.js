@@ -17,3 +17,10 @@ export function markWelcomeSeen(store = globalThis.localStorage) {
     /* blocked: it shows again next visit */
   }
 }
+
+// Settings can ask for the welcome again; the dialog listens for this event.
+export const WELCOME_EVENT = 'festin:welcome'
+
+export function showWelcome(target = globalThis.window) {
+  target?.dispatchEvent(new Event(WELCOME_EVENT))
+}

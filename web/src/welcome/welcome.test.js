@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hasSeenWelcome, markWelcomeSeen } from './welcome.js'
+import { hasSeenWelcome, markWelcomeSeen, showWelcome, WELCOME_EVENT } from './welcome.js'
 
 function memory() {
   const m = new Map()
@@ -18,5 +18,15 @@ describe('first-run welcome', () => {
     const blocked = { getItem: () => { throw new Error('blocked') }, setItem: () => { throw new Error('blocked') } }
     expect(hasSeenWelcome(blocked)).toBe(false)
     expect(() => markWelcomeSeen(blocked)).not.toThrow()
+  })
+})
+
+describe('asking for the welcome again', () => {
+  it('fires the event the dialog listens for', () => {
+    const target = new EventTarget()
+    let heard = 0
+    target.addEventListener(WELCOME_EVENT, () => heard++)
+    showWelcome(target)
+    expect(heard).toBe(1)
   })
 })

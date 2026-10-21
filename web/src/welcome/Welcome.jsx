@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { hasSeenWelcome, markWelcomeSeen } from './welcome.js'
+import { hasSeenWelcome, markWelcomeSeen, WELCOME_EVENT } from './welcome.js'
 import './welcome.css'
 
 const PIECES = [
@@ -20,6 +20,12 @@ const TRY = [
 export function Welcome() {
   const [open, setOpen] = useState(() => !hasSeenWelcome())
   const dialog = useRef(null)
+
+  useEffect(() => {
+    const again = () => setOpen(true)
+    window.addEventListener(WELCOME_EVENT, again)
+    return () => window.removeEventListener(WELCOME_EVENT, again)
+  }, [])
 
   useEffect(() => {
     if (!open) return undefined

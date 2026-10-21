@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router'
 import { useSurface } from '../chat/Surface.jsx'
 import { WET_BAND_MAX } from '../chat/ink/constants.js'
 import { MOTION_KEY, prefersReducedMotion } from '../useReducedMotion.js'
+import { showWelcome } from '../welcome/welcome.js'
 import {
   fetchContextLanes,
   fetchPlugins,
@@ -619,6 +620,9 @@ export function SettingsSidebar() {
           />{' '}
           Motion
         </label>
+        <button type="button" onClick={showWelcome}>
+          Show welcome
+        </button>
         <span className="sp" />
         <small>
           Shared settings · <kbd>Esc</kbd> or <kbd>,</kbd> closes
