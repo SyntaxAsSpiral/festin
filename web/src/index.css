@@ -28,6 +28,9 @@
   --bb-ink: #514b43; /* L*32.2 */
   /* Cards sit a shade lighter than the ivory page: linen (zk, 2026-10-19). */
   --bb-card: #f7efe3; /* L*94.8 */
+  /* Parchment: one step down from ivory, clearly toned (showroom festin-paper). Defined,
+     not yet used; a recessed panel or a darker ground would take it. */
+  --bb-parchment: #eddfcc; /* L*89.5 */
   /* Frieze: the ivory page itself; plates multiply onto each tile's wash, so their white
      grounds vanish into it. Tune the highlight with --frieze-tile. */
   --frieze-ground: var(--bb-paper);
