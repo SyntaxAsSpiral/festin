@@ -6,7 +6,7 @@ const PIECES = [
   ['The Cookbook', 'Every recipe is a card. A formule says what goes in; a praxis says how it is done, like a technique. Ask me to add, edit, search or delete cards. I always search first, so we never end up with five pot roasts.'],
   ['The Dinner Week', 'Saturday through Friday, seven nights, and blank nights are welcome. Tell me what is for dinner and I will save the plan, and print a slip of it if you like.'],
   ['Notes', 'Shopping lists, tasks and reminders, colour-coded and pinnable. Lasting facts about the household (who lives here, allergies, what nobody eats) go somewhere more permanent, so I never forget them.'],
-  ['The Kitchen Log', 'Every change, cook and note is dated. Ask me when you last made borscht and I will find out.'],
+  ['The Kitchen Log', 'Every change, cook and note is dated. Ask me when you last made borscht and I will find out. When you make a dish, or send me a photo of it, I mark the card cooked, clear it from the to-cook queue and add a line to your history. Over time the cookbook learns what this house actually makes, not just what sounds nice.'],
 ]
 
 const TRY = [
@@ -58,9 +58,6 @@ export function Welcome() {
             </div>
           ))}
         </dl>
-        <p className="welcome-idea">
-          <b>A recipe is a hypothesis; cooking it is the fact.</b> When you make a dish, or send me a photo of it, I mark the card cooked, clear it from the to-cook queue and add a line to your history. Over time the cookbook learns what this house actually makes, not just what sounds nice.
-        </p>
         <h3>To begin</h3>
         <ul className="welcome-try">
           {TRY.map(([say, does]) => (

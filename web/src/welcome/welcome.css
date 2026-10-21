@@ -40,7 +40,6 @@
 .welcome-pieces > div { padding: 8px 0; border-top: 1px dotted var(--bb-tone-2); }
 .welcome-pieces dt { font-variant: small-caps; letter-spacing: 0.08em; font-weight: 600; color: var(--bb-rose); }
 .welcome-pieces dd { margin: 2px 0 0; }
-.welcome-idea { margin: 12px 0 0; padding-top: 10px; border-top: 1px dotted var(--bb-tone-2); }
 .welcome-try { margin: 0; padding-left: 18px; }
 .welcome-try li { margin: 3px 0; }
 .welcome-try q { font-style: italic; margin-right: 0.3em; }
