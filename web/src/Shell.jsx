@@ -51,7 +51,11 @@ function FullscreenButton() {
   const label = on ? 'Exit full screen' : 'Full screen'
   return (
     <button type="button" className="ic" id="fs" aria-label={label} title={label} onClick={toggle}>
-      {on ? '🗗' : '⛶'}
+      <span
+        className="bar-art"
+        style={{ '--art': `url(/art/icons/${on ? 'unfullscreen' : 'fullscreen'}.svg)` }}
+        aria-hidden="true"
+      />
     </button>
   )
 }
