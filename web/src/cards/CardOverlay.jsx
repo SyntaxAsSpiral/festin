@@ -26,6 +26,7 @@ import {
 import { copyText } from '../secure.js'
 import { useLookingAt } from './looking.js'
 import { forgetOrigin, originRect } from './origin.js'
+import { ArtIcon } from './ArtIcon.jsx'
 import { ChatPage, NotePage, RecipeEditor, RecipePage } from './pages.jsx'
 
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024
@@ -391,7 +392,7 @@ export function CardOverlay({ kind, id, onChanged }) {
                       )
                     }
                   >
-                    {raw.favourite ? '♥' : '♡'} <span className="lbl">Favourite</span>
+                    <ArtIcon name={raw.favourite ? 'heart-on' : 'heart-off'} /> <span className="lbl">Favourite</span>
                   </button>
                   <button
                     type="button"
@@ -408,7 +409,7 @@ export function CardOverlay({ kind, id, onChanged }) {
                       )
                     }
                   >
-                    {raw.queuedAt ? '⚑' : '⚐'} <span className="lbl">To cook</span>
+                    <ArtIcon name={raw.queuedAt ? 'bookmark-on' : 'bookmark-off'} /> <span className="lbl">To cook</span>
                   </button>
                   <button type="button" className="card-photo" disabled={photoBusy} onClick={() => photoPicker.current?.click()}>
                     + Photo

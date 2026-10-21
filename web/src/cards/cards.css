@@ -227,7 +227,7 @@
 .nitem-archived:hover { opacity: 0.78; }
 /* Title line: the title, and a recipe's ID right-aligned and quiet. */
 .nhead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-/* A recipe row's heart, and the to-cook flag under it — quiet glyphs, no wash. */
+/* A recipe row's heart, and the to-cook bookmark under it: the artist's icons, quiet, no wash. */
 .nlist li:has(> .nfav) { position: relative; }
 .nlist li:has(> .nfav) .nhead { padding-right: 26px; }
 .nfav,
@@ -239,12 +239,28 @@
   padding: 0;
   border: 0;
   background: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 15px;
   line-height: 1;
   /* tone-4: 3.4:1 on ivory, legible when off; the genus hue when on. */
   color: var(--bb-tone-4);
   cursor: pointer;
 }
+/* The artist's engraved icons, drawn in the current colour (heart, bookmark). */
+.art-ic {
+  display: block;
+  flex: none;
+  width: 17px;
+  height: 17px;
+  background: currentColor;
+  -webkit-mask: var(--art) center / contain no-repeat;
+  mask: var(--art) center / contain no-repeat;
+}
+.card-foot button.card-fav,
+.card-foot button.card-queue { gap: 6px; }
+.card-foot .art-ic { width: 16px; height: 16px; }
 .nfav { top: 6px; }
 .nqueue { top: 27px; }
 .nfav:hover { color: var(--acc-mauve-glyph); }
@@ -452,12 +468,13 @@
   border-top: 1px solid var(--bb-tone-1);
 }
 .card-actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
-/* On a phone a recipe's foot fits one row: the heart and the flag lose their words, and the
+/* On a phone a recipe's foot fits one row: the heart and the bookmark lose their words, and the
    buttons tighten. */
 @media (max-width: 520px) {
-  .card-foot { gap: 6px; padding-left: 12px; padding-right: 12px; }
-  .card-foot .card-actions { gap: 6px; }
-  .card-foot button { padding: 0 8px; min-width: 0; }
+  .card-foot { gap: 4px; padding-left: 10px; padding-right: 10px; }
+  .card-foot .card-actions { gap: 4px; }
+  .card-foot button { padding: 0 7px; min-width: 0; }
+  .card-foot .card-id { letter-spacing: 0.02em; }
   .card-foot .lbl { display: none; }
 }
 .card-foot button,
@@ -831,7 +848,7 @@ html[data-motion='off'] .card-layer { transition: none; }
   height: 1px;
   background: color-mix(in srgb, var(--acc-pink-glyph) 55%, transparent);
 }
-/* In card view the heart sits beside the title; the to-cook flag sits under it. */
+/* In card view the heart sits beside the title; the to-cook bookmark sits under it. */
 .nlist-cards li .nfav { top: 10px; right: 4px; }
 .nlist-cards li .nqueue { top: 30px; right: 4px; }
 /* Recipe washes, in card view and on the open card (genera in index.css): mauve the heart

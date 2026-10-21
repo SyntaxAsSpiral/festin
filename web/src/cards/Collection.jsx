@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { CATEGORY_LABELS, KINDS, loadItems, matches, setRecipeFavourite, setRecipeQueued } from './kinds.js'
+import { ArtIcon } from './ArtIcon.jsx'
 import { rememberOrigin } from './origin.js'
 import {
   defaultChoice,
@@ -503,7 +504,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                         aria-label={(item.raw?.favourite ? 'Unfavourite ' : 'Favourite ') + item.title}
                         onClick={() => toggleFavourite(item)}
                       >
-                        {item.raw?.favourite ? '♥' : '♡'}
+                        <ArtIcon name={item.raw?.favourite ? 'heart-on' : 'heart-off'} />
                       </button>
                       <button
                         type="button"
@@ -512,7 +513,7 @@ export function Collection({ kind, cardOpen, revision = 0 }) {
                         aria-label={(item.raw?.queuedAt ? 'Remove from to-cook: ' : 'To cook: ') + item.title}
                         onClick={() => toggleQueued(item)}
                       >
-                        {item.raw?.queuedAt ? '⚑' : '⚐'}
+                        <ArtIcon name={item.raw?.queuedAt ? 'bookmark-on' : 'bookmark-off'} />
                       </button>
                     </>
                   )}
