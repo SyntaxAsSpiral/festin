@@ -107,7 +107,7 @@ a.msg-file:hover { border-color: var(--bb-rose); color: var(--bb-rose); }
 }
 .composer-bar {
   display: flex;
-  gap: 6px;
+  gap: 12px;
   justify-content: flex-end;
   margin-top: 6px;
 }

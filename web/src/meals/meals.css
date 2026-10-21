@@ -202,7 +202,7 @@
   font-weight: 600;
   font-size: clamp(13px, 4.3cqi, 17px);
   /* The day names carry a little of the rose ink; today's is the full rose below. */
-  color: color-mix(in srgb, var(--bb-rose) 45%, var(--bb-tone-5));
+  color: color-mix(in srgb, var(--bb-rose) 60%, var(--bb-tone-5));
   display: flex;
   gap: 6px;
   align-items: baseline;
