@@ -330,7 +330,6 @@ export function CardOverlay({ kind, id, onChanged }) {
                   </button>
                   <button
                     type="button"
-                    className="primary"
                     onClick={() =>
                       act(() =>
                         saveRecipe(creating ? null : raw, recipeDraft).then((saved) => (creating ? openSaved(saved) : applySaved(saved))),
@@ -345,7 +344,6 @@ export function CardOverlay({ kind, id, onChanged }) {
                 (editingNote ? (
                   <button
                     type="button"
-                    className="primary"
                     onClick={() =>
                       act(() =>
                         saveNote(creating ? null : raw, { text: draft, color: creating ? noteColor : undefined }).then((saved) =>
