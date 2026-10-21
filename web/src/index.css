@@ -254,6 +254,9 @@ kbd {
   align-items: flex-end;
   gap: 2px;
 }
+/* Where there is room, the folders stand a little apart. */
+@media (min-width: 561px) { .views { gap: 6px; } }
+@media (min-width: 1100px) { .views { gap: 10px; } }
 .views a {
   display: inline-flex;
   align-items: center;
