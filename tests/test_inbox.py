@@ -319,6 +319,14 @@ def test_rate_limit(kitchen, monkeypatch):
     assert "Too many" in json.loads(data.decode())["error"]
 
 
+def test_contract_states_the_current_rate(kitchen, monkeypatch):
+    monkeypatch.setattr(inbox_mod, "RATE_LIMIT", 240)
+    client = InboxClient(kitchen.inbox_bound_port())
+    status, _, data = client.request("GET", "/", agent=None)
+    assert status == 200
+    assert "About 240 recipes per hour" in data.decode()
+
+
 def test_settings_never_echo_key(kitchen):
     key = _mint(kitchen)
     client = KitchenClient(kitchen.server_address[1])

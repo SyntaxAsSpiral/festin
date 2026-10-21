@@ -2,7 +2,7 @@
 
 Only GET / (contract) and POST /recipes. Auth is a bearer key whose sha256
 lives in settings; the plaintext is shown once when minted. Rate limit is
-about 30 posts per hour per key. Text fields only; nothing of the kitchen
+about 30 posts per hour per key (FESTIN_INBOX_RATE changes it). Text fields only; nothing of the kitchen
 API is reachable here.
 """
 
@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
 import secrets
 import threading
 import time
@@ -24,7 +25,8 @@ from festin import settings as core_settings
 from festin.schema import connect
 
 BODY_LIMIT = 64 * 1024
-RATE_LIMIT = 30
+# Raise it for a bulk run with FESTIN_INBOX_RATE (posts per hour per key).
+RATE_LIMIT = int(os.environ.get("FESTIN_INBOX_RATE") or 30)
 RATE_WINDOW_S = 3600
 ALLOWED_FIELDS = frozenset({"title", "category", "description", "ingredients", "notes", "method", "voice", "source"})
 # The two whose slugs read oddly to an outside agent.
@@ -53,7 +55,7 @@ Fields (text only; no images, files, or fetched links)
 
 Limits
   Request body <= 64 KB
-  About 30 recipes per hour per key (HTTP 429 beyond that)
+  About {rate} recipes per hour per key (HTTP 429 beyond that)
 
 A good recipe here
   One ingredient per line.
@@ -288,6 +290,7 @@ class InboxHandler(BaseHTTPRequestHandler):
         body = (
             _INSTRUCTIONS_TEXT.replace("{address}", self.server.public_address)
             .replace("{categories}", CATEGORY_TEXT)
+            .replace("{rate}", str(RATE_LIMIT))
             .encode("utf-8")
         )
         self.send_response(200)
