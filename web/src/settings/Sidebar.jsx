@@ -545,6 +545,7 @@ export function SettingsSidebar() {
                     {!isEditing && (
                       <button
                         type="button"
+                        className="s-soft"
                         onClick={() => {
                           setEditing(lane.key)
                           setEditText(row?.text || '')
@@ -561,7 +562,7 @@ export function SettingsSidebar() {
                           aria-label={lane.label}
                           disabled={busy}
                         />
-                        <button type="button" onClick={() => setEditing(null)} disabled={busy}>
+                        <button type="button" className="s-soft" onClick={() => setEditing(null)} disabled={busy}>
                           Cancel
                         </button>
                         <button type="button" className="s-save" onClick={() => commitLane(lane.key)} disabled={busy}>

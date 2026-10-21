@@ -110,6 +110,7 @@ export function CloudAgents({ plugin, enabled, busy, setBusy, onUpdated, note, s
                 </button>
                 <button
                   type="button"
+                  className="s-soft"
                   disabled={busy}
                   onClick={() => {
                     setEditing(null)
@@ -142,6 +143,7 @@ export function CloudAgents({ plugin, enabled, busy, setBusy, onUpdated, note, s
               <div className="cloud-agent-actions">
                 <button
                   type="button"
+                  className="s-soft"
                   disabled={busy || !enabled}
                   onClick={() => {
                     setEditing(row.name)
