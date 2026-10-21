@@ -89,9 +89,10 @@ a.msg-file:hover { border-color: var(--bb-rose); color: var(--bb-rose); }
 .composer {
   border-top: 1px solid var(--bb-tone-2);
   padding: 8px 12px 10px;
-  /* Linen, like the cards: the writing surface sits a shade lighter than the ivory panel. */
-  background: var(--bb-card) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  /* The band is ivory like the panel; the writing space and the buttons are linen, like the cards. */
+  background: var(--bb-paper) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
   background-blend-mode: multiply;
+  --btn-bg: var(--bb-card);
 }
 .composer textarea {
   display: block;
@@ -100,7 +101,8 @@ a.msg-file:hover { border-color: var(--bb-rose); color: var(--bb-rose); }
   resize: none;
   font: inherit;
   color: var(--bb-ink);
-  background: transparent;
+  background: var(--bb-card) var(--paper-grain) 0 0 / var(--paper-tile) repeat;
+  background-blend-mode: multiply;
   border: 1px solid var(--bb-tone-2);
   padding: 6px 8px;
 }
@@ -133,15 +135,15 @@ a.msg-file:hover { border-color: var(--bb-rose); color: var(--bb-rose); }
 /* Send and Stop carry a wash so the turn's one action stands out from +file and +chat. */
 .composer .send {
   color: var(--bb-ink);
-  background: color-mix(in srgb, var(--bb-green-latte) 24%, transparent);
+  background: color-mix(in srgb, var(--bb-green-latte) 24%, var(--bb-card));
   border-color: color-mix(in srgb, var(--bb-green-latte) 60%, transparent);
 }
 .composer .stop {
   color: var(--btn-danger-fg);
-  background: color-mix(in srgb, var(--bb-rose) 16%, transparent);
+  background: color-mix(in srgb, var(--bb-rose) 16%, var(--bb-card));
   border: 1px solid color-mix(in srgb, var(--bb-rose) 55%, transparent);
 }
-.composer .send:disabled { background: transparent; border-color: var(--bb-tone-2); }
+.composer .send:disabled { background: var(--bb-card); border-color: var(--bb-tone-2); }
 /* Whenever the chat is the bottom drawer, its buttons sit centred under the box. */
 .surface-panel[data-layout='drawer'] .composer-bar { justify-content: center; }
 .composer-note,
