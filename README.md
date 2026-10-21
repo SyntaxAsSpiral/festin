@@ -1,25 +1,33 @@
 # Festin
 
-A recipe manager and family cookbook, with an optional AI assistant.
+Festin is a self-hosted recipe manager and family cookbook with a built-in AI kitchen assistant named Babette.
 
-My grandmother left over a thousand recipes when she died, mostly handwritten and clipped index cards. They were hard to search, so they mostly sat in the box. My own recipes were scattered across notes apps, email and chats with various AI assistants. Festin keeps all of them in one place, in her style, so the family can use them. My family aren't big on AI or computers, so the cookbook works fully without the AI.
+My grandmother left over a thousand recipes when she died, mostly on handwritten and clipped index cards that nobody could search. My own collection was scattered across notes apps, email and chats with various AI assistants. Festin manages them all in one place, safely at home, and makes curating and cooking from them again effortless. You don't have to enter or track anything by hand: just talk about your recipes or what you're cooking, and Babette files it, tidies it and fills in the context.
 
 ## Features
 
-- **Recipes.** Searchable, with ingredients, method, notes, your own photos and a scan of the original card. Each recipe records where it came from.
-- **Meals.** A plan for the week, one dinner per night, marked cooked as you go. It can be printed on a receipt printer.
-- **Kitchen Log.** A dated record of what was cooked, added, noted and discussed.
-- **To-cook queue.** Flag a recipe and it shows first in the frieze beside the page.
-- **Notes.** Short notes about the kitchen, mostly kept by Babette.
-- **Babette.** A chat assistant that can read and edit the recipes, plan the week, keep notes and search the Log and past conversations. It works with any OpenAI-compatible endpoint (OpenRouter by default) and is off until you give it a key.
-- **Incoming recipes.** An optional second listener that lets outside agents post recipes for review. They can add but not edit. Off by default. See [docs/incoming-recipes.md](docs/incoming-recipes.md).
+- **Recipes.** Start with my multi-generational collection of over 1400 recipes, import your own, or make new ones with Babette.
+- **Notes.** Flexible notes system can be used for shopping lists, inventory, to-dos, or anything else you can think of.
+- **Meals.** A plan for the week, based on your preferences and recipes. Best sent to a thermal receipt printer.
+- **Kitchen Log.** What got cooked and when, what was added or changed, what you asked Babette.
+- **Locally Hosted.** Keeps personal information private at home, instead of scattered across multiple closed ecosystems.
 
-### Plugins
+## AI Integration
 
-Off by default; enable them in Settings.
+- **Babette.** Does the data work so you don't have to. Talk about your cooking and she adds it, cleans it up and gives it useful context, so every card ends up tidy and unique. Under the hood she's a full agentic harness with tools to edit, manage, print and integrate the entire kitchen.
+- **Contextual Learning.** Keeps household tastes, restrictions and standing preferences, and cooking history (what you've made lately, favorites you haven't cooked in a while, the to-cook queue) as lasting context.
+- **Working Memory.** Tracks active priorities on working notes, and carries follow-ups from one chat to the next. 
+- **Flexible Ingestion.** Add recipes from photos, files, or text in chat. 
+- **Easy Endpoints.** Any OpenAI-compatible model works (OpenRouter by default). Easily point to local endpoints.
+- **Inbound API.** Scripts and cloud agents can easily import recipes to the cookbook. See [docs/incoming-recipes.md](docs/incoming-recipes.md).
+- **Outbound API.** Send lists for shopping or coordination to cloud agents such as Grok Bot or Muse.
 
-- **Printer.** Prints the week's plan and recipe cards on a receipt printer, through an HTTP receiver or a command on the host. See [docs/print-receiver.md](docs/print-receiver.md).
-- **Dinner tattva.** Names each night's element at the dinner hour, from local sunrise.
+### Extras
+
+Plugins enabled in Settings.
+
+- **Printer.** Add beautiful vintage thermal printing templates for printing recipes, notes, lists, and mealplans that can be stuck on the fridge or above the stove. See [docs/print-receiver.md](docs/print-receiver.md).
+- **Dinner tattva.** Ayurvedic meal planning for Babette, names each night's element at the dinner hour, from local sunrise.
 - **Cloud agents.** Babette can send a list, such as a shopping list, to an outside agent. See [docs/cloud-agents.md](docs/cloud-agents.md).
 
 ## Stack
@@ -47,7 +55,7 @@ To serve the built app from the kitchen as one process, run `npm run build`, the
 
 Chat needs a model key. Set `OPENROUTER_API_KEY` or `FESTIN_MODEL_KEY` in the kitchen's environment, or put it in a `model.key` file (mode 0600) next to the database. Choose the model in Settings.
 
-Everything else is in Settings: the table's name, the week's first day, the weather location, the plugins and the incoming-recipes switch.
+Everything else is in Settings: the table's name, the week's first day, the weather location, the plugins and the inbound API switch.
 
 ## Tests
 
