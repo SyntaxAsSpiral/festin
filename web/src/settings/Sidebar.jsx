@@ -620,7 +620,7 @@ export function SettingsSidebar() {
           />{' '}
           Motion
         </label>
-        <button type="button" onClick={showWelcome}>
+        <button type="button" onClick={() => showWelcome()}>
           Show welcome
         </button>
         <span className="sp" />
