@@ -412,6 +412,7 @@
   background-blend-mode: multiply;
   border: 1px solid var(--bb-tone-2);
   box-shadow: var(--lift);
+  --btn-bg: transparent;
   transform-origin: center;
   backface-visibility: hidden;
 }
@@ -437,7 +438,7 @@
   width: 30px;
   height: 30px;
   border: 1px solid var(--bb-tone-2);
-  background: var(--btn-bg);
+  background: color-mix(in srgb, var(--bb-card) 85%, transparent);
   color: var(--bb-tone-4);
   cursor: pointer;
 }
@@ -880,18 +881,23 @@ html[data-motion='off'] .card-layer { transition: none; }
   border-color: var(--wash-fav-edge);
 }
 
-/* Buttons are keycaps: a low edge under a bright top; pressed, they sink. */
-.card-icon,
-.card-foot button,
-.confirm-actions button,
-.lnew {
+/* The list's tools are keycaps: a low edge under a bright top; pressed, they sink. The
+   buttons on an open card stay flat. */
+.lnew,
+.llayout button,
+.lsort-btn {
+  background: var(--btn-bg);
   border-radius: var(--btn-radius);
   box-shadow: var(--btn-key);
 }
-.card-icon:active,
-.card-foot button:active,
-.confirm-actions button:active,
-.lnew:active {
+.llayout button:first-child { border-radius: var(--btn-radius) 0 0 var(--btn-radius); }
+.llayout button:last-child { border-radius: 0 var(--btn-radius) var(--btn-radius) 0; }
+.lnew:active,
+.llayout button:active,
+.llayout button[aria-pressed='true'],
+.lsort-btn:active,
+.lsort-btn[aria-pressed='true'],
+.lsort-btn[aria-expanded='true'] {
   box-shadow: var(--btn-key-down);
   transform: translateY(1px);
 }

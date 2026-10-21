@@ -40,11 +40,17 @@ html[data-motion='off'] #sidebar,
   flex: 1;
 }
 #sidebar button {
-  background: transparent;
+  background: var(--btn-bg);
   border: 1px solid var(--bb-tone-2);
+  border-radius: var(--btn-radius);
+  box-shadow: var(--btn-key);
   color: var(--bb-ink);
   font-size: 13px;
   padding: 2px 10px;
+}
+#sidebar button:active:not(:disabled) {
+  box-shadow: var(--btn-key-down);
+  transform: translateY(1px);
 }
 #sidebar button:hover {
   background: var(--bb-yellow-frappe);
@@ -55,13 +61,20 @@ html[data-motion='off'] #sidebar,
   border-color: var(--bb-tone-1);
   cursor: not-allowed;
   background: transparent;
+  box-shadow: none;
 }
 #sidebar .sbx {
   border: 0;
+  background: transparent;
+  box-shadow: none;
   font-size: 20px;
   line-height: 1;
   padding: 0 4px;
   color: var(--bb-tone-4);
+}
+#sidebar :is(.sbx, .stabs button):active {
+  box-shadow: none;
+  transform: none;
 }
 #sidebar .sbx:hover {
   background: transparent;
@@ -74,6 +87,8 @@ html[data-motion='off'] #sidebar,
   border-bottom: 1px solid var(--bb-tone-2);
 }
 #sidebar .stabs button {
+  background: transparent;
+  box-shadow: none;
   border: 0;
   border-bottom: 1px solid transparent;
   margin-bottom: -1px;
@@ -350,7 +365,7 @@ html[data-motion='off'] #sidebar,
   font: inherit;
   font-size: 13px;
   padding: 4px 10px;
-  background: transparent;
+  background: var(--btn-bg);
   border: 1px solid var(--bb-tone-3);
   color: var(--bb-ink);
   cursor: pointer;
