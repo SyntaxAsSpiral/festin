@@ -209,12 +209,14 @@ a.msg-file:hover { border-color: var(--bb-rose); color: var(--bb-rose); }
 }
 .chat-trace summary { cursor: pointer; font-style: italic; }
 .trace-thinking,
+.trace-said,
 .trace-tool {
   white-space: pre-wrap;
   margin: 2px 0 6px 1em;
   max-height: 12em;
   overflow: auto;
 }
+.trace-said { max-height: none; }
 .stopped {
   display: block;
   color: var(--bb-rose);

@@ -240,6 +240,11 @@ def chat(
                 trace.append({"kind": "thinking", "text": thought})
                 publish_trace()
             calls = msg.get("tool_calls") or []
+            said = msg.get("content")
+            if calls and isinstance(said, str) and said.strip():
+                # Text spoken before the tools: the live stream is reset, so keep it in the trace.
+                trace.append({"kind": "said", "text": said.strip()})
+                publish_trace()
             messages.append(keep_for_model(msg))
             if not calls:
                 answer = msg.get("content")

@@ -78,12 +78,18 @@ function TraceStep({ step, i, open, delay }) {
   const [seeps] = useState(() => open && seepReady())
   const [wait] = useState(delay)
   const thinking = step.kind === 'thinking'
+  const said = step.kind === 'said'
   const seep = open
     ? { '--mx': `${(i * 37) % 100}%`, '--my': `${(i * 61) % 100}%`, ...(wait ? { animationDelay: wait + 'ms' } : null) }
     : undefined
   return (
-    <details className={'chat-trace' + (seeps ? ' seep-in' : '')} style={seep} open={(open && !thinking) || undefined}>
-      {thinking ? (
+    <details className={'chat-trace' + (seeps ? ' seep-in' : '')} style={seep} open={(said || (open && !thinking)) || undefined}>
+      {said ? (
+        <>
+          <summary>Said</summary>
+          <div className="trace-said">{step.text || ''}</div>
+        </>
+      ) : thinking ? (
         <>
           <summary>Thinking</summary>
           <div className="trace-thinking">{step.text || ''}</div>

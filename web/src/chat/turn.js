@@ -133,6 +133,7 @@ export function traceLine(trace) {
   const last = trace[trace.length - 1]
   if (!last || typeof last !== 'object') return ''
   if (last.kind === 'thinking') return 'thinking…'
+  if (last.kind === 'said') return 'thinking…'
   const label = last.label || last.name || last.tool || last.kind || ''
   return typeof label === 'string' ? label : ''
 }

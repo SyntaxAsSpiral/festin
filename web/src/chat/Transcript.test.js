@@ -33,3 +33,22 @@ describe('transcript follows growth', () => {
     expect(traceStagger(0, 0, 0, 0).delays).toEqual([])
   })
 })
+
+describe('spoken text between tool calls', () => {
+  it('shows a said step open, even in a saved reply, and thinking closed', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server')
+    const React = await import('react')
+    const { Message } = await import('./Transcript.jsx')
+    const message = {
+      role: 'assistant',
+      content: 'Done.',
+      trace: [
+        { kind: 'thinking', text: 'hm' },
+        { kind: 'said', text: 'Let me look.' },
+      ],
+    }
+    const html = renderToStaticMarkup(React.createElement(Message, { message, live: false }))
+    expect(html).toMatch(/<details[^>]*>\s*<summary>Thinking<\/summary>/)
+    expect(html).toMatch(/<details[^>]* open=""[^>]*><summary>Said<\/summary><div class="trace-said">Let me look\.<\/div>/)
+  })
+})

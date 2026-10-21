@@ -510,6 +510,42 @@ def test_tool_trace_round_trip(db):
     assert events[-1]["type"] == "done"
 
 
+def test_text_before_tools_is_kept_in_the_trace(db):
+    conn, data_dir = db
+    events, emit = _events()
+    call = {
+        "id": "call-1",
+        "type": "function",
+        "function": {
+            "name": "keep_note",
+            "arguments": json.dumps({"type": "shopping", "text": "butter", "color": "green", "open": True}),
+        },
+    }
+    fake = FakeCompleter(
+        [
+            {
+                "message": {"role": "assistant", "content": " Let me jot that down. ", "tool_calls": [call]},
+                "stream_then_tools": True,
+            },
+            {"message": {"role": "assistant", "content": "Noted the butter."}},
+        ]
+    )
+    chat(
+        conn,
+        text="Remember butter",
+        week=SAT,
+        chat_id="chat-1",
+        session_chat_id="chat-1",
+        data_dir=data_dir,
+        emit=emit,
+        completer=fake,
+        image_support=True,
+        registry=build_core_registry(),
+    )
+    kinds = [(s["kind"], s.get("text") or s.get("name")) for s in load_messages(conn, "chat-1")[-1]["trace"]]
+    assert kinds == [("said", "Let me jot that down."), ("tool", "keep_note")]
+
+
 def test_looking_at_context_resolved_from_sqlite(db):
     conn, data_dir = db
     conn.execute(
