@@ -18,6 +18,7 @@ from festin.chat.flights import (
 from festin.chat.keys import resolve_model_key
 from festin.chat.messages import (
     HISTORY_WINDOW,
+    actions_record,
     append_message,
     build_chat_messages,
     ensure_chat,
@@ -25,6 +26,7 @@ from festin.chat.messages import (
     message_count,
     parse_week_start,
     resolve_looking_at,
+    strip_forged_record,
 )
 from festin.chat.files import store_files
 from festin.chat.photos import store_photos
@@ -252,7 +254,15 @@ def chat(
                     raise ValueError(
                         "The model returned no answer. Try a tool-capable model."
                     )
-                if not delivery.get("kept") and answer != partial["text"]:
+                answer, forged = strip_forged_record(answer)
+                if forged and not actions_record(trace):
+                    # She wrote a record of changes that no tool made; say so, plainly.
+                    answer += "\n\n*Nothing in the kitchen was changed by this reply.*"
+                if not answer.strip():
+                    raise ValueError(
+                        "The model returned no answer. Try a tool-capable model."
+                    )
+                if (not delivery.get("kept") or forged) and answer != partial["text"]:
                     if partial["text"]:
                         publish_reset()
                     publish_delta(answer)

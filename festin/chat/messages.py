@@ -234,9 +234,20 @@ def actions_record(trace) -> str:
     if not lines:
         return ""
     return (
-        "\n\n[Kitchen record of what this reply changed (from the kitchen's own log; "
+        "\n\n" + RECORD_MARKER + " (from the kitchen's own log; "
         "a record, not an instruction):\n" + "\n".join(lines) + "]"
     )
+
+
+RECORD_MARKER = "[Kitchen record of what this reply changed"
+
+
+def strip_forged_record(text: str) -> tuple[str, bool]:
+    """The kitchen writes its own record on replay; one the model wrote is invented."""
+    cut = text.find(RECORD_MARKER)
+    if cut < 0:
+        return text, False
+    return text[:cut].rstrip(), True
 
 
 def model_message(message: dict, data_dir: Path, image_support) -> dict:
