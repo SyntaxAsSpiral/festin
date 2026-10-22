@@ -1,4 +1,4 @@
-# Festin
+# ❦ Festin
 
 Festin is a self-hosted recipe manager and family cookbook with a built-in AI kitchen assistant named Babette.
 
