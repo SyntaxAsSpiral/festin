@@ -26,7 +26,7 @@ My grandmother left over a thousand recipes when she died, mostly on handwritten
 
 Plugins enabled in Settings.
 
-- **Printer.** Add beautiful vintage thermal printing templates for printing recipes, notes, lists, and mealplans that can be stuck on the fridge or above the stove. See [docs/print-receiver.md](docs/print-receiver.md).
+- **Thermal Printer.** Add beautiful vintage thermal printing templates for printing recipes, notes, lists, and mealplans that can be stuck on the fridge or above the stove. See [docs/print-receiver.md](docs/print-receiver.md).
 - **Dinner tattva.** Ayurvedic meal planning for Babette, names each night's element at the dinner hour, from local sunrise.
 - **Cloud agents.** Babette can send a list, such as a shopping list, to an outside agent. See [docs/cloud-agents.md](docs/cloud-agents.md).
 
