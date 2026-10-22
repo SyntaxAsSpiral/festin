@@ -2,7 +2,7 @@
 
 Festin is a self-hosted recipe manager and family cookbook with a built-in AI kitchen assistant named Babette.
 
-My grandmother left over a thousand recipes when she died, mostly on handwritten and clipped index cards that nobody could search. My own collection was scattered across notes apps, email and chats with various AI assistants. Festin manages them all in one place, safely at home, and makes curating and cooking from them again effortless. You don't have to enter or track anything by hand: just talk about your recipes or what you're cooking, and Babette files it, tidies it and fills in the context.
+My grandmother left over a thousand recipes when she died, mostly on handwritten and clipped index cards that nobody could search. My own collection was scattered across notes apps, email and chats with various AI assistants. Festin manages them all in one place, safely at home, and makes curating and cooking from them again effortless. You don't have to enter or track anything by hand: just talk about your recipes or snap a photo, and Babette files it, tidies it and fills in the context.
 
 ## Features
 
