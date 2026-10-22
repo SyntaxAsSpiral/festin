@@ -33,7 +33,7 @@
   --bb-parchment: #eddfcc; /* L*89.5 */
   /* Frieze: the ivory page; each plate sits on its own linen square, and its paper (a pale
      grey-beige) is lifted to white by --plate-lift so it multiplies away into the linen. */
-  --frieze-ground: var(--bb-paper);
+  --frieze-ground: color-mix(in srgb, var(--bb-parchment) 75%, var(--bb-paper));
   --plate-lift: 1.1;
   --frieze-tile: transparent;
   /* Depth (zk 2026-10-21; study: showroom festin-paper/depth.html): sepia shadows at 1.3x,
@@ -47,6 +47,8 @@
   /* The same lift turned toward the page: Babette's rail faces left, her drawer up (zk's pick
      from the depth study). */
   --lift-left: inset 1px 0 0 var(--shade-hi), -1px 0 1px var(--shade-1), -5px 0 10px -4px var(--shade-2);
+  /* The sheet lifted toward the page, for the frieze whose page lies to its right. */
+  --lift-right: 1px 0 1px var(--shade-1), 6px 0 12px -5px var(--shade-2);
   --lift-up: inset 0 1px 0 var(--shade-hi), 0 -1px 1px var(--shade-1), 0 -5px 10px -4px var(--shade-2);
   --bb-sepia: #7a5a3a; /* Babette's dried ink: chat replies settle to it */
   /* Colour genera (zk 2026-10-19; study: showroom festin-colour). A hue names the kind of
@@ -210,8 +212,24 @@ kbd {
   min-width: 0;
   overflow: hidden;
   border-right: 1px solid var(--bb-tone-2);
+  /* A parchment sheet laid over the page's edge (zk 2026-10-21; depth study, "Parchment
+     sheet"): darker than the page, lifted toward it, with a lit edge. */
+  position: relative;
+  z-index: 32;
+  box-shadow: var(--lift-right);
 }
-.app[data-frieze="out"] .frieze-slot { border-right-width: 0; }
+.frieze-slot::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  pointer-events: none;
+  background: var(--shade-hi);
+}
+.app[data-frieze="out"] .frieze-slot { border-right-width: 0; box-shadow: none; }
+.app[data-frieze="out"] .frieze-slot::after { display: none; }
 .frieze {
   width: var(--frieze-open);
   height: 100%;
