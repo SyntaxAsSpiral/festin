@@ -403,9 +403,6 @@ export function Slip({ settings, recipesById, recipesByTitle }) {
             openRecipe={openRecipe}
           />
         ))}
-        <div className="orn" aria-hidden="true">
-          ❦
-        </div>
         <p
           className="close"
           data-state={saveState === 'conflict' ? 'conflict' : saveState === 'pending' ? 'pending' : undefined}
