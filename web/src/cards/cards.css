@@ -121,7 +121,7 @@
   gap: 8px;
   font-size: 14.5px;
   color: var(--bb-ink);
-  cursor: pointer;
+  cursor: var(--cur-pointer);
 }
 .lsort-opt input { accent-color: var(--bb-rose); }
 .lsort-cat {
@@ -202,7 +202,7 @@
   border: 0;
   border-bottom: 1px solid var(--bb-tone-1);
   padding: 11px 4px 12px;
-  cursor: pointer;
+  cursor: var(--cur-pointer);
 }
 /* In list mode the rows alternate: ivory (the page) and linen (the cards). A wash, the
    keyboard cursor or a hover still wins, being more specific than :where(). */
@@ -246,7 +246,7 @@
   line-height: 1;
   /* tone-4: 3.4:1 on ivory, legible when off; the genus hue when on. */
   color: var(--bb-tone-4);
-  cursor: pointer;
+  cursor: var(--cur-pointer);
 }
 /* The artist's engraved icons, drawn in the current colour (heart, bookmark). */
 .art-ic {
@@ -440,7 +440,7 @@
   border: 1px solid var(--bb-tone-2);
   background: color-mix(in srgb, var(--bb-card) 85%, transparent);
   color: var(--bb-tone-4);
-  cursor: pointer;
+  cursor: var(--cur-pointer);
 }
 .card-icon:hover { color: var(--bb-ink); border-color: var(--bb-tone-3); }
 .card-icon.card-close:hover,
@@ -503,7 +503,7 @@
 }
 .card-foot button:disabled {
   opacity: 0.55;
-  cursor: default;
+  cursor: var(--cur-default);
 }
 .card-id {
   font-variant-numeric: lining-nums;
@@ -627,7 +627,7 @@ button.danger {
   padding: 0;
   border: 1px solid var(--bb-tone-2);
   background: none;
-  cursor: zoom-in;
+  cursor: var(--cur-zoom-in);
 }
 .from-box img { display: block; width: 100%; height: auto; transform: rotate(-1.2deg); }
 .from-box figcaption { margin-top: 6px; font-style: italic; font-size: 13.5px; color: var(--bb-tone-4); text-align: center; }
@@ -643,7 +643,7 @@ button.danger {
   padding: 0;
   border: 0;
   background: none;
-  cursor: zoom-in;
+  cursor: var(--cur-zoom-in);
 }
 .cooked-photos img { height: 120px; border: 1px solid var(--bb-tone-1); }
 .photo-remove {
@@ -686,9 +686,9 @@ button.danger {
   min-height: 0;
   overflow: hidden;
   touch-action: none;
-  cursor: grab;
+  cursor: var(--cur-grab);
 }
-.viewer-stage.dragging { cursor: grabbing; }
+.viewer-stage.dragging { cursor: var(--cur-grabbing); }
 .viewer-stage img {
   position: absolute;
   left: 50%;
@@ -721,10 +721,10 @@ button.danger {
   font: inherit;
   font-size: 15px;
   line-height: 1;
-  cursor: pointer;
+  cursor: var(--cur-pointer);
 }
 .viewer-bar button.danger { color: var(--bb-rose); }
-.viewer-bar button:disabled { opacity: 0.5; cursor: default; }
+.viewer-bar button:disabled { opacity: 0.5; cursor: var(--cur-default); }
 .viewer-gap { width: 10px; }
 @media (max-width: 560px) {
   .viewer-bar { gap: 4px; padding-inline: 8px; flex-wrap: nowrap; }
@@ -867,7 +867,7 @@ html[data-motion='off'] .viewer-stage img.eased { transition: none; }
 }
 /* The box scans: references, a quiet strip at the foot of the recipe. */
 .scans .scan-strip { display: flex; flex-wrap: wrap; gap: 8px; }
-.scans .scan-strip button { padding: 0; border: 1px solid var(--bb-tone-2); background: none; cursor: zoom-in; }
+.scans .scan-strip button { padding: 0; border: 1px solid var(--bb-tone-2); background: none; cursor: var(--cur-zoom-in); }
 .scans .scan-strip img { display: block; height: 140px; width: auto; }
 
 

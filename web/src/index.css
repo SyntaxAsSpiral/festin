@@ -125,6 +125,18 @@
   --btn-min-w: 2.25em;
   --btn-danger-fg: var(--bb-rose);
   --btn-danger-border: 1px solid color-mix(in srgb, var(--bb-rose) 40%, transparent);
+
+  /* Cursors in the house's engraved style (festin-3d6.62; art/cursors/README.md holds the
+     hotspots). Each falls back to the browser's own. */
+  --cur-default: image-set(url(/art/cursors/default.png) 1x, url(/art/cursors/default@2x.png) 2x) 3 3, default;
+  --cur-pointer: image-set(url(/art/cursors/pointer.png) 1x, url(/art/cursors/pointer@2x.png) 2x) 11 2, pointer;
+  --cur-grab: image-set(url(/art/cursors/grab.png) 1x, url(/art/cursors/grab@2x.png) 2x) 14 15, grab;
+  --cur-grabbing: image-set(url(/art/cursors/grabbing.png) 1x, url(/art/cursors/grabbing@2x.png) 2x) 15 16, grabbing;
+  --cur-text: image-set(url(/art/cursors/text.png) 1x, url(/art/cursors/text@2x.png) 2x) 16 16, text;
+  --cur-zoom-in: image-set(url(/art/cursors/zoom-in.png) 1x, url(/art/cursors/zoom-in@2x.png) 2x) 13 13, zoom-in;
+  --cur-zoom-out: image-set(url(/art/cursors/zoom-out.png) 1x, url(/art/cursors/zoom-out@2x.png) 2x) 13 13, zoom-out;
+  --cur-ew-resize: image-set(url(/art/cursors/ew-resize.png) 1x, url(/art/cursors/ew-resize@2x.png) 2x) 16 16, ew-resize;
+  --cur-not-allowed: image-set(url(/art/cursors/not-allowed.png) 1x, url(/art/cursors/not-allowed@2x.png) 2x) 16 16, not-allowed;
 }
 
 @property --frieze {
@@ -142,9 +154,15 @@ body {
   font-family: var(--bb-font);
   font-size: var(--bb-text);
   line-height: 1.35;
+  cursor: var(--cur-default);
 }
 button, input, textarea { font: inherit; color: inherit; }
-button { cursor: pointer; }
+/* The cursor is inherited, so links and text fields name theirs (the browser's own would
+   have come from cursor: auto). */
+button, a[href] { cursor: var(--cur-pointer); }
+input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='color']),
+textarea,
+[contenteditable] { cursor: var(--cur-text); }
 :focus { outline: none; }
 :focus-visible { outline: 1px dashed var(--bb-rose); outline-offset: 2px; }
 kbd {

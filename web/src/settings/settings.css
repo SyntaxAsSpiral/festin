@@ -59,7 +59,7 @@ html[data-motion='off'] #sidebar,
 #sidebar button:disabled {
   color: var(--bb-tone-3);
   border-color: var(--bb-tone-1);
-  cursor: not-allowed;
+  cursor: var(--cur-not-allowed);
   background: transparent;
   box-shadow: none;
 }
@@ -198,7 +198,7 @@ html[data-motion='off'] #sidebar,
 }
 #sidebar .q0 input,
 #sidebar .q0 select {
-  cursor: not-allowed;
+  cursor: var(--cur-not-allowed);
   border-bottom-style: dotted;
 }
 #sidebar .snc {
@@ -335,7 +335,7 @@ html[data-motion='off'] #sidebar,
   font-size: 13px;
   color: var(--bb-tone-4);
   white-space: nowrap;
-  cursor: pointer;
+  cursor: var(--cur-pointer);
 }
 #sidebar .plug.on .pls {
   color: var(--bb-green-frappe);
@@ -359,7 +359,7 @@ html[data-motion='off'] #sidebar,
   gap: 6px;
   font-size: 15px !important;
   color: var(--bb-ink) !important;
-  cursor: pointer;
+  cursor: var(--cur-pointer);
 }
 #sidebar .plug button {
   font: inherit;
@@ -368,7 +368,7 @@ html[data-motion='off'] #sidebar,
   background: var(--btn-bg);
   border: 1px solid var(--bb-tone-3);
   color: var(--bb-ink);
-  cursor: pointer;
+  cursor: var(--cur-pointer);
 }
 #sidebar .plug .fine.mo {
   font-style: italic;

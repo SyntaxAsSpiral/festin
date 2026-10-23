@@ -25,7 +25,7 @@
   color: var(--bb-tone-4);
   font: italic 13px/1 var(--bb-font);
   letter-spacing: 0.12em;
-  cursor: pointer;
+  cursor: var(--cur-pointer);
   box-shadow: var(--lift-left);
 }
 .surface-rail span {
@@ -162,7 +162,7 @@
   font-size: 20px;
   line-height: 1;
   color: var(--bb-tone-4);
-  cursor: pointer;
+  cursor: var(--cur-pointer);
 }
 .surface-close:hover { color: var(--bb-ink); }
 .surface-body {
@@ -178,7 +178,7 @@
   left: 0;
   width: 8px;
   z-index: 2;
-  cursor: ew-resize;
+  cursor: var(--cur-ew-resize);
   touch-action: none;
 }
 
@@ -188,7 +188,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: pointer;
+  cursor: var(--cur-pointer);
 }
 .surface-model-link:hover { color: var(--bb-rose); text-decoration: underline dotted; text-underline-offset: 3px; }
 .surface-model-link:focus-visible { outline: 1px dashed var(--bb-rose); outline-offset: 2px; }
