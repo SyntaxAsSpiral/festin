@@ -64,6 +64,10 @@
   object-position: var(--scene-position, 50% 50%);
   display: block;
   border: 0;
+  cursor: grab;
+}
+.slip .vig img:active {
+  cursor: grabbing;
 }
 /* A zoned scene is sized and placed by cropFor (scenes.js), not by object-fit. */
 .slip .vig img.zoned {
