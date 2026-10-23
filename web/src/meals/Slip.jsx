@@ -73,19 +73,11 @@ function NightRow({ night, i, today, thisWeek, week, clock, recipesById, recipes
 
   return (
     <div
-      className={'row' + (night.cooked ? ' cooked' : '') + (linked ? ' linked' : '') + (isToday ? ' is-today' : '')}
+      className={'row' + (linked ? ' linked' : '') + (isToday ? ' is-today' : '')}
       data-night={i}
     >
       <div className="d">
-        <button
-          type="button"
-          className="ck"
-          title={night.cooked ? 'Mark not cooked' : 'Mark cooked'}
-          aria-pressed={night.cooked}
-          onClick={() => patchDays(i, { cooked: !night.cooked })}
-        >
-          {dayName(night.date)}
-        </button>
+        {dayName(night.date)}
         {isToday && <span className="today">{clock}</span>}
       </div>
       <span className="n">

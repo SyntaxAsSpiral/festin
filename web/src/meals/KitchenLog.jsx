@@ -233,7 +233,7 @@ export function KitchenLogList({ entries, timeZone, weekStart, now, onOpen, sent
                   {(entry.nights || [])
                     .filter((n) => n.title || n.recipe)
                     .map((n) => (
-                      <li key={n.date} className={n.cooked ? 'cooked' : undefined}>
+                      <li key={n.date}>
                         <span>{n.title || 'open'}</span>
                         {n.recipe ? (
                           <button

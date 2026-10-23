@@ -235,19 +235,6 @@
   gap: 6px;
   align-items: baseline;
 }
-.slip .row .d button.ck {
-  all: unset;
-  cursor: var(--cur-pointer);
-  font: inherit;
-  font-variant: small-caps;
-  letter-spacing: 0.22em;
-  font-weight: 600;
-  color: inherit;
-}
-.slip .row .d button.ck:hover,
-.slip .row.cooked .d button.ck {
-  color: var(--bb-rose);
-}
 .slip .row .d .today {
   font-style: italic;
   font-variant: normal;
@@ -276,12 +263,6 @@
   max-width: calc(100% - 4ch);
   /* At least a line of body text, the line it used to sit in. */
   min-height: calc(var(--bb-text) * 1.35);
-}
-.slip .row.cooked .n,
-.slip .row.cooked input.et {
-  color: var(--bb-tone-4);
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
 }
 .slip .row input.et,
 .slip .row input.eid {
@@ -895,10 +876,6 @@
   gap: 8px;
   font-size: 14px;
   line-height: 1.55;
-}
-.kl .twb li.cooked span {
-  text-decoration: line-through;
-  color: var(--bb-tone-4);
 }
 .kl .twb button.link {
   all: unset;
