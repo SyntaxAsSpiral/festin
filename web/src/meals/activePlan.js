@@ -9,3 +9,6 @@ export function setActiveMealsPlan(plan) {
 export function getActiveMealsPlan() {
   return active
 }
+
+/** A frieze dish dropped on a night of the slip: detail { night, id, title }. */
+export const DISH_DROP = 'festin:dish-drop'

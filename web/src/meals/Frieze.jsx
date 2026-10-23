@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router'
 import { rememberOrigin } from '../cards/origin.js'
 import { plateFor } from '../cards/kinds.js'
 import { useReducedMotion } from '../useReducedMotion.js'
+import { DISH_DROP } from './activePlan.js'
+import { flingVelocity, spinStep } from './fling.js'
 import { fetchRecipeSample } from './plan.js'
 
 const MOTIFS = [
@@ -25,6 +27,48 @@ const COURSES = [
   ['sweets', 'cakes', 'cookies', 'pies-tarts'],
 ]
 const MEALS = 16
+const DRIFT = 20 // px/s, the column's own pace
+const AXIS = 6 // px before a press is read as a scroll or a pull
+const CATCH = 150 // px/s; a press on a spin this fast only stops it
+
+// A dish pulled out of the frieze: a copy of its tile follows the pointer, lights the
+// night under it, and on release hands the dish to that night.
+function startLift(btn, e) {
+  const r = btn.getBoundingClientRect()
+  const ghost = document.createElement('div')
+  ghost.className = 'frieze frieze-ghost'
+  ghost.style.width = r.width + 'px'
+  ghost.appendChild(btn.cloneNode(true))
+  document.body.appendChild(ghost)
+  const gx = e.clientX - r.left
+  const gy = e.clientY - r.top
+  let over = null
+  const nightAt = (x, y) => document.elementFromPoint(x, y)?.closest?.('.slip .row[data-night]') || null
+  return {
+    move(x, y) {
+      ghost.style.transform = `translate(${x - gx}px, ${y - gy}px) rotate(-2deg)`
+      const row = nightAt(x, y)
+      if (row !== over) {
+        over?.classList.remove('drop-over')
+        row?.classList.add('drop-over')
+        over = row
+      }
+    },
+    drop(at) {
+      over?.classList.remove('drop-over')
+      ghost.remove()
+      const row = at && nightAt(at.x, at.y)
+      if (row) {
+        row.dispatchEvent(
+          new CustomEvent(DISH_DROP, {
+            bubbles: true,
+            detail: { night: Number(row.dataset.night), id: btn.dataset.id, title: btn.dataset.title },
+          }),
+        )
+      }
+    },
+  }
+}
 
 // Deal course draws into meals: soup, salad, main, side, dessert, then the next meal.
 export function courseOrder(draws) {
@@ -51,7 +95,8 @@ function buildItems(recipes) {
   return items
 }
 
-// Looping recipe column: auto-scroll, hold on hover/drag/wheel, tap opens Recipes.
+// Looping recipe column: auto-scroll, hold on hover/drag/wheel, flick to spin, pull a
+// dish sideways onto a night of the slip, tap opens Recipes.
 export function Frieze() {
   const navigate = useNavigate()
   const reduced = useReducedMotion()
@@ -63,6 +108,10 @@ export function Frieze() {
   const moved = useRef(false)
   const wheelHold = useRef(0)
   const wq = useRef(0)
+  const spin = useRef(0)
+  const samples = useRef([])
+  const tile = useRef(null)
+  const lift = useRef(null)
   const last = useRef(performance.now())
   const [recipes, setRecipes] = useState([])
   const [ready, setReady] = useState(false)
@@ -101,15 +150,18 @@ export function Frieze() {
     if (!ready || reduced) return undefined
     let raf = 0
     const tick = (t) => {
-      const dt = (t - last.current) / 1000
+      const dt = Math.min((t - last.current) / 1000, 0.1)
       last.current = t
       if (wq.current) {
-        const m = Math.abs(wq.current) < 0.5 ? wq.current : wq.current * (1 - Math.exp(-Math.min(dt, 0.1) * 16))
+        const m = Math.abs(wq.current) < 0.5 ? wq.current : wq.current * (1 - Math.exp(-dt * 16))
         off.current += m
         wq.current -= m
       }
-      if (!hover.current && drag.current == null && t > wheelHold.current) {
-        off.current += 20 * dt
+      // The spin carries a flick on and eases into the drift (held: toward rest).
+      if (drag.current == null) {
+        const held = hover.current || t <= wheelHold.current
+        spin.current = spinStep(spin.current, held ? 0 : DRIFT, dt)
+        off.current += spin.current * dt
       }
       const track = trackRef.current
       if (track) {
@@ -134,32 +186,57 @@ export function Frieze() {
     }
     const onLeave = () => {
       hover.current = false
-      drag.current = null
+      if (!lift.current) drag.current = null
     }
     let idle = 0
     const onDown = (e) => {
-      drag.current = e.clientY
-      moved.current = false
+      // A press catches the wheel; catching a real spin is not a tap on a dish.
+      moved.current = Math.abs(spin.current) > CATCH
+      spin.current = 0
+      wq.current = 0
+      drag.current = { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, mode: null }
+      samples.current = [{ t: e.timeStamp, off: off.current }]
+      tile.current = e.target.closest?.('button.tile') || null
       hover.current = true
     }
     const onMove = (e) => {
-      if (drag.current == null) return
-      const dy = drag.current - e.clientY
-      // Capture only once it is really a drag: capturing on press would send the
-      // release (and so the click) to the frieze instead of the dish tapped.
-      if (Math.abs(dy) > 2 && !moved.current) {
+      const d = drag.current
+      if (d == null) return
+      if (!d.mode) {
+        const dx = e.clientX - d.x0
+        const dy = e.clientY - d.y0
+        if (Math.hypot(dx, dy) < AXIS) return
+        // Mostly sideways, off a dish: pull it toward the slip. Else scroll.
+        d.mode = tile.current && Math.abs(dx) > Math.abs(dy) ? 'lift' : 'scroll'
         moved.current = true
+        // Capture only once it is really a drag: capturing on press would send the
+        // release (and so the click) to the frieze instead of the dish tapped.
         try {
           fr.setPointerCapture(e.pointerId)
         } catch {
           /* ignore */
         }
+        if (d.mode === 'lift') lift.current = startLift(tile.current, e)
       }
-      off.current += dy
-      drag.current = e.clientY
+      if (d.mode === 'lift') {
+        lift.current?.move(e.clientX, e.clientY)
+      } else {
+        off.current += d.y - e.clientY
+        samples.current.push({ t: e.timeStamp, off: off.current })
+        if (samples.current.length > 12) samples.current.shift()
+      }
+      d.x = e.clientX
+      d.y = e.clientY
     }
     const onUp = (e) => {
+      const d = drag.current
       drag.current = null
+      if (lift.current) {
+        lift.current.drop(e.type === 'pointerup' ? { x: e.clientX, y: e.clientY } : null)
+        lift.current = null
+      } else if (d?.mode === 'scroll' && e.type === 'pointerup') {
+        spin.current = flingVelocity(samples.current, e.timeStamp)
+      }
       if (e.pointerType !== 'mouse') {
         clearTimeout(idle)
         idle = window.setTimeout(() => {
@@ -169,8 +246,8 @@ export function Frieze() {
     }
     const onWheel = (e) => {
       e.preventDefault()
-      const u = 1
-      wq.current += (e.deltaY || e.deltaX) * u
+      spin.current = 0
+      wq.current += e.deltaY || e.deltaX
       wheelHold.current = performance.now() + 2500
       hover.current = true
     }
@@ -184,6 +261,8 @@ export function Frieze() {
     fr.addEventListener('wheel', onWheel, { passive: false })
     return () => {
       clearTimeout(idle)
+      lift.current?.drop(null)
+      lift.current = null
       fr.removeEventListener('pointerenter', onEnter)
       fr.removeEventListener('pointerleave', onLeave)
       fr.removeEventListener('pointerdown', onDown)
@@ -217,6 +296,8 @@ export function Frieze() {
               key={it.id + '-' + i}
               type="button"
               className="tile"
+              data-id={it.id}
+              data-title={it.n}
               onClick={(e) => openRecipe(it, e.currentTarget)}
             >
               <span className="plate">

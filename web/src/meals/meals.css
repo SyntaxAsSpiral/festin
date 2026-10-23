@@ -432,6 +432,26 @@
   object-fit: contain;
 }
 
+/* A dish pulled out toward the slip: its tile on a linen card, lifted off the page. */
+.frieze.frieze-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 60;
+  height: auto;
+  pointer-events: none;
+  background: var(--bb-card);
+  box-shadow: var(--lift), 0 14px 24px -10px var(--shade-2);
+  will-change: transform;
+}
+.frieze.frieze-ghost .tile {
+  border-bottom: 0;
+}
+.slip .row.drop-over {
+  background: var(--bb-yellow-frappe);
+  box-shadow: inset 3px 0 0 var(--bb-ink);
+}
+
 @media (max-width: 560px) {
   .frieze .tile {
     height: 132px;

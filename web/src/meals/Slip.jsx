@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { rememberOrigin } from '../cards/origin.js'
-import { setActiveMealsPlan } from './activePlan.js'
+import { DISH_DROP, setActiveMealsPlan } from './activePlan.js'
 import {
   DEFAULT_SLIP_TITLE,
   SLIP_TITLE_MAX,
@@ -72,7 +72,10 @@ function NightRow({ night, i, today, thisWeek, week, clock, recipesById, recipes
   const isToday = night.date === today && week === thisWeek
 
   return (
-    <div className={'row' + (night.cooked ? ' cooked' : '') + (linked ? ' linked' : '') + (isToday ? ' is-today' : '')}>
+    <div
+      className={'row' + (night.cooked ? ' cooked' : '') + (linked ? ' linked' : '') + (isToday ? ' is-today' : '')}
+      data-night={i}
+    >
       <div className="d">
         <button
           type="button"
@@ -255,6 +258,19 @@ export function Slip({ settings, recipesById, recipesByTitle }) {
   }, [])
 
   useEffect(() => () => clearTimeout(saveTimer.current), [])
+
+  // A dish pulled from the frieze takes the night it lands on, fresh (not cooked).
+  useEffect(() => {
+    const onDrop = (e) => {
+      const { night, id, title } = e.detail || {}
+      if (!id || !(night >= 0)) return
+      patchDays(night, { title: title || id, recipe: id, cooked: false })
+    }
+    document.addEventListener(DISH_DROP, onDrop)
+    return () => document.removeEventListener(DISH_DROP, onDrop)
+    // patchDays reads only state setters and the stable queueSave.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function patchDays(index, patch) {
     setDraft((cur) => {
