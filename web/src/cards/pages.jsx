@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Message } from '../chat/Transcript.jsx'
 import { CATEGORY_LABELS, chatDate, dayOf, plateFor, provenance, sourceOf } from './kinds.js'
+import { ScanViewer } from './ScanViewer.jsx'
 
 // Live stores file paths under data/; the kitchen serves them at these URLs.
 function served(path) {
@@ -40,9 +41,10 @@ function CookedPhoto({ path, src, title, onOpen, onRemove }) {
   )
 }
 
-export function RecipePage({ recipe, onRemovePhoto }) {
+export function RecipePage({ recipe, onRemovePhoto, onReplaceScan, onRemoveScan }) {
+  // { src } for a cooked photo, { src, scan } for a box scan (scan: its stored path).
   const [openImage, setOpenImage] = useState(null)
-  const scans = (recipe.ocrPhotos || []).map(served)
+  const scans = (recipe.ocrPhotos || []).map((path) => ({ path, src: served(path) }))
   const photos = (recipe.photos || []).map((path) => ({ path, src: served(path) }))
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : []
   const appliesTo = Array.isArray(recipe.appliesTo) ? recipe.appliesTo : []
@@ -65,7 +67,7 @@ export function RecipePage({ recipe, onRemovePhoto }) {
         {/* Cooked photos are the recipe's pictures; the box scan is a reference, kept below. */}
         {photos[0] && (
           <figure className="from-box">
-            <button type="button" className="cooked-photo-open" onClick={() => setOpenImage(photos[0].src)} aria-label="Open the photo">
+            <button type="button" className="cooked-photo-open" onClick={() => setOpenImage({ src: photos[0].src })} aria-label="Open the photo">
               <img src={photos[0].src} alt={'Cooked: ' + recipe.title} loading="lazy" />
             </button>
             <figcaption>From our kitchen</figcaption>
@@ -148,7 +150,7 @@ export function RecipePage({ recipe, onRemovePhoto }) {
               path={photo.path}
               src={photo.src}
               title={recipe.title}
-              onOpen={setOpenImage}
+              onOpen={(src) => setOpenImage({ src })}
               onRemove={onRemovePhoto}
             />
           ))}
@@ -177,18 +179,32 @@ export function RecipePage({ recipe, onRemovePhoto }) {
             From the box <small>original {scans.length > 1 ? 'cards' : 'card'}</small>
           </h2>
           <div className="scan-strip">
-            {scans.map((src) => (
-              <button key={src} type="button" onClick={() => setOpenImage(src)} aria-label="Open the original card">
-                <img src={src} alt={'The original card for ' + recipe.title} loading="lazy" />
+            {scans.map((scan) => (
+              <button key={scan.path} type="button" onClick={() => setOpenImage({ src: scan.src, scan: scan.path })} aria-label="Open the original card">
+                <img src={scan.src} alt={'The original card for ' + recipe.title} loading="lazy" />
               </button>
             ))}
           </div>
         </section>
       )}
       {openImage && (
-        <button type="button" className="scan-full" onClick={() => setOpenImage(null)} aria-label="Close">
-          <img src={openImage} alt={recipe.title} />
-        </button>
+        <ScanViewer
+          src={openImage.src}
+          alt={openImage.scan ? 'The original card for ' + recipe.title : recipe.title}
+          onClose={() => setOpenImage(null)}
+          onReplace={
+            openImage.scan && onReplaceScan
+              ? (file) =>
+                  onReplaceScan(openImage.scan, file).then((saved) => {
+                    // The new scan takes the old one's place in the list.
+                    const at = scans.findIndex((x) => x.path === openImage.scan)
+                    const path = (saved?.ocrPhotos || [])[at]
+                    if (path) setOpenImage({ src: served(path), scan: path })
+                  })
+              : null
+          }
+          onDelete={openImage.scan && onRemoveScan ? () => onRemoveScan(openImage.scan) : null}
+        />
       )}
     </article>
   )

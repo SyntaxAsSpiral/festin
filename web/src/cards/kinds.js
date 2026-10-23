@@ -318,7 +318,7 @@ export function cookedNote(before, after) {
   return 'Cooked.'
 }
 
-// Cooked photos only. OCR box scans stay on the card and are not edited here.
+// Cooked photos only; box scans have their own calls below.
 export function updateRecipePhotos(recipe, photos) {
   return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id) + '/photos', {
     expected_updated_at: recipe.updatedAt,
@@ -410,4 +410,20 @@ export function pointSessionAt(chatId) {
     window.dispatchEvent(new Event(CHAT_SESSION_EVENT))
     return saved
   })
+}
+
+// One box scan: swap in a new photo (a data URL), or take it off the card.
+export function replaceRecipeScan(recipe, path, image) {
+  return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id) + '/scans', {
+    expected_updated_at: recipe.updatedAt,
+    replace: path,
+    image,
+  }).then((body) => body.recipe)
+}
+
+export function removeRecipeScan(recipe, path) {
+  return send('POST', '/api/recipes/' + encodeURIComponent(recipe.id) + '/scans', {
+    expected_updated_at: recipe.updatedAt,
+    remove: path,
+  }).then((body) => body.recipe)
 }

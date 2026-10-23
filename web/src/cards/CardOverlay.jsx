@@ -14,6 +14,8 @@ import {
   pointSessionAt,
   removeItem,
   removeRecipePhoto,
+  removeRecipeScan,
+  replaceRecipeScan,
   saveNote,
   saveRecipe,
   toggleNote,
@@ -158,6 +160,24 @@ export function CardOverlay({ kind, id, onChanged }) {
       })
   }
 
+  // Scan changes come from the viewer, which shows its own errors; a conflict reloads the card.
+  function scanWork(work) {
+    return Promise.resolve()
+      .then(work)
+      .then((saved) => {
+        applySaved(saved, true)
+        return saved
+      })
+      .catch(async (err) => {
+        if (err instanceof ConflictError) {
+          const next = await loadItem(kind, id).catch(() => null)
+          if (next) setItem(next)
+          onChanged?.()
+        }
+        throw err
+      })
+  }
+
   function applySaved(record, stay) {
     setItem(toItem(kind, record))
     if (!stay) setPhase('viewing')
@@ -277,7 +297,17 @@ export function CardOverlay({ kind, id, onChanged }) {
           {item === null && !creating && <p className="lstate">This {spec.noun} isn't in the box any more.</p>}
           {editingRecipe && <RecipeEditor draft={recipeDraft} onDraft={setRecipeDraft} />}
           {raw && kind === 'recipes' && phase !== 'editing' && (
-            <RecipePage recipe={raw} onRemovePhoto={(path) => setConfirming({ type: 'photo', path })} />
+            <RecipePage
+              recipe={raw}
+              onRemovePhoto={(path) => setConfirming({ type: 'photo', path })}
+              onReplaceScan={(path, file) =>
+                scanWork(async () => {
+                  if (file.size > MAX_PHOTO_BYTES) throw new Error('Each photo must be under 10 MB.')
+                  return replaceRecipeScan(raw, path, await readAsDataUrl(file))
+                })
+              }
+              onRemoveScan={(path) => scanWork(() => removeRecipeScan(raw, path))}
+            />
           )}
           {(raw || creating) && kind === 'notes' && (
             <NotePage

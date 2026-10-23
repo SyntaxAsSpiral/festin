@@ -544,6 +544,48 @@ def test_recipe_photos_and_mark_cooked(kitchen):
     assert "needsPracticeReview" not in cooked
 
 
+def test_recipe_scans_replace_and_remove(kitchen):
+    client = Client(kitchen.server_address[1])
+    _, recipe = client.request("POST", "/api/recipes", {"title": "Pie", "ingredients": ["flour"]})
+    conn = connect(kitchen.db_path)
+    conn.execute(
+        "UPDATE recipes SET extra_json = ? WHERE id = ?",
+        (json.dumps({"ocrPhotos": ["data/cards/a.jpg", "data/cards/b.jpg"], "date": "1971"}), recipe["id"]),
+    )
+    conn.commit()
+    conn.close()
+    url = f"/api/recipes/{recipe['id']}/scans"
+
+    status, _ = client.request("POST", url, {"expected_updated_at": "old", "remove": "data/cards/a.jpg"})
+    assert status == 409
+    stamp = recipe["updatedAt"]
+
+    jpg = base64.b64encode(b"\xff\xd8\xff" + b"\x00" * 30).decode()
+    status, replaced = client.request(
+        "POST", url, {"expected_updated_at": stamp, "replace": "data/cards/a.jpg", "image": f"data:image/jpeg;base64,{jpg}"}
+    )
+    assert status == 200
+    scans = replaced["recipe"]["ocrPhotos"]
+    assert scans[0].startswith("data/cards/") and scans[0].endswith(".jpg") and scans[0] != "data/cards/a.jpg"
+    assert scans[1] == "data/cards/b.jpg"
+    assert (kitchen.cards_dir / scans[0].split("/")[-1]).exists()
+
+    status, removed = client.request(
+        "POST", url, {"expected_updated_at": replaced["recipe"]["updatedAt"], "remove": "data/cards/b.jpg"}
+    )
+    assert status == 200
+    assert removed["recipe"]["ocrPhotos"] == [scans[0]]
+    conn = connect(kitchen.db_path)
+    extra = json.loads(conn.execute("SELECT extra_json FROM recipes WHERE id = ?", (recipe["id"],)).fetchone()[0])
+    conn.close()
+    assert extra["date"] == "1971"
+
+    status, _ = client.request(
+        "POST", url, {"expected_updated_at": removed["recipe"]["updatedAt"], "remove": "data/cards/b.jpg"}
+    )
+    assert status == 400
+
+
 def test_clear_cooks_undoes_the_recorded_cooks_and_checks_staleness(kitchen):
     client = Client(kitchen.server_address[1])
     _, recipe = client.request("POST", "/api/recipes", {"title": "Pie", "ingredients": ["flour"]})

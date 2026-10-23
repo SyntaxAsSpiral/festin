@@ -338,6 +338,14 @@ class Handler(BaseHTTPRequestHandler):
                             conn, recipe_id, body, self.server.photos_dir, now=self.server.now()
                         ),
                     )
+                if path.endswith("/scans") and path.startswith("/api/recipes/"):
+                    recipe_id = _id_after(path[: -len("/scans")], "/api/recipes/")
+                    return self._send(
+                        200,
+                        recipes_mod.update_scans(
+                            conn, recipe_id, body, self.server.cards_dir, now=self.server.now()
+                        ),
+                    )
                 if path.endswith("/cooked") and path.startswith("/api/recipes/"):
                     recipe_id = _id_after(path[: -len("/cooked")], "/api/recipes/")
                     return self._send(

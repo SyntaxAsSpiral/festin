@@ -722,7 +722,55 @@ def update_photos(
     return {"ok": True, "status": "saved", "recipe_id": recipe_id, "photos": result["photos"], "recipe": result}
 
 
-def _store_data_url(raw: str, photos_dir: Path) -> str:
+def update_scans(
+    conn: sqlite3.Connection,
+    recipe_id: str,
+    body: dict,
+    cards_dir: Path,
+    *,
+    now: datetime | None = None,
+) -> dict:
+    """One box scan: {remove} or {replace, image}.
+
+    Scans are detached, never deleted from disk. A replacement is stored in cards/."""
+    if not isinstance(body, dict):
+        raise ValueError("JSON object required")
+    row = _row(conn, recipe_id)
+    expected = body.get("expected_updated_at", body.get("expectedUpdatedAt"))
+    if expected != row["updated_at"]:
+        raise StaleState("Recipe changed. Refresh before changing its scans.")
+    try:
+        extra = json.loads(row["extra_json"] or "{}")
+    except json.JSONDecodeError:
+        extra = {}
+    if not isinstance(extra, dict):
+        extra = {}
+    scans = _ocr_photos(row["extra_json"])
+    target = body.get("remove", body.get("replace"))
+    if not isinstance(target, str) or target not in scans:
+        raise ValueError("That scan is no longer on this recipe.")
+    if "remove" in body:
+        scans.remove(target)
+    elif "replace" in body:
+        image = body.get("image")
+        if not isinstance(image, str) or not image.startswith("data:"):
+            raise ValueError("Choose a photo to replace the scan.")
+        stored = _store_data_url(image, cards_dir, prefix="data/cards/")
+        scans[scans.index(target)] = stored
+    else:
+        raise ValueError("Say remove or replace.")
+    extra["ocrPhotos"] = scans
+    stamp = _stamp(now)
+    conn.execute(
+        "UPDATE recipes SET extra_json = ?, updated_at = ? WHERE id = ?",
+        (json.dumps(extra, ensure_ascii=False), stamp, recipe_id),
+    )
+    conn.commit()
+    result = get_recipe(conn, recipe_id)
+    return {"ok": True, "status": "saved", "recipe_id": recipe_id, "recipe": result}
+
+
+def _store_data_url(raw: str, photos_dir: Path, prefix: str = "data/cooking-photos/") -> str:
     if len(raw) > 15_000_000:
         raise ValueError("Each photo must be under 10 MB.")
     try:
@@ -736,7 +784,7 @@ def _store_data_url(raw: str, photos_dir: Path) -> str:
     photos_dir.mkdir(parents=True, exist_ok=True)
     name = str(uuid.uuid4()) + ext
     (photos_dir / name).write_bytes(blob)
-    return "data/cooking-photos/" + name
+    return prefix + name
 
 
 def _image_ext(blob: bytes) -> str:
