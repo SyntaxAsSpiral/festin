@@ -40,7 +40,6 @@ export function CloudAgents({ plugin, enabled, busy, setBusy, onUpdated, note, s
   return (
     <div className="cloud-agents">
       <div className="cloud-agent-list">
-        {!view.destinations.length && <p className="fine">No cloud agents yet.</p>}
         {view.destinations.map((row) =>
           editing === row.name ? (
             <div key={row.name} className="cloud-agent-row cloud-agent-editor">
@@ -75,7 +74,6 @@ export function CloudAgents({ plugin, enabled, busy, setBusy, onUpdated, note, s
                     id={'ca-edit-auth-' + row.name}
                     value={draft.auth_env}
                     disabled={busy || !enabled}
-                    placeholder="AUTH_ENV_NAME"
                     spellCheck={false}
                     autoCapitalize="off"
                     autoComplete="off"
@@ -172,7 +170,6 @@ export function CloudAgents({ plugin, enabled, busy, setBusy, onUpdated, note, s
               value={add.name}
               disabled={busy || !enabled}
               maxLength={80}
-              placeholder="Agent name"
               spellCheck={false}
               autoComplete="off"
               onChange={(event) => setAdd((current) => ({ ...current, name: event.target.value }))}
@@ -197,7 +194,6 @@ export function CloudAgents({ plugin, enabled, busy, setBusy, onUpdated, note, s
               id="ca-add-auth"
               value={add.auth_env}
               disabled={busy || !enabled}
-              placeholder="AUTH_ENV_NAME"
               spellCheck={false}
               autoCapitalize="off"
               autoComplete="off"

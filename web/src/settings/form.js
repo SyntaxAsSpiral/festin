@@ -71,13 +71,6 @@ export function draftFromSettings(body) {
   }
 }
 
-export function keySourceMessage(source, keySet) {
-  if (source === 'env') return "Using the server's environment key."
-  if (source === 'file' || keySet)
-    return 'A key is stored next to the database. It is never sent back to the browser.'
-  return 'No key is stored yet. It stays out of the shared database.'
-}
-
 /** Body for POST /api/settings. The key is a separate write and never rides along. */
 export function settingsSaveBody(draft, expectedUpdatedAt) {
   const body = {

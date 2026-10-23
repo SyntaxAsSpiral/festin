@@ -4,7 +4,6 @@ import {
   baseUrlForProvider,
   draftFromSettings,
   inboxKeyBlock,
-  keySourceMessage,
   lanePreview,
   parseSettingsTab,
   providerOf,
@@ -54,8 +53,6 @@ describe('settings form mapping', () => {
     })
     expect(draft.keySource).toBe('env')
     expect(draft.keySet).toBe(false)
-    expect(keySourceMessage(draft.keySource, draft.keySet)).toBe("Using the server's environment key.")
-    expect(keySourceMessage('none', false)).toMatch(/No key is stored/)
   })
 
   it('keeps flat model fields when a caller still sends them', () => {

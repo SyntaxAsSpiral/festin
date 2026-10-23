@@ -108,7 +108,7 @@ export function PluginPanel({ plugin, onUpdated }) {
           if (plugin.id === 'printer' && !printerFieldVisible(field, draft)) return null
           return (
           <div key={field.key} className="sf">
-            <label htmlFor={'p-' + plugin.id + '-' + field.key}>{field.label}</label>
+            {field.type !== 'boolean' && <label htmlFor={'p-' + plugin.id + '-' + field.key}>{field.label}</label>}
             {field.type === 'enum' && (
               <select
                 id={'p-' + plugin.id + '-' + field.key}
@@ -151,26 +151,20 @@ export function PluginPanel({ plugin, onUpdated }) {
               />
             )}
             {field.type === 'secret' && (
-              <>
-                <input
-                  id={'p-' + plugin.id + '-' + field.key}
-                  type="password"
-                  value={draft[field.key] ?? ''}
-                  placeholder={secrets[field.key] === 'set' ? 'set — type to replace' : 'not set'}
-                  autoComplete="off"
-                  spellCheck={false}
-                  disabled={busy || !enabled}
-                  onChange={(event) => setField(field.key, event.target.value, { secret: true })}
-                  onBlur={() => {
-                    if (dirtyRef.current[field.key] && String(draftRef.current[field.key] || '').length)
-                      void save({ draft: draftRef.current, dirtySecrets: dirtyRef.current })
-                  }}
-                />
-                <p className="fine">
-                  {secrets[field.key] === 'set' ? 'Token is set on the kitchen.' : 'Token is not set.'} The value is
-                  never shown again.
-                </p>
-              </>
+              <input
+                id={'p-' + plugin.id + '-' + field.key}
+                type="password"
+                value={draft[field.key] ?? ''}
+                placeholder={secrets[field.key] === 'set' ? 'Set' : 'Not set'}
+                autoComplete="off"
+                spellCheck={false}
+                disabled={busy || !enabled}
+                onChange={(event) => setField(field.key, event.target.value, { secret: true })}
+                onBlur={() => {
+                  if (dirtyRef.current[field.key] && String(draftRef.current[field.key] || '').length)
+                    void save({ draft: draftRef.current, dirtySecrets: dirtyRef.current })
+                }}
+              />
             )}
             {(field.type === 'string' || (!['enum', 'boolean', 'number', 'secret'].includes(field.type))) && (
               <input
@@ -192,7 +186,7 @@ export function PluginPanel({ plugin, onUpdated }) {
         {plugin.id === 'printer' && (
           <div className="snc">
             <p className={'fine' + (note && note !== 'Saved.' ? ' mo' : '')} id={'p-note-' + plugin.id}>
-              {note || (testAction ? 'Ready to print a test slip.' : 'No test action on this plugin yet.')}
+              {note}
             </p>
             <button
               type="button"

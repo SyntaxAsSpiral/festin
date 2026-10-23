@@ -22,7 +22,6 @@ import {
   baseUrlForProvider,
   draftFromSettings,
   inboxKeyBlock,
-  keySourceMessage,
   lanePreview,
   parseSettingsTab,
   providerOf,
@@ -363,10 +362,10 @@ export function SettingsSidebar() {
                   value={keyText}
                   placeholder={
                     draft.keySource === 'file' || draft.keySet
-                      ? 'Key stored — paste a new one to replace it'
+                      ? 'Key stored'
                       : draft.keySource === 'env'
-                        ? 'Environment key in use — paste a file key to override later'
-                        : 'Paste an API key'
+                        ? 'Environment key in use'
+                        : ''
                   }
                   spellCheck={false}
                   autoCapitalize="none"
@@ -374,7 +373,6 @@ export function SettingsSidebar() {
                   onChange={(e) => setKeyText(e.target.value)}
                   disabled={busy}
                 />
-                <p className="fine">{keySourceMessage(draft.keySource, draft.keySet)}</p>
                 <p className="fine">
                   <button type="button" className="s-save" onClick={() => commitKey(keyText)} disabled={busy || !keyText.trim()}>
                     Save key
@@ -450,7 +448,7 @@ export function SettingsSidebar() {
                   <button type="button" className="s-new" onClick={mintInboxKey} disabled={busy}>
                     New key
                   </button>
-                  {draft.inboxKeySet ? ' A key is set; only its hash is stored.' : ' No key yet — mint one for agents.'}
+                  {draft.inboxKeySet ? ' A key is set.' : ' No key yet.'}
                 </p>
                 {inboxSecret ? (
                   <div className="sf">
