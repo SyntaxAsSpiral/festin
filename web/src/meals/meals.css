@@ -253,10 +253,9 @@
   font-variant: normal;
   letter-spacing: 0;
   font-weight: 400;
-  /* A step under the day name and a little quieter than its rose, so tonight's dish
-     leads the row. */
+  /* The day name's size, its lowercase matching the small caps, and a little quieter
+     than its rose, so tonight's dish leads the row. */
   color: color-mix(in srgb, var(--bb-rose) 72%, var(--bb-tone-4));
-  font-size: 0.82em;
 }
 /* Today stands out: its name in the rose ink on a faint wash, with a little more room. */
 .slip .row.is-today {
