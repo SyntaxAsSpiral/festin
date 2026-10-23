@@ -8,7 +8,6 @@ import {
   pluginIcon,
   pluginSaveBody,
   pluginTestAction,
-  printCommandAvailable,
   printerFieldVisible,
   readPluginSaveResult,
   secretIsSet,
@@ -45,21 +44,6 @@ const printerSchema = [
   },
 ]
 
-const printerSchemaNoCommand = [
-  {
-    key: 'deliveryMode',
-    type: 'string',
-    default: '',
-    label: 'Delivery',
-    enum: ['', 'receiver'],
-    choices: [
-      { id: '', description: 'Off' },
-      { id: 'receiver', description: 'Print receiver' },
-    ],
-  },
-  { key: 'receiverUrl', type: 'string', default: '', label: 'Print receiver URL' },
-]
-
 describe('plugin schema mapping', () => {
   it('maps string, enum, and token fields', () => {
     const fields = fieldsFromSchema(printerSchema)
@@ -93,12 +77,6 @@ describe('plugin schema mapping', () => {
     expect(printerFieldVisible({ key: 'receiverUrl' }, { deliveryMode: '' })).toBe(false)
     expect(printerFieldVisible({ key: 'token' }, { deliveryMode: 'receiver' })).toBe(true)
     expect(printerFieldVisible({ key: 'band' }, { deliveryMode: 'command' })).toBe(true)
-  })
-
-  it('detects when the host exposes Print command in the schema', () => {
-    expect(printCommandAvailable(printerSchema)).toBe(true)
-    expect(printCommandAvailable(printerSchemaNoCommand)).toBe(false)
-    expect(printCommandAvailable([])).toBe(false)
   })
 
   it('treats boolean and number types when a later plugin uses them', () => {

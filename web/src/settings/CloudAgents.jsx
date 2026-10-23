@@ -39,10 +39,6 @@ export function CloudAgents({ plugin, enabled, busy, setBusy, onUpdated, note, s
 
   return (
     <div className="cloud-agents">
-      <p className="fine">
-        Webhook destinations for a notebook list. Choose one default. Babette uses it when you do not name an agent.
-        Auth env is a variable name; keep the secret in the kitchen environment.
-      </p>
       <div className="cloud-agent-list">
         {!view.destinations.length && <p className="fine">No cloud agents yet.</p>}
         {view.destinations.map((row) =>

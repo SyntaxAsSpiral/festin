@@ -8,7 +8,6 @@ import {
   pluginIcon,
   pluginSaveBody,
   pluginTestAction,
-  printCommandAvailable,
   printerFieldVisible,
 } from './plugins.js'
 
@@ -38,7 +37,6 @@ export function PluginPanel({ plugin, onUpdated }) {
       ? []
       : fieldsFromSchema(plugin.schema).filter((field) => field.key !== 'defaultAgent')
   const testAction = pluginTestAction(plugin)
-  const hostPrintCommand = plugin.id === 'printer' && printCommandAvailable(plugin.schema)
 
   async function save(partial) {
     const nextEnabled = partial.enabled ?? enabledRef.current
@@ -89,28 +87,6 @@ export function PluginPanel({ plugin, onUpdated }) {
         </span>
         <div className="plt">
           <h3 id={'sh-' + plugin.id}>{plugin.name || plugin.id}</h3>
-          {plugin.id === 'printer' && (
-            <p className="fine">
-              Prints the weekly slip, recipe cards and notes on an 80&nbsp;mm receipt printer.
-              Choose Print receiver below, or Print command when the host has set{' '}
-              <code>FESTIN_PRINT_COMMAND</code> (configured on the server, not here). Off never
-              attempts a print.
-            </p>
-          )}
-          {plugin.id === 'tattva' && (
-            <p className="fine">
-              Names the element at the dinner hour for planning and colours each week in the Kitchen Log.
-            </p>
-          )}
-          {plugin.id === 'outbound' && (
-            <p className="fine">Send a notebook list to a named webhook when the cook asks.</p>
-          )}
-          {plugin.id === 'voice' && (
-            <p className="fine">
-              Adds a Listen control on Babette&apos;s finished replies. Choose a TTS provider below;
-              API keys stay on the host (model key / ELEVENLABS_API_KEY), never in Settings.
-            </p>
-          )}
         </div>
         <label className="pltg">
           <input
@@ -210,10 +186,6 @@ export function PluginPanel({ plugin, onUpdated }) {
                 onBlur={() => save({ draft: draftRef.current })}
               />
             )}
-            {field.help ? <p className="fine">{field.help}</p> : null}
-            {field.key === 'deliveryMode' && hostPrintCommand ? (
-              <p className="fine">Print command is configured on the host via FESTIN_PRINT_COMMAND.</p>
-            ) : null}
           </div>
           )
         })}

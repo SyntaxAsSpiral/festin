@@ -213,6 +213,9 @@ html[data-motion='off'] #sidebar,
 #sidebar .snc .fine {
   margin: 0;
 }
+#sidebar .snc > :only-child {
+  margin-left: auto;
+}
 #sidebar .cx {
   display: flex;
   align-items: center;
@@ -302,9 +305,6 @@ html[data-motion='off'] #sidebar,
   font: italic 13px / 1.35 var(--bb-font);
   color: var(--bb-green-frappe);
 }
-#sidebar .plg-intro {
-  margin: 4px 0 2px;
-}
 #sidebar .plug {
   margin: 12px 0 4px;
   padding: 12px 14px 14px;
@@ -319,9 +319,6 @@ html[data-motion='off'] #sidebar,
 #sidebar .plt {
   flex: 1;
   min-width: 0;
-}
-#sidebar .plt .fine {
-  margin: 2px 0 0;
 }
 #sidebar .plic {
   font-size: 18px;

@@ -152,13 +152,6 @@ export function printerFieldVisible(field, draft) {
   return true
 }
 
-/** True when the schema offers Print command (host set FESTIN_PRINT_COMMAND). */
-export function printCommandAvailable(schema) {
-  const field = Array.isArray(schema) ? schema.find((row) => row && row.key === 'deliveryMode') : null
-  const options = field && Array.isArray(field.enum) ? field.enum : []
-  return options.includes('command')
-}
-
 export function pluginIcon(plugin) {
   if (plugin?.id === 'printer') return '⎙'
   if (plugin?.id === 'tattva') return '🜂'

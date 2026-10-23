@@ -317,10 +317,6 @@ export function SettingsSidebar() {
           <div role="tabpanel" id="sp-model" aria-labelledby="st-model">
             <section className="sg" aria-labelledby="sh-conv">
               <h3 id="sh-conv">Conversation</h3>
-              <p className="fine">
-                Connect to a custom endpoint or OpenRouter. Choose a model with tool support and vision for cooking
-                photos.
-              </p>
               <div className="sfr">
                 <div className="sf">
                   <label htmlFor="s-provider">Connection</label>
@@ -391,7 +387,6 @@ export function SettingsSidebar() {
                 </p>
               </div>
               <div className="snc">
-                <p className="fine">Model name and base URL are saved with the other settings.</p>
                 <button type="button" className="s-test" onClick={runTest} disabled={busy}>
                   Test
                 </button>
@@ -399,7 +394,6 @@ export function SettingsSidebar() {
             </section>
             <section className="sg" aria-labelledby="sh-hand">
               <h3 id="sh-hand">Babette&apos;s hand</h3>
-              <p className="fine">How long the ink stays wet behind the pen. The same on every screen in the house.</p>
               <label className="wet-band" htmlFor="s-wet">
                 Wet band
                 <input
@@ -426,10 +420,6 @@ export function SettingsSidebar() {
               <div className="plh">
                 <div className="plt">
                   <h3 id="sh-inbox">Incoming recipes</h3>
-                  <p className="fine">
-                    Outside agents post recipes to a second listener. The only kitchen switch is on or off; the
-                    sender needs the address and key.
-                  </p>
                 </div>
                 <label className="pltg">
                   <input
@@ -455,10 +445,6 @@ export function SettingsSidebar() {
                     autoCapitalize="none"
                     autoComplete="off"
                   />
-                  <p className="fine">
-                    Binds with the kitchen host. Nothing is public until the host exposes this port. See
-                    docs/incoming-recipes.md.
-                  </p>
                 </div>
                 <p className="fine">
                   <button type="button" className="s-new" onClick={mintInboxKey} disabled={busy}>
@@ -490,7 +476,6 @@ export function SettingsSidebar() {
               <h3 id="sh-house">Household</h3>
               <div className="sf">
                 <label htmlFor="s-family">Table name</label>
-                <p className="fine">Shown wherever the app names itself.</p>
                 <input
                   id="s-family"
                   value={draft.tableName}
@@ -513,10 +498,6 @@ export function SettingsSidebar() {
                   disabled={busy}
                 />
               </div>
-              <p className="fine" style={{ marginTop: 6 }}>
-                The forecast follows this location; the household time zone comes with it. Dinner hour and each
-                night&apos;s tattva live on the Dinner tattva plugin.
-              </p>
               <div className="sf">
                 <label htmlFor="s-wk">Week starts on</label>
                 <select
@@ -535,7 +516,6 @@ export function SettingsSidebar() {
             </section>
             <section className="sg" aria-labelledby="sh-ctx">
               <h3 id="sh-ctx">Household context</h3>
-              <p className="fine">Included when a new chat starts. Edit each section separately.</p>
               {CONTEXT_LANES.map((lane) => {
                 const row = lanes[lane.key]
                 const isEditing = editing === lane.key
@@ -588,9 +568,6 @@ export function SettingsSidebar() {
                     : 'Could not load plugins.'}
               </p>
             )}
-            <p className="fine plg-intro">
-              Babette&apos;s core stays small; extras plug in here. Each plugin can be switched off on its own.
-            </p>
             {plugins.status === 'ok' &&
               plugins.plugins.map((plug) => (
                 <PluginPanel
