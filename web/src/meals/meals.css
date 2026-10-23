@@ -991,7 +991,9 @@ html[data-motion='off'] .kl .tcar {
     .meals > .slipw .slip {
       --pin-room: 58px;
       --slip-px: 24px;
-      padding-bottom: 10px;
+      /* The foot matches the top margin; its extra 10px comes from the nights. */
+      --foot-take: 10px;
+      padding-bottom: calc(10px + var(--foot-take));
     }
     /* The room for that top margin comes from slightly smaller text. */
     .meals > .slipw .slip .row .n {
@@ -1005,8 +1007,8 @@ html[data-motion='off'] .kl .tcar {
     }
     .meals > .slipw .slip .row {
       min-height: 0;
-      padding-top: calc(3px + var(--night-give));
-      padding-bottom: calc(3px - var(--vig-gain) / 28 + var(--night-give));
+      padding-top: calc(3px + var(--night-give) - var(--foot-take) / 14);
+      padding-bottom: calc(3px - var(--vig-gain) / 28 + var(--night-give) - var(--foot-take) / 14);
     }
     .meals > .slipw .slip {
       --orn-mt: 5px;
