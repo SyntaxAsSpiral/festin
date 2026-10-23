@@ -32,6 +32,12 @@
   position: relative;
   /* The banner sits as far below the top edge as in from the sides. */
   --slip-px: 30px;
+  /* The banner's shape, stepping toward golden (zk 2026-10-22: 2.875 -> 2.6, then 2.4).
+     The height it gains over the old 460 : 160 comes back out of the spacing below it
+     (a quarter under the banner, half from the two rules, a quarter across the nights),
+     so the slip keeps its length. Read by the children, so cqi is the slip's width. */
+  --vig-ratio: 2.6;
+  --vig-gain: calc(100cqi / var(--vig-ratio) - 100cqi * 160 / 460);
   padding: var(--slip-px) var(--slip-px) 22px;
   border: 1px solid var(--bb-tone-2);
   /* Linen, like the cards: the slip sits a shade lighter than the ivory page. */
@@ -46,11 +52,11 @@
   position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 460 / 160;
+  aspect-ratio: var(--vig-ratio) / 1;
   overflow: hidden;
   border-top: 1px solid var(--bb-tone-2);
   border-bottom: 1px solid var(--bb-tone-2);
-  margin: 0 0 12px;
+  margin: 0 0 calc(12px - var(--vig-gain) / 4);
   mix-blend-mode: multiply;
   background: var(--bb-paper);
 }
@@ -150,7 +156,7 @@
   color: var(--bb-rose);
   font-size: clamp(15px, 5cqi, 20px);
   line-height: 1;
-  margin: 10px 0 6px;
+  margin: calc(10px - var(--vig-gain) * 3 / 16) 0 calc(6px - var(--vig-gain) / 16);
   letter-spacing: 0.6em;
   margin-right: -0.6em;
 }
@@ -169,7 +175,7 @@
 
 .slip .row {
   position: relative;
-  padding: 6px 6px 7px;
+  padding: 6px 6px calc(7px - var(--vig-gain) / 28);
   border-bottom: 1px dotted var(--bb-tone-2);
   min-height: 52px;
   cursor: text;
@@ -210,8 +216,10 @@
   font-variant: normal;
   letter-spacing: 0;
   font-weight: 400;
-  color: var(--bb-rose);
-  font-size: clamp(14px, 4.6cqi, 18px);
+  /* A step under the day name and a little quieter than its rose, so tonight's dish
+     leads the row. */
+  color: color-mix(in srgb, var(--bb-rose) 72%, var(--bb-tone-4));
+  font-size: 0.82em;
 }
 /* Today stands out: its name in the rose ink, a little larger, on a faint wash. */
 .slip .row.is-today {
@@ -915,7 +923,7 @@
     align-self: start;
   }
   /* Pinned beside the Log, the slip always fits the window (as in the mock), so
-     nothing of it is ever out of reach. The banner keeps its shape (2.9 : 1) at
+     nothing of it is ever out of reach. The banner keeps its shape (--vig-ratio) at
      every size; on short windows the room comes from the spacing around and
      inside the slip instead. --pin-room is the bar, the stage's top padding and
      a small bottom margin. */
@@ -967,7 +975,7 @@ html[data-motion='off'] .kl .tcar {
 @container main (min-width: 780px) {
   @media (max-height: 820px) {
     /* A laptop: tighter spacing around and inside the slip, so the banner keeps
-       its full 2.9 : 1 shape and the week still fits without scrolling. */
+       its full shape and the week still fits without scrolling. */
     .stage:has(.meals) {
       --stage-pt: 10px;
       --stage-pb: 10px;
@@ -985,15 +993,15 @@ html[data-motion='off'] .kl .tcar {
       font-size: clamp(12px, 3.7cqi, 15px);
     }
     .meals > .slipw .slip .vig {
-      margin-bottom: 8px;
+      margin-bottom: calc(8px - var(--vig-gain) / 4);
     }
     .meals > .slipw .slip .row {
       min-height: 0;
       padding-top: 3px;
-      padding-bottom: 3px;
+      padding-bottom: calc(3px - var(--vig-gain) / 28);
     }
     .meals > .slipw .slip .orn {
-      margin: 5px 0 3px;
+      margin: calc(5px - var(--vig-gain) * 3 / 16) 0 calc(3px - var(--vig-gain) / 16);
     }
   }
 }
